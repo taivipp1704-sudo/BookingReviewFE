@@ -24,3 +24,6 @@ npm run build
 Neu backend chay tai dia chi khac, sao chep `.env.example` thanh `.env` va dat
 `VITE_API_BASE_URL` thanh URL cua backend.
 
+Khi deploy tren Vercel, `vercel.json` proxy `/api/*` sang Render va fallback cac
+route cua React SPA ve `index.html`. Khong can dat `VITE_API_BASE_URL` tren Vercel.
+
