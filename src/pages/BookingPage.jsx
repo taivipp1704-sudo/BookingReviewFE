@@ -893,8 +893,6 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
   const [consent, setConsent] = useState(false);
   const [bookingStep, setBookingStep] = useState("form");
   const [quote, setQuote] = useState(null);
-  const [challenge, setChallenge] = useState(null);
-  const [otpCode, setOtpCode] = useState("");
   const [booking, setBooking] = useState(null);
   const [bookingError, setBookingError] = useState("");
   const [verifiedBooking, setVerifiedBooking] = useState(null);
@@ -904,7 +902,6 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
   const [liveQuoteError, setLiveQuoteError] = useState("");
   const [busy, setBusy] = useState(false);
   const [identity, setIdentity] = useState({ front: null, back: null });
-  const [otpResendSeconds, setOtpResendSeconds] = useState(0);
   const [holdSeconds, setHoldSeconds] = useState(0);
   const [holdToken, setHoldToken] = useState("");
   const holdTokenRef = useRef("");
@@ -1107,30 +1104,13 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
   ]);
 
   useEffect(() => {
-    if (otpResendSeconds <= 0) return undefined;
-    const timer = window.setTimeout(
-      () => setOtpResendSeconds((current) => current - 1),
-      1000,
-    );
-    return () => window.clearTimeout(timer);
-  }, [otpResendSeconds]);
-
-  useEffect(() => {
     if (!product || bookingStep === "done" || holdSeconds <= 0) return undefined;
     const timer = window.setTimeout(() => setHoldSeconds((value) => value - 1), 1000);
     return () => window.clearTimeout(timer);
   }, [bookingStep, holdSeconds, product]);
 
-  async function requestBookingOtp(event) {
+  async function beginBookingCommitment(event) {
     event.preventDefault();
-    if (!product || !consent) {
-      setBookingError("Vui lòng đồng ý với quy định thuê trước khi tiếp tục.");
-      return;
-    }
-    await requestOtpCode();
-  }
-
-  async function requestOtpCode() {
     if (!product || !consent) {
       setBookingError("Vui lòng đồng ý với quy định thuê trước khi tiếp tục.");
       return;
@@ -1138,6 +1118,8 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
     setBusy(true);
     setBookingError("");
     try {
+      if (!identity.front || !identity.back)
+        throw new Error("Vui lòng tải ảnh mặt trước và mặt sau CCCD.");
       const hold = await api.holdBooking({
         pickupTime: form.pickupTime,
         returnTime: form.returnTime,
@@ -1167,57 +1149,12 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
           Math.ceil((new Date(hold.expiresAt).getTime() - Date.now()) / 1000),
         ),
       );
-      const nextChallenge = await api.requestOtp({
-        phone: form.phone,
-        purpose: "BOOKING",
-      });
-      setQuote(nextQuote);
-      setChallenge(nextChallenge);
-      setOtpCode("");
-      setBookingStep("otp");
-      setOtpResendSeconds(30);
-    } catch (error) {
-      setBookingError(
-        error.status === 429
-          ? "Yêu cầu đang được xử lý quá nhanh. Vui lòng chờ vài giây rồi thử lại."
-          : error.message,
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function verifyBookingOtp(event) {
-    event.preventDefault();
-    if (!product || !challenge) return;
-    if (holdSeconds <= 0 || !holdToken) { setBookingError("Phiên giữ máy đã hết hạn. Vui lòng bắt đầu lại."); return; }
-    setBusy(true);
-    setBookingError("");
-    try {
-      if (!identity.front || !identity.back)
-        throw new Error("Vui lòng tải ảnh mặt trước và mặt sau CCCD.");
       const identityUpload = await api.uploadIdentity(
         identity.front,
         identity.back,
       );
-      const verification = await api.verifyOtp({
-        challengeId: challenge.challengeId,
-        phone: form.phone,
-        code: otpCode,
-        purpose: "BOOKING",
-      });
-      const refreshedQuote = await api.quote({
-        pickupTime: form.pickupTime,
-        returnTime: form.returnTime,
-        items: bookingItems,
-        bundleId: selectedBundleId || null,
-        holdToken,
-        promotionCode: form.promotionCode.trim() || null,
-      });
-      if (!refreshedQuote.available) throw new Error("Thiết bị không còn sẵn sàng trong khung giờ đã chọn.");
-      setQuote(refreshedQuote);
+      setQuote(nextQuote);
       setVerifiedBooking({
-        verificationToken: verification.verificationToken,
         identityUploadToken: identityUpload.uploadToken,
       });
       setCommitmentChecks({ identity: false, fees: false });
@@ -1259,7 +1196,6 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
         note: form.note,
         earlyPickupTime: form.earlyPickup ? form.earlyPickupTime : null,
         bundleId: selectedBundleId || null,
-        verificationToken: verifiedBooking.verificationToken,
         items: bookingItems,
         identityUploadToken: verifiedBooking.identityUploadToken,
         holdToken,
@@ -1371,8 +1307,6 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
       await api.releaseBookingHold({ holdToken: previousToken }).catch(() => {});
     }
     setBookingStep("form");
-    setChallenge(null);
-    setOtpCode("");
     setIdentity({ front: null, back: null });
     setConsent(false);
     setBookingError("");
@@ -1640,18 +1574,18 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
               </div>
 
               {bookingStep === "form" ? (
-                <form onSubmit={requestBookingOtp} className="space-y-4">
+                <form onSubmit={beginBookingCommitment} className="space-y-4">
                   {holdToken ? (
                     <>
                       <div className={`flex items-center justify-between rounded-lg border p-3 ${holdSeconds > 60 ? "border-line bg-paper" : "border-red-200 bg-red-50 text-red-700"}`}><div className="flex items-center gap-2 text-xs font-black"><Clock3 className="h-4 w-4" />Phiên giữ lựa chọn</div><strong className="font-mono text-lg">{String(Math.floor(holdSeconds / 60)).padStart(2, "0")}:{String(holdSeconds % 60).padStart(2, "0")}</strong></div>
                       {holdSeconds <= 0 ? <button type="button" onClick={restartReservation} className="w-full rounded-lg border-2 border-ink px-4 py-3 text-xs font-black uppercase">Bắt đầu lại phiên đặt thuê</button> : null}
                     </>
                   ) : (
-                    <div className="flex items-center justify-between rounded-lg border border-line bg-paper p-3 text-xs font-black"><span className="flex items-center gap-2"><Clock3 className="h-4 w-4" />Giữ lựa chọn khi nhận OTP</span><strong>Chưa bắt đầu</strong></div>
+                    <div className="flex items-center justify-between rounded-lg border border-line bg-paper p-3 text-xs font-black"><span className="flex items-center gap-2"><Clock3 className="h-4 w-4" />Giữ lựa chọn khi xác nhận</span><strong>Chưa bắt đầu</strong></div>
                   )}
                   <div className="rounded-lg border border-line bg-paper p-3 text-xs font-semibold text-muted">
                     <ShieldCheck className="mr-2 inline h-4 w-4 text-ink" />
-                    Chỉ tạo yêu cầu sau khi số điện thoại được xác thực. Đội ngũ
+                    Yêu cầu sẽ được gắn với tài khoản khách hàng đang đăng nhập. Đội ngũ
                     sẽ kiểm tra và phản hồi trước khi chốt đơn.
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -1841,112 +1775,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                     ) : (
                       <Smartphone className="h-4 w-4" />
                     )}
-                    Nhận mã OTP
-                  </button>
-                </form>
-              ) : null}
-
-              {bookingStep === "otp" ? (
-                <form onSubmit={verifyBookingOtp} className="space-y-4">
-                  <div className={`flex items-center justify-between rounded-lg border p-3 text-xs font-black ${holdSeconds > 60 ? "border-line bg-paper" : "border-red-200 bg-red-50 text-red-700"}`}><span>Hoàn tất xác thực trong</span><strong className="font-mono text-lg">{String(Math.floor(holdSeconds / 60)).padStart(2, "0")}:{String(holdSeconds % 60).padStart(2, "0")}</strong></div>
-                  {holdSeconds <= 0 ? <button type="button" onClick={restartReservation} className="w-full rounded-lg border-2 border-ink px-4 py-3 text-xs font-black uppercase">Phiên đã hết hạn · Bắt đầu lại</button> : null}
-                  <div className="rounded-lg bg-paper p-4">
-                    <p className="text-[10px] font-black uppercase tracking-widest text-muted">
-                      Báo giá dự kiến
-                    </p>
-                    <p className="mt-2 text-3xl font-black">
-                      {money(quote.totalAmount)}
-                    </p>
-                    {quote.discountAmount > 0 ? (
-                      <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-3 text-xs font-bold text-green-800">
-                        <div className="flex justify-between gap-3">
-                          <span>{quote.promotionName} ({quote.promotionCode})</span>
-                          <span>-{money(quote.discountAmount)}</span>
-                        </div>
-                        <div className="mt-2 space-y-1 border-t border-green-200 pt-2">
-                          {quote.promotionBreakdown.filter((day) => day.eligible).map((day) => (
-                            <div key={`${day.date}-${day.fromTime}`} className="flex justify-between gap-3">
-                              <span>{new Date(`${day.date}T00:00:00`).toLocaleDateString("vi-VN")}</span>
-                              <span>-{money(day.discountAmount)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                    <p className="mt-2 text-sm font-semibold text-muted">
-                      {quoteSummary}
-                    </p>
-                    <div className="mt-3 space-y-2 border-t border-line pt-3 text-xs font-bold">
-                      <div className="flex justify-between gap-3"><span>Tiền thuê</span><span>{money(quote.totalAmount)}</span></div>
-                      <div className="flex justify-between gap-3 text-muted"><span>Cọc thiết bị</span><span>{money(quote.equipmentDeposit)}</span></div>
-                      <div className="flex justify-between gap-3 text-muted"><span>Tiền giữ lịch</span><span>{money(quote.bookingDeposit)}</span></div>
-                      <div className="flex justify-between gap-3 border-t border-line pt-2 text-sm font-black"><span>Cần thanh toán ban đầu</span><span>{money(quote.amountDueNow)}</span></div>
-                    </div>
-                    <div className="mt-3 space-y-1 border-t border-line pt-3">
-                      {quote.lines.map((line) => (
-                        <div
-                          key={line.productId}
-                          className="flex justify-between gap-3 text-xs font-semibold"
-                        >
-                          <span>
-                            {line.name} × {line.quantity} · {pricingModeLabel(line)}
-                          </span>
-                          <span>{money(line.lineTotal)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  <label className="block text-xs font-black text-muted">
-                    Mã OTP
-                    <input
-                      required
-                      autoFocus
-                      maxLength="6"
-                      inputMode="numeric"
-                      value={otpCode}
-                      onChange={(event) =>
-                        setOtpCode(event.target.value.replace(/\D/g, ""))
-                      }
-                      placeholder="Nhập 6 chữ số"
-                      className="mt-2 w-full rounded-lg border border-line bg-paper px-4 py-3 text-lg font-black tracking-[0.35em] outline-none focus:border-ink"
-                    />
-                  </label>
-                  {challenge?.demoCode ? (
-                    <p className="text-xs font-bold text-orange-700">
-                      Mã dev local: {challenge.demoCode}
-                    </p>
-                  ) : null}
-                  <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={requestOtpCode}
-                      disabled={busy || otpResendSeconds > 0}
-                      className="rounded-lg border border-line bg-paper px-4 py-3 text-xs font-black uppercase tracking-widest text-ink disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {otpResendSeconds > 0
-                        ? `Gửi lại mã OTP (${otpResendSeconds}s)`
-                        : "Gửi lại mã OTP"}
-                    </button>
-                    <p className="text-[11px] font-semibold text-muted">
-                      Nếu mã OTP hết hạn hoặc không nhận được, hãy gửi lại sau
-                      khi đếm ngược kết thúc.
-                    </p>
-                  </div>
-                  {bookingError ? (
-                    <p className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">
-                      {bookingError}
-                    </p>
-                  ) : null}
-                  <button
-                    disabled={busy}
-                    className="flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-5 py-4 text-xs font-black uppercase tracking-widest text-acid disabled:opacity-50"
-                  >
-                    {busy ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4" />
-                    )}
-                    Xác thực OTP và tiếp tục
+                    Tiếp tục xác nhận
                   </button>
                 </form>
               ) : null}
@@ -2016,7 +1845,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                       <span className="absolute inset-y-0 left-0 bg-ink/15" style={{ width: commitmentHolding ? "100%" : "0%", transition: commitmentHolding ? "width 1.5s linear" : "none" }} />
                       <span className="relative flex items-center justify-center gap-2">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}Giữ 1,5 giây để xác nhận cam kết</span>
                     </button>
-                    <button type="button" disabled={busy} onClick={() => { cancelCommitmentHold(); setBookingStep("otp"); }} className="w-full py-2 text-[11px] font-black text-white/55 hover:text-white">Quay lại bước OTP</button>
+                    <button type="button" disabled={busy} onClick={() => { cancelCommitmentHold(); setBookingStep("form"); }} className="w-full py-2 text-[11px] font-black text-white/55 hover:text-white">Quay lại thông tin đặt thuê</button>
                   </div>
                 </section>
               ) : null}

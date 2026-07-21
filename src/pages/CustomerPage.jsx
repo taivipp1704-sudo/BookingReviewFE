@@ -32,12 +32,9 @@ export default function CustomerPage({ onSelect }) {
   const [tracking, setTracking] = useState({
     bookingId: "",
     phone: "",
-    code: "",
-    challenge: null,
     result: null,
     error: "",
   });
-  const [trackingOtpCooldown, setTrackingOtpCooldown] = useState(0);
   const [selectedBundle, setSelectedBundle] = useState(null);
 
   useEffect(() => {
@@ -138,51 +135,13 @@ export default function CustomerPage({ onSelect }) {
     }));
   }
 
-  useEffect(() => {
-    if (trackingOtpCooldown <= 0) return undefined;
-    const timer = window.setTimeout(
-      () => setTrackingOtpCooldown((current) => current - 1),
-      1000,
-    );
-    return () => window.clearTimeout(timer);
-  }, [trackingOtpCooldown]);
-
-  async function requestTrackingOtp(event) {
-    event.preventDefault();
-    setTracking((current) => ({ ...current, error: "", result: null }));
-    try {
-      const challenge = await api.requestOtp({
-        phone: tracking.phone,
-        purpose: "TRACK",
-      });
-      setTracking((current) => ({ ...current, challenge, code: "" }));
-      setTrackingOtpCooldown(30);
-    } catch (error) {
-      setTracking((current) => ({
-        ...current,
-        error:
-          error.status === 429
-            ? "Bạn vừa nhấn gửi mã OTP quá nhanh. Vui lòng chờ 30 giây rồi thử lại."
-            : error.message,
-      }));
-    }
-  }
-
   async function trackBooking(event) {
     event.preventDefault();
-    if (!tracking.challenge) return;
     setTracking((current) => ({ ...current, error: "" }));
     try {
-      const verification = await api.verifyOtp({
-        challengeId: tracking.challenge.challengeId,
-        phone: tracking.phone,
-        code: tracking.code,
-        purpose: "TRACK",
-      });
       const result = await api.trackBooking({
         bookingId: tracking.bookingId.trim(),
         phone: tracking.phone,
-        verificationToken: verification.verificationToken,
       });
       setTracking((current) => ({ ...current, result }));
     } catch (error) {
@@ -207,15 +166,15 @@ export default function CustomerPage({ onSelect }) {
               Mỗi khung hình, đúng lúc.
             </h1>
             <p className="mt-6 max-w-xl text-sm font-semibold leading-6 text-white/70">
-              Chọn thiết bị, nhận báo giá theo thời gian thuê và xác thực số
-              điện thoại ở bước cuối. Mọi yêu cầu đều được đội ngũ kiểm tra
+              Chọn thiết bị, nhận báo giá theo thời gian thuê và gửi yêu cầu
+              trực tiếp. Mọi yêu cầu đều được đội ngũ kiểm tra
               trước khi xác nhận.
             </p>
           </div>
           <div id="process" className="grid gap-3 sm:grid-cols-3">
             {[
               ["01", "Chọn thiết bị"],
-              ["02", "Xác thực OTP"],
+              ["02", "Gửi yêu cầu"],
               ["03", "Duyệt thủ công"],
             ].map(([number, label]) => (
               <div key={number} className="border-t border-white/15 pt-3">
@@ -401,13 +360,12 @@ export default function CustomerPage({ onSelect }) {
             </p>
             <h2 className="mt-2 text-3xl font-black">Theo dõi yêu cầu thuê</h2>
             <p className="mt-4 max-w-md text-sm font-semibold leading-6 text-muted">
-              Nhập mã đơn và xác thực OTP để xem trạng thái yêu cầu của bạn.
+              Nhập mã đơn và số điện thoại để xem trạng thái yêu cầu của bạn.
             </p>
           </div>
           <div className="border border-line bg-paper p-5 sm:p-6">
-            {!tracking.challenge ? (
               <form
-                onSubmit={requestTrackingOtp}
+                onSubmit={trackBooking}
                 className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
               >
                 <input
@@ -435,54 +393,9 @@ export default function CustomerPage({ onSelect }) {
                   className="rounded-lg border border-line bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-ink"
                 />
                 <button className="rounded-lg bg-ink px-4 py-3 text-xs font-black uppercase tracking-wider text-acid">
-                  Nhận OTP
+                  Tra cứu
                 </button>
               </form>
-            ) : (
-              <form
-                onSubmit={trackBooking}
-                className="grid gap-3 sm:grid-cols-[1fr_auto]"
-              >
-                <div>
-                  <input
-                    required
-                    maxLength="6"
-                    value={tracking.code}
-                    onChange={(event) =>
-                      setTracking((current) => ({
-                        ...current,
-                        code: event.target.value.replace(/\D/g, ""),
-                      }))
-                    }
-                    placeholder="Nhập mã OTP"
-                    className="w-full rounded-lg border border-line bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-ink"
-                  />
-                  {tracking.challenge.demoCode ? (
-                    <p className="mt-2 text-xs font-bold text-orange-700">
-                      Mã dev local: {tracking.challenge.demoCode}
-                    </p>
-                  ) : null}
-                </div>
-                <div className="flex flex-col gap-2 sm:col-span-2">
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-ink px-4 py-3 text-xs font-black uppercase tracking-wider text-acid"
-                  >
-                    Tra cứu
-                  </button>
-                  <button
-                    type="button"
-                    onClick={requestTrackingOtp}
-                    disabled={trackingOtpCooldown > 0}
-                    className="rounded-lg border border-line bg-paper px-4 py-3 text-xs font-black uppercase tracking-wider text-ink disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {trackingOtpCooldown > 0
-                      ? `Gửi lại mã OTP (${trackingOtpCooldown}s)`
-                      : "Gửi lại mã OTP"}
-                  </button>
-                </div>
-              </form>
-            )}
             {tracking.error ? (
               <p className="mt-3 text-sm font-semibold text-red-700">
                 {tracking.error}

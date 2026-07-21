@@ -79,8 +79,6 @@ export const api = {
   quote: payload => request('/api/bookings/quote', { method: 'POST', body: payload }),
   holdBooking: payload => request('/api/bookings/hold', { method: 'POST', body: payload }),
   releaseBookingHold: payload => request('/api/bookings/hold/release', { method: 'POST', body: payload }),
-  requestOtp: payload => request('/api/otp/request', { method: 'POST', body: payload }),
-  verifyOtp: payload => request('/api/otp/verify', { method: 'POST', body: payload }),
   createBooking: payload => request('/api/bookings', { method: 'POST', body: payload }),
   uploadIdentity,
   trackBooking: payload => request('/api/bookings/track', { method: 'POST', body: payload }),

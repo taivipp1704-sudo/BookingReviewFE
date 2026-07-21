@@ -1,10 +1,8 @@
 import {
   ArrowLeft,
-  CheckCircle2,
   LifeBuoy,
   Loader2,
   LogOut,
-  RefreshCw,
   Smartphone,
   UserRound,
 } from "lucide-react";
@@ -21,8 +19,7 @@ export default function CustomerAccountPage({
   onLogout,
   loginMessage,
 }) {
-  const [form, setForm] = useState({ name: "", phone: "", code: "" });
-  const [challenge, setChallenge] = useState(null);
+  const [form, setForm] = useState({ name: "", phone: "" });
   const [bookings, setBookings] = useState([]);
   const [requests, setRequests] = useState([]);
   const [support, setSupport] = useState({
@@ -51,37 +48,15 @@ export default function CustomerAccountPage({
         .catch((error) => setError(error.message));
   }, [account]);
 
-  async function requestOtp(event) {
-    event?.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
-      setChallenge(
-        await api.requestOtp({ phone: form.phone, purpose: "ACCOUNT" }),
-      );
-    } catch (nextError) {
-      setError(nextError.message);
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function login(event) {
     event.preventDefault();
     setBusy(true);
     setError("");
     try {
-      const verified = await api.verifyOtp({
-        challengeId: challenge.challengeId,
-        phone: form.phone,
-        code: form.code,
-        purpose: "ACCOUNT",
-      });
       onLogin(
         await api.customerLogin({
           phone: form.phone,
           name: form.name,
-          verificationToken: verified.verificationToken,
         }),
       );
     } catch (nextError) {
@@ -120,10 +95,9 @@ export default function CustomerAccountPage({
           <UserRound className="h-7 w-7" />
           <h1 className="mt-4 text-3xl font-black">Đăng nhập khách hàng</h1>
           <p className="mt-2 text-sm font-semibold text-muted">
-            {loginMessage || "Đăng nhập bằng OTP để xem lịch sử và trạng thái đơn thuê."}
+            {loginMessage || "Nhập họ tên và số điện thoại để xem lịch sử và trạng thái đơn thuê."}
           </p>
-          {!challenge ? (
-            <form onSubmit={requestOtp} className="mt-6 space-y-3">
+            <form onSubmit={login} className="mt-6 space-y-3">
               <input
                 required
                 value={form.name}
@@ -151,69 +125,9 @@ export default function CustomerAccountPage({
                 ) : (
                   <Smartphone className="h-4 w-4" />
                 )}
-                Nhận OTP
-              </button>
-            </form>
-          ) : (
-            <form onSubmit={login} className="mt-6 space-y-3">
-              <p className="text-sm font-semibold text-muted">
-                Mã xác thực đã được tạo cho số <strong className="text-ink">{form.phone}</strong>.
-              </p>
-              <input
-                required
-                maxLength="6"
-                value={form.code}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    code: event.target.value.replace(/\D/g, ""),
-                  })
-                }
-                placeholder="Mã OTP"
-                className="w-full rounded-lg border border-line bg-paper px-4 py-3 text-lg font-black"
-              />
-              {challenge.demoCode ? (
-                <button
-                  type="button"
-                  onClick={() => setForm({ ...form, code: challenge.demoCode })}
-                  className="flex w-full items-center justify-between rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-left text-xs font-bold text-orange-800"
-                >
-                  <span>Mã OTP local dev</span>
-                  <strong className="text-lg tracking-widest">{challenge.demoCode}</strong>
-                </button>
-              ) : null}
-              <button
-                disabled={busy}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-4 py-4 text-xs font-black uppercase text-acid"
-              >
-                <CheckCircle2 className="h-4 w-4" />
                 Đăng nhập
               </button>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => {
-                    setChallenge(null);
-                    setForm({ ...form, code: "" });
-                    setError("");
-                  }}
-                  className="rounded-lg border border-line px-3 py-3 text-xs font-black uppercase text-muted"
-                >
-                  Đổi số
-                </button>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={requestOtp}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-line px-3 py-3 text-xs font-black uppercase text-ink"
-                >
-                  <RefreshCw className={`h-4 w-4 ${busy ? "animate-spin" : ""}`} />
-                  Gửi lại mã
-                </button>
-              </div>
             </form>
-          )}
           {error ? (
             <p className="mt-3 text-sm font-bold text-red-700">{error}</p>
           ) : null}
