@@ -2698,6 +2698,7 @@ const staffRoles = ["ADMIN", "MANAGER", "SALES", "OPS", "WAREHOUSE", "TECH"];
 
 function Staff({ users, refresh }) {
   const [form, setForm] = useState({ email: "", password: "", role: "OPS" });
+  const [passwords, setPasswords] = useState({});
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -2733,6 +2734,29 @@ function Staff({ users, refresh }) {
     }
   }
 
+  async function resetPassword(user) {
+    const password = passwords[user.id] || "";
+    if (password.length < 12) {
+      setError("Mật khẩu mới phải có ít nhất 12 ký tự.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      await api.updateAdminUser(user.id, {
+        role: user.role,
+        active: user.active,
+        password,
+      });
+      setPasswords((current) => ({ ...current, [user.id]: "" }));
+      await refresh();
+    } catch (nextError) {
+      setError(nextError.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
     <form onSubmit={createUser} className="h-fit rounded-lg border border-line bg-white p-5">
       <p className="text-[10px] font-black uppercase text-muted">RBAC</p>
@@ -2747,7 +2771,7 @@ function Staff({ users, refresh }) {
     </form>
     <section>
       <div className="mb-4 flex items-end justify-between"><div><p className="text-[10px] font-black uppercase text-muted">Phân quyền vận hành</p><h2 className="mt-1 text-xl font-black">{users.length} tài khoản</h2></div></div>
-      <div className="space-y-2">{users.map((user) => <article key={user.id} className="grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-[1fr_180px_auto] md:items-center"><div><p className="font-black">{user.email}</p><p className="mt-1 text-[10px] font-bold text-muted">{user.id} · {user.active ? "Đang hoạt động" : "Đã khóa"}</p></div><select value={user.role} disabled={busy} onChange={(event) => updateUser(user, { role: event.target.value })} className="rounded-lg border border-line bg-paper px-3 py-2 text-xs font-black">{staffRoles.map((role) => <option key={role}>{role}</option>)}</select><button type="button" disabled={busy} onClick={() => updateUser(user, { active: !user.active })} className={`rounded-lg px-3 py-2 text-xs font-black uppercase ${user.active ? "border border-red-200 text-red-700" : "bg-ink text-acid"}`}>{user.active ? "Khóa" : "Mở khóa"}</button></article>)}</div>
+      <div className="space-y-2">{users.map((user) => <article key={user.id} className="grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-[1fr_150px_260px_auto] md:items-center"><div><p className="font-black">{user.email}</p><p className="mt-1 text-[10px] font-bold text-muted">{user.id} · {user.active ? "Đang hoạt động" : "Đã khóa"}</p></div><select value={user.role} disabled={busy} onChange={(event) => updateUser(user, { role: event.target.value })} className="rounded-lg border border-line bg-paper px-3 py-2 text-xs font-black">{staffRoles.map((role) => <option key={role}>{role}</option>)}</select><div className="flex gap-2"><input type="password" minLength="12" value={passwords[user.id] || ""} onChange={(event) => setPasswords((current) => ({ ...current, [user.id]: event.target.value }))} placeholder="Mật khẩu mới" aria-label={`Mật khẩu mới cho ${user.email}`} className="min-w-0 flex-1 rounded-lg border border-line bg-paper px-3 py-2 text-xs font-semibold" /><button type="button" disabled={busy || !(passwords[user.id] || "")} onClick={() => resetPassword(user)} className="rounded-lg border border-line px-3 py-2 text-[10px] font-black uppercase disabled:opacity-40">Đổi</button></div><button type="button" disabled={busy} onClick={() => updateUser(user, { active: !user.active })} className={`rounded-lg px-3 py-2 text-xs font-black uppercase ${user.active ? "border border-red-200 text-red-700" : "bg-ink text-acid"}`}>{user.active ? "Khóa" : "Mở khóa"}</button></article>)}</div>
     </section>
   </div>;
 }
