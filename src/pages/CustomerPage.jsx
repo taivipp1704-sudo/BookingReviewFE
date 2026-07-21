@@ -1,0 +1,601 @@
+import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import ProductCard from "../components/ProductCard.jsx";
+import StatusBadge from "../components/StatusBadge.jsx";
+import { api } from "../lib/api.js";
+import { money, rentalRates, shortDate } from "../lib/format.js";
+
+const brands = [
+  "SONY",
+  "CANON",
+  "DJI",
+  "SIGMA",
+  "RODE",
+  "APUTURE",
+  "PELICAN",
+  "BLACKMAGIC",
+];
+
+export default function CustomerPage({ onSelect }) {
+  const [products, setProducts] = useState([]);
+  const [bundles, setBundles] = useState([]);
+  const [catalogError, setCatalogError] = useState("");
+  const [query, setQuery] = useState("");
+  const [priceSort, setPriceSort] = useState("DEFAULT");
+  const [priceRange, setPriceRange] = useState({ min: "", max: "" });
+  const [filters, setFilters] = useState({
+    brands: [],
+    categories: [],
+    trackingModes: [],
+    availableOnly: false,
+  });
+  const [tracking, setTracking] = useState({
+    bookingId: "",
+    phone: "",
+    code: "",
+    challenge: null,
+    result: null,
+    error: "",
+  });
+  const [trackingOtpCooldown, setTrackingOtpCooldown] = useState(0);
+  const [selectedBundle, setSelectedBundle] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    const loadCatalog = () =>
+      Promise.all([api.products(), api.bundles(), api.availability()])
+        .then(([nextProducts, nextBundles, availability]) => {
+          if (!active) return;
+          const availabilityById = Object.fromEntries(
+            availability.map((item) => [item.productId, item]),
+          );
+          setProducts(
+            nextProducts.map((product) => ({
+              ...product,
+              ...(availabilityById[product.id] || {
+                totalQty: 0,
+                availableQty: 0,
+              }),
+            })),
+          );
+          setBundles(nextBundles);
+        })
+        .catch((error) => setCatalogError(error.message));
+    loadCatalog();
+    const timer = window.setInterval(loadCatalog, 15000);
+    const onFocus = () => loadCatalog();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, []);
+
+  const mainProducts = useMemo(
+    () => products.filter((product) => product.levelCode === "L1"),
+    [products],
+  );
+  const filterOptions = useMemo(
+    () => ({
+      brands: [...new Set(mainProducts.map((product) => product.brand))].sort(),
+      categories: [
+        ...new Set(mainProducts.map((product) => product.category)),
+      ].sort(),
+    }),
+    [mainProducts],
+  );
+  const visibleProducts = useMemo(
+    () =>
+      mainProducts
+        .filter((product) =>
+          `${product.name} ${product.brand} ${product.category}`
+            .toLowerCase()
+            .includes(query.toLowerCase()),
+        )
+        .filter(
+          (product) =>
+            filters.brands.length === 0 ||
+            filters.brands.includes(product.brand),
+        )
+        .filter(
+          (product) =>
+            filters.categories.length === 0 ||
+            filters.categories.includes(product.category),
+        )
+        .filter(
+          (product) =>
+            filters.trackingModes.length === 0 ||
+            filters.trackingModes.includes(product.trackingMode),
+        )
+        .filter((product) => !filters.availableOnly || product.availableQty > 0)
+        .filter(
+          (product) =>
+            priceRange.min === "" ||
+            Number(product.dailyPrice) >= Number(priceRange.min),
+        )
+        .filter(
+          (product) =>
+            priceRange.max === "" ||
+            Number(product.dailyPrice) <= Number(priceRange.max),
+        )
+        .sort((a, b) =>
+          priceSort === "ASC"
+            ? Number(a.dailyPrice) - Number(b.dailyPrice)
+            : priceSort === "DESC"
+              ? Number(b.dailyPrice) - Number(a.dailyPrice)
+              : 0,
+        ),
+    [mainProducts, query, filters, priceSort, priceRange],
+  );
+
+  function toggleFilter(group, value) {
+    setFilters((current) => ({
+      ...current,
+      [group]: current[group].includes(value)
+        ? current[group].filter((item) => item !== value)
+        : [...current[group], value],
+    }));
+  }
+
+  useEffect(() => {
+    if (trackingOtpCooldown <= 0) return undefined;
+    const timer = window.setTimeout(
+      () => setTrackingOtpCooldown((current) => current - 1),
+      1000,
+    );
+    return () => window.clearTimeout(timer);
+  }, [trackingOtpCooldown]);
+
+  async function requestTrackingOtp(event) {
+    event.preventDefault();
+    setTracking((current) => ({ ...current, error: "", result: null }));
+    try {
+      const challenge = await api.requestOtp({
+        phone: tracking.phone,
+        purpose: "TRACK",
+      });
+      setTracking((current) => ({ ...current, challenge, code: "" }));
+      setTrackingOtpCooldown(30);
+    } catch (error) {
+      setTracking((current) => ({
+        ...current,
+        error:
+          error.status === 429
+            ? "Bạn vừa nhấn gửi mã OTP quá nhanh. Vui lòng chờ 30 giây rồi thử lại."
+            : error.message,
+      }));
+    }
+  }
+
+  async function trackBooking(event) {
+    event.preventDefault();
+    if (!tracking.challenge) return;
+    setTracking((current) => ({ ...current, error: "" }));
+    try {
+      const verification = await api.verifyOtp({
+        challengeId: tracking.challenge.challengeId,
+        phone: tracking.phone,
+        code: tracking.code,
+        purpose: "TRACK",
+      });
+      const result = await api.trackBooking({
+        bookingId: tracking.bookingId.trim(),
+        phone: tracking.phone,
+        verificationToken: verification.verificationToken,
+      });
+      setTracking((current) => ({ ...current, result }));
+    } catch (error) {
+      setTracking((current) => ({ ...current, error: error.message }));
+    }
+  }
+
+  return (
+    <main className="pt-24">
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
+        <div className="flex min-h-[500px] flex-col justify-between rounded-lg bg-ink p-7 text-white shadow-soft sm:p-8">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-[11px] font-black uppercase tracking-[0.35em] text-acid">
+              Camera rental
+            </p>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">
+              Đặt thuê rõ ràng
+            </span>
+          </div>
+          <div>
+            <h1 className="max-w-3xl text-5xl font-black leading-[0.95] sm:text-7xl">
+              Mỗi khung hình, đúng lúc.
+            </h1>
+            <p className="mt-6 max-w-xl text-sm font-semibold leading-6 text-white/70">
+              Chọn thiết bị, nhận báo giá theo thời gian thuê và xác thực số
+              điện thoại ở bước cuối. Mọi yêu cầu đều được đội ngũ kiểm tra
+              trước khi xác nhận.
+            </p>
+          </div>
+          <div id="process" className="grid gap-3 sm:grid-cols-3">
+            {[
+              ["01", "Chọn thiết bị"],
+              ["02", "Xác thực OTP"],
+              ["03", "Duyệt thủ công"],
+            ].map(([number, label]) => (
+              <div key={number} className="border-t border-white/15 pt-3">
+                <p className="text-xs font-black text-acid">{number}</p>
+                <p className="mt-2 text-sm font-bold">{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="relative min-h-[500px] overflow-hidden rounded-lg bg-paper shadow-soft">
+          <img
+            src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=1200"
+            alt="Máy ảnh chuyên nghiệp"
+            className="h-full w-full object-cover grayscale"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent" />
+          <div className="absolute bottom-6 left-6 right-6 border border-white/15 bg-white/90 p-4 backdrop-blur">
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted">
+              Thiết bị đang chọn
+            </p>
+            <div className="mt-2 flex items-center justify-between gap-4">
+              <p className="text-sm font-black">Chọn một thiết bị để bắt đầu</p>
+              <p className="text-lg font-black">—</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="overflow-hidden border-y border-line bg-white py-3">
+        <div className="flex min-w-max gap-10 px-4 text-[11px] font-black uppercase tracking-[0.35em] text-muted">
+          {[...brands, ...brands].map((brand, index) => (
+            <span key={`${brand}-${index}`}>{brand}</span>
+          ))}
+        </div>
+      </div>
+
+      <section id="gear" className="mx-auto max-w-7xl px-4 py-12">
+        <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.35em] text-muted">
+              Thiết bị
+            </p>
+            <h2 className="mt-2 text-3xl font-black">Chọn bộ máy phù hợp</h2>
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:flex-row md:w-auto">
+            <label className="flex items-center gap-3 rounded-full border border-line bg-white px-4 py-3 sm:w-80">
+              <Search className="h-4 w-4 text-muted" />
+              <input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Tìm kiếm thiết bị..."
+                className="w-full bg-transparent text-sm font-semibold outline-none"
+              />
+            </label>
+            <select
+              value={priceSort}
+              onChange={(event) => setPriceSort(event.target.value)}
+              className="rounded-full border border-line bg-white px-4 py-3 text-sm font-bold outline-none"
+            >
+              <option value="DEFAULT">Sắp xếp mặc định</option>
+              <option value="ASC">Giá thấp đến cao</option>
+              <option value="DESC">Giá cao đến thấp</option>
+            </select>
+          </div>
+        </div>
+        {catalogError ? (
+          <div className="border border-red-100 bg-red-50 p-4 text-sm font-semibold text-red-700">
+            Không thể tải catalog: {catalogError}
+          </div>
+        ) : null}
+        {!catalogError && visibleProducts.length === 0 ? (
+          <div className="py-10 text-sm font-semibold text-muted">
+            Không tìm thấy thiết bị phù hợp.
+          </div>
+        ) : null}
+        <div className="grid gap-7 lg:grid-cols-[240px_1fr]">
+          <aside className="space-y-3">
+            <div className="flex items-center gap-2 border-b border-line pb-3">
+              <SlidersHorizontal className="h-4 w-4" />
+              <p className="text-xs font-black uppercase">Bộ lọc</p>
+            </div>
+            <FilterSection
+              title="Bộ sưu tập"
+              options={filterOptions.categories}
+              selected={filters.categories}
+              onToggle={(value) => toggleFilter("categories", value)}
+            />
+            <FilterSection
+              title="Thương hiệu"
+              options={filterOptions.brands}
+              selected={filters.brands}
+              onToggle={(value) => toggleFilter("brands", value)}
+            />
+            <PriceFilter value={priceRange} onChange={setPriceRange} />
+            <FilterSection
+              title="Quản lý kho"
+              options={["SERIALIZED", "BATCH_TRACKED", "QUANTITY", "CONSUMABLE"]}
+              selected={filters.trackingModes}
+              onToggle={(value) => toggleFilter("trackingModes", value)}
+            />
+            <label className="flex items-center gap-3 border-t border-line pt-4 text-sm font-semibold">
+              <input
+                type="checkbox"
+                checked={filters.availableOnly}
+                onChange={(event) =>
+                  setFilters((current) => ({
+                    ...current,
+                    availableOnly: event.target.checked,
+                  }))
+                }
+                className="h-4 w-4 accent-black"
+              />
+              Chỉ hiện sản phẩm còn hàng
+            </label>
+          </aside>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {visibleProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                product={product}
+                onSelect={onSelect}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {bundles.length ? (
+        <section className="border-t border-line bg-paper py-12">
+          <div className="mx-auto max-w-7xl px-4">
+            <p className="text-[11px] font-black uppercase tracking-[0.35em] text-muted">
+              Combo thiết bị
+            </p>
+            <h2 className="mt-2 text-3xl font-black">Gói thuê được đề xuất</h2>
+            <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {bundles.map((bundle) => {
+                const names = bundle.items
+                  .map(
+                    (line) =>
+                      products.find((item) => item.id === line.productId)?.name,
+                  )
+                  .filter(Boolean);
+                const main = bundle.items
+                  .map((line) =>
+                    products.find((item) => item.id === line.productId),
+                  )
+                  .find((item) => item?.levelCode === "L1");
+                return (
+                  <article
+                    key={bundle.id}
+                    className="rounded-lg border border-line bg-white p-5"
+                  >
+                    <img src={bundle.imageUrl} alt={bundle.name} className="aspect-[4/3] w-full rounded-lg bg-paper object-cover" />
+                    <p className="text-[10px] font-black uppercase text-muted">
+                      {bundle.id}
+                    </p>
+                    <h3 className="mt-2 text-xl font-black">{bundle.name}</h3>
+                    <p className="mt-3 text-sm font-semibold leading-6 text-muted">
+                      {names.join(" · ")}
+                    </p>
+                    <div className="mt-5 space-y-1">
+                      {rentalRates(bundle).map((rate, index) => (
+                        <p key={rate.key} className={index === 0 ? "text-xl font-black" : "text-xs font-bold text-muted"}>
+                          {money(rate.value)}<span className="text-[10px]">{rate.suffix}</span>
+                        </p>
+                      ))}
+                    </div>
+                    <button onClick={() => setSelectedBundle(bundle)} className="mt-4 w-full rounded-lg border-2 border-ink px-4 py-3 text-xs font-black uppercase">Xem đầy đủ combo</button>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      ) : null}
+      {selectedBundle ? <BundleDialog bundle={selectedBundle} products={products} onClose={() => setSelectedBundle(null)} onBook={(main) => { sessionStorage.setItem("claritycam-preferred-bundle", selectedBundle.id); onSelect(main); }} /> : null}
+
+      <section id="track" className="border-t border-line bg-white py-12">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 lg:grid-cols-[0.85fr_1.15fr]">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.35em] text-muted">
+              Tra cứu
+            </p>
+            <h2 className="mt-2 text-3xl font-black">Theo dõi yêu cầu thuê</h2>
+            <p className="mt-4 max-w-md text-sm font-semibold leading-6 text-muted">
+              Nhập mã đơn và xác thực OTP để xem trạng thái yêu cầu của bạn.
+            </p>
+          </div>
+          <div className="border border-line bg-paper p-5 sm:p-6">
+            {!tracking.challenge ? (
+              <form
+                onSubmit={requestTrackingOtp}
+                className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
+              >
+                <input
+                  required
+                  value={tracking.bookingId}
+                  onChange={(event) =>
+                    setTracking((current) => ({
+                      ...current,
+                      bookingId: event.target.value,
+                    }))
+                  }
+                  placeholder="Mã đơn"
+                  className="rounded-lg border border-line bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-ink"
+                />
+                <input
+                  required
+                  value={tracking.phone}
+                  onChange={(event) =>
+                    setTracking((current) => ({
+                      ...current,
+                      phone: event.target.value,
+                    }))
+                  }
+                  placeholder="Số điện thoại"
+                  className="rounded-lg border border-line bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-ink"
+                />
+                <button className="rounded-lg bg-ink px-4 py-3 text-xs font-black uppercase tracking-wider text-acid">
+                  Nhận OTP
+                </button>
+              </form>
+            ) : (
+              <form
+                onSubmit={trackBooking}
+                className="grid gap-3 sm:grid-cols-[1fr_auto]"
+              >
+                <div>
+                  <input
+                    required
+                    maxLength="6"
+                    value={tracking.code}
+                    onChange={(event) =>
+                      setTracking((current) => ({
+                        ...current,
+                        code: event.target.value.replace(/\D/g, ""),
+                      }))
+                    }
+                    placeholder="Nhập mã OTP"
+                    className="w-full rounded-lg border border-line bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-ink"
+                  />
+                  {tracking.challenge.demoCode ? (
+                    <p className="mt-2 text-xs font-bold text-orange-700">
+                      Mã dev local: {tracking.challenge.demoCode}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex flex-col gap-2 sm:col-span-2">
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-ink px-4 py-3 text-xs font-black uppercase tracking-wider text-acid"
+                  >
+                    Tra cứu
+                  </button>
+                  <button
+                    type="button"
+                    onClick={requestTrackingOtp}
+                    disabled={trackingOtpCooldown > 0}
+                    className="rounded-lg border border-line bg-paper px-4 py-3 text-xs font-black uppercase tracking-wider text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {trackingOtpCooldown > 0
+                      ? `Gửi lại mã OTP (${trackingOtpCooldown}s)`
+                      : "Gửi lại mã OTP"}
+                  </button>
+                </div>
+              </form>
+            )}
+            {tracking.error ? (
+              <p className="mt-3 text-sm font-semibold text-red-700">
+                {tracking.error}
+              </p>
+            ) : null}
+            {tracking.result ? (
+              <div className="mt-4 border-t border-line pt-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black text-muted">
+                      {tracking.result.id}
+                    </p>
+                    <p className="mt-1 text-lg font-black">
+                      {shortDate(tracking.result.pickupTime)} -{" "}
+                      {shortDate(tracking.result.returnTime)}
+                    </p>
+                  </div>
+                  <StatusBadge state={tracking.result.state} />
+                </div>
+                <p className="mt-3 text-sm font-bold">
+                  Tổng dự kiến: {tracking.result.totalAmount} · Cọc:{" "}
+                  {tracking.result.depositRequired}
+                </p>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+}
+
+function FilterSection({ title, options, selected, onToggle }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <section className="border-b border-line py-3">
+      <button
+        onClick={() => setOpen((current) => !current)}
+        className="flex w-full items-center justify-between gap-3 py-2 text-left text-sm font-black uppercase"
+      >
+        <span>{title}</span>
+        <ChevronDown
+          className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open ? (
+        <div className="space-y-3 pb-3 pt-2">
+          {options.map((option) => (
+            <label
+              key={option}
+              className="flex items-center gap-3 text-sm font-semibold text-muted"
+            >
+              <input
+                type="checkbox"
+                checked={selected.includes(option)}
+                onChange={() => onToggle(option)}
+                className="h-4 w-4 accent-black"
+              />
+              {option}
+            </label>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function PriceFilter({ value, onChange }) {
+  const ranges = [
+    { label: "Dưới 500.000đ", min: "", max: 500000 },
+    { label: "500.000đ - 1 triệu", min: 500000, max: 1000000 },
+    { label: "1 - 2 triệu", min: 1000000, max: 2000000 },
+    { label: "Trên 2 triệu", min: 2000000, max: "" },
+  ];
+  return (
+    <section className="border-b border-line py-3">
+      <p className="py-2 text-sm font-black uppercase">Khoảng giá</p>
+      <div className="space-y-2">
+        {ranges.map((range) => (
+          <button
+            type="button"
+            key={range.label}
+            onClick={() => onChange({ min: range.min, max: range.max })}
+            className={`w-full border px-3 py-2 text-left text-xs font-bold ${String(value.min) === String(range.min) && String(value.max) === String(range.max) ? "border-ink bg-ink text-acid" : "border-line bg-white"}`}
+          >
+            {range.label}
+          </button>
+        ))}
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        <input
+          type="number"
+          min="0"
+          value={value.min}
+          onChange={(event) => onChange({ ...value, min: event.target.value })}
+          placeholder="Từ"
+          className="min-w-0 border border-line bg-white px-2 py-2 text-xs font-bold"
+        />
+        <input
+          type="number"
+          min="0"
+          value={value.max}
+          onChange={(event) => onChange({ ...value, max: event.target.value })}
+          placeholder="Đến"
+          className="min-w-0 border border-line bg-white px-2 py-2 text-xs font-bold"
+        />
+      </div>
+    </section>
+  );
+}
+
+function BundleDialog({ bundle, products, onClose, onBook }) {
+  const lines = bundle.items.map((line) => ({ ...line, product: products.find((item) => item.id === line.productId) })).filter((line) => line.product);
+  const main = lines.find((line) => line.product.levelCode === "L1")?.product;
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-lg bg-white shadow-soft"><div className="grid lg:grid-cols-[1.1fr_0.9fr]"><div className="bg-paper p-4"><img src={bundle.detailImageUrl || bundle.imageUrl} alt={`Toàn bộ ${bundle.name}`} className="aspect-[4/3] h-full w-full rounded-lg object-cover" /></div><div className="p-6"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase text-muted">Chi tiết combo</p><h2 className="mt-2 text-3xl font-black">{bundle.name}</h2></div><button onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full bg-paper" aria-label="Đóng"><X className="h-4 w-4" /></button></div><div className="mt-4 grid gap-2 sm:grid-cols-3">{rentalRates(bundle).map((rate) => <div key={rate.key} className="rounded-lg bg-paper p-3"><p className="text-[9px] font-black uppercase text-muted">{rate.label}</p><p className="mt-1 text-sm font-black">{money(rate.value)}</p></div>)}</div><div className="mt-6 space-y-2"><p className="text-[10px] font-black uppercase text-muted">Bộ thiết bị bao gồm</p>{lines.map((line) => <div key={line.productId} className="flex items-center gap-3 rounded-lg border border-line p-3"><img src={line.product.imageUrl} alt="" className="h-12 w-12 rounded object-cover" /><span className="min-w-0 flex-1 text-sm font-black">{line.product.name}</span><span className="text-sm font-black">× {line.quantity}</span></div>)}</div><button disabled={!main} onClick={() => main && onBook(main)} className="mt-6 w-full rounded-lg bg-ink px-5 py-4 text-xs font-black uppercase text-acid disabled:opacity-40">Đặt combo này</button></div></div></section></div>;
+}

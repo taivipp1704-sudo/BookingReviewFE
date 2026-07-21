@@ -1,0 +1,140 @@
+const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+
+let csrf = null;
+
+async function request(path, { method = 'GET', body, retryCsrf = true } = {}) {
+  const headers = { Accept: 'application/json' };
+  if (body !== undefined) {
+    const token = await getCsrf();
+    headers['Content-Type'] = 'application/json';
+    headers[token.headerName] = token.token;
+  }
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers,
+    credentials: 'include',
+    body: body === undefined ? undefined : JSON.stringify(body)
+  });
+
+  if (response.status === 403 && body !== undefined && retryCsrf) {
+    csrf = null;
+    return request(path, { method, body, retryCsrf: false });
+  }
+
+  if (response.status === 204) return null;
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(payload.message || `Yêu cầu thất bại (${response.status}).`);
+    error.status = response.status;
+    throw error;
+  }
+  return payload;
+}
+
+async function getCsrf() {
+  if (csrf) return csrf;
+  csrf = await request('/api/auth/csrf');
+  return csrf;
+}
+
+async function uploadIdentity(front, back) {
+  const token = await getCsrf();
+  const body = new FormData();
+  body.append('front', front);
+  body.append('back', back);
+  const response = await fetch(`${API_BASE}/api/customer/account/identity-documents`, { method: 'POST', credentials: 'include', headers: { [token.headerName]: token.token }, body });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.message || `Tải CCCD thất bại (${response.status}).`);
+  return payload;
+}
+
+async function adminIdentityDocument(bookingId, side) {
+  const response = await fetch(`${API_BASE}/api/admin/bookings/${encodeURIComponent(bookingId)}/identity/${encodeURIComponent(side)}`, {
+    credentials: 'include',
+    headers: { Accept: 'image/jpeg' }
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.message || `Không thể mở ảnh CCCD (${response.status}).`);
+  }
+  return URL.createObjectURL(await response.blob());
+}
+
+export const api = {
+  csrf: getCsrf,
+  products: () => request('/api/catalog/products'),
+  availability: () => request('/api/catalog/availability'),
+  schedule: (productId, from, to) => request(`/api/catalog/${encodeURIComponent(productId)}/schedule?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  bundles: () => request('/api/catalog/bundles'),
+  adminBundles: () => request('/api/admin/catalog/bundles'),
+  bundleVersions: id => request(`/api/admin/catalog/bundles/${encodeURIComponent(id)}/versions`),
+  createBundle: payload => request('/api/admin/catalog/bundles', { method: 'POST', body: payload }),
+  updateBundle: (id, payload) => request(`/api/admin/catalog/bundles/${encodeURIComponent(id)}`, { method: 'PATCH', body: payload }),
+  deleteBundle: id => request(`/api/admin/catalog/bundles/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  adminPromotions: () => request('/api/admin/promotions'),
+  createPromotion: payload => request('/api/admin/promotions', { method: 'POST', body: payload }),
+  updatePromotion: (id, payload) => request(`/api/admin/promotions/${encodeURIComponent(id)}`, { method: 'PATCH', body: payload }),
+  deletePromotion: id => request(`/api/admin/promotions/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  quote: payload => request('/api/bookings/quote', { method: 'POST', body: payload }),
+  holdBooking: payload => request('/api/bookings/hold', { method: 'POST', body: payload }),
+  releaseBookingHold: payload => request('/api/bookings/hold/release', { method: 'POST', body: payload }),
+  requestOtp: payload => request('/api/otp/request', { method: 'POST', body: payload }),
+  verifyOtp: payload => request('/api/otp/verify', { method: 'POST', body: payload }),
+  createBooking: payload => request('/api/bookings', { method: 'POST', body: payload }),
+  uploadIdentity,
+  trackBooking: payload => request('/api/bookings/track', { method: 'POST', body: payload }),
+  login: payload => request('/api/auth/login', { method: 'POST', body: payload }),
+  me: () => request('/api/auth/me'),
+  logout: () => request('/api/auth/logout', { method: 'POST', body: {} }),
+  adminBookings: ({ query = '', state = 'ALL' } = {}) => request(`/api/admin/bookings?query=${encodeURIComponent(query)}&state=${encodeURIComponent(state)}`),
+  bookingAudit: id => request(`/api/admin/bookings/${encodeURIComponent(id)}/audit`),
+  bookingOperations: id => request(`/api/admin/bookings/${encodeURIComponent(id)}/operations`),
+  autoAllocateBooking: id => request(`/api/admin/bookings/${encodeURIComponent(id)}/allocations/auto`, { method: 'POST', body: {} }),
+  adminIdentityDocument,
+  changeBookingState: (id, state, reason) => request(`/api/admin/bookings/${encodeURIComponent(id)}/state`, { method: 'PATCH', body: { state, reason } }),
+  adminProducts: () => request('/api/admin/catalog/products'),
+  createProduct: payload => request('/api/admin/catalog/products/with-inventory', { method: 'POST', body: payload }),
+  updateProduct: (id, payload) => request(`/api/admin/catalog/products/${encodeURIComponent(id)}`, { method: 'PATCH', body: payload }),
+  deleteProduct: id => request(`/api/admin/catalog/products/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  assets: () => request('/api/inventory/assets'),
+  stock: () => request('/api/inventory/stock'),
+  createAsset: payload => request('/api/admin/inventory/assets', { method: 'POST', body: payload }),
+  updateAssetStatus: (serialId, status) => request(`/api/admin/inventory/assets/${encodeURIComponent(serialId)}/status`, { method: 'PATCH', body: { status } }),
+  deleteAsset: serialId => request(`/api/admin/inventory/assets/${encodeURIComponent(serialId)}`, { method: 'DELETE' }),
+  updateStock: (productId, payload) => request(`/api/admin/inventory/stock/${encodeURIComponent(productId)}`, { method: 'PATCH', body: payload }),
+  inventoryLedger: () => request('/api/admin/inventory/ledger'),
+  financeEntries: () => request('/api/admin/finance/ledger'),
+  financeSummary: () => request('/api/admin/finance/dashboard'),
+  financeDocuments: () => request('/api/admin/finance/documents'),
+  financeExpenses: () => request('/api/admin/finance/expenses'),
+  submitExpense: payload => request('/api/admin/finance/expenses', { method: 'POST', body: payload }),
+  approveExpense: id => request(`/api/admin/finance/expenses/${encodeURIComponent(id)}/approve`, { method: 'POST', body: {} }),
+  payExpense: (id, payload) => request(`/api/admin/finance/expenses/${encodeURIComponent(id)}/pay`, { method: 'POST', body: payload }),
+  reverseFinanceDocument: (id, payload) => request(`/api/admin/finance/documents/${encodeURIComponent(id)}/reverse`, { method: 'POST', body: payload }),
+  financialPeriods: () => request('/api/admin/finance/periods'),
+  updateFinancialPeriod: (id, state) => request(`/api/admin/finance/periods/${encodeURIComponent(id)}`, { method: 'PATCH', body: { state } }),
+  assetProfitability: () => request('/api/admin/finance/asset-profitability'),
+  bookingFinance: id => request(`/api/admin/finance/bookings/${encodeURIComponent(id)}`),
+  recordPayment: payload => request('/api/admin/finance/payments', { method: 'POST', body: payload }),
+  proposeBookingCharge: (id, payload) => request(`/api/admin/finance/bookings/${encodeURIComponent(id)}/charges`, { method: 'POST', body: payload }),
+  reviewBookingCharge: (id, payload) => request(`/api/admin/finance/charges/${encodeURIComponent(id)}`, { method: 'PATCH', body: payload }),
+  calculateSettlement: id => request(`/api/admin/finance/bookings/${encodeURIComponent(id)}/settlement/calculate`, { method: 'POST', body: {} }),
+  approveSettlement: (id, payload) => request(`/api/admin/finance/bookings/${encodeURIComponent(id)}/settlement/approve`, { method: 'POST', body: payload }),
+  executeRefund: (id, payload) => request(`/api/admin/finance/refunds/${encodeURIComponent(id)}/execute`, { method: 'POST', body: payload }),
+  closeSettlement: id => request(`/api/admin/finance/bookings/${encodeURIComponent(id)}/settlement/close`, { method: 'POST', body: {} }),
+  reconcileBookingFinance: id => request(`/api/admin/finance/bookings/${encodeURIComponent(id)}/reconcile`, { method: 'POST', body: {} }),
+  customerMe: () => request('/api/customer/account/me'),
+  customerLogin: payload => request('/api/customer/account/login', { method: 'POST', body: payload }),
+  completeCustomerOnboarding: () => request('/api/customer/account/onboarding/complete', { method: 'POST', body: {} }),
+  customerLogout: () => request('/api/customer/account/logout', { method: 'POST', body: {} }),
+  customerBookings: () => request('/api/customer/account/bookings'),
+  reviewEarlyPickup: (id, payload) => request(`/api/admin/bookings/${encodeURIComponent(id)}/early-pickup`, { method: 'PATCH', body: payload })
+  ,customerSupport: () => request('/api/customer/support'),
+  createCustomerSupport: payload => request('/api/customer/support', { method: 'POST', body: payload }),
+  adminSupport: () => request('/api/admin/support-requests'),
+  reviewSupport: (id, payload) => request(`/api/admin/support-requests/${encodeURIComponent(id)}`, { method: 'PATCH', body: payload })
+  ,adminUsers: () => request('/api/admin/users'),
+  createAdminUser: payload => request('/api/admin/users', { method: 'POST', body: payload }),
+  updateAdminUser: (id, payload) => request(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'PATCH', body: payload })
+};

@@ -1,0 +1,18 @@
+{
+	servers {
+		trusted_proxies static private_ranges
+		client_ip_headers X-Forwarded-For
+	}
+}
+
+import /etc/caddy/Caddyfile.common
+
+:{$PORT:8080} {
+	@protected not path /healthz
+	basic_auth @protected {
+		{$TEST_BASIC_AUTH_USER} {$TEST_BASIC_AUTH_HASH}
+	}
+	respond /healthz 200
+
+	import claritycam_app
+}

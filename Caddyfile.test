@@ -1,0 +1,9 @@
+import /etc/caddy/Caddyfile.common
+
+{$SITE_ADDRESS} {
+	basic_auth {
+		{$TEST_BASIC_AUTH_USER} {$TEST_BASIC_AUTH_HASH}
+	}
+
+	import claritycam_app
+}
