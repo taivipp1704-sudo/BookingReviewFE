@@ -18,6 +18,7 @@ import StatusBadge from "../components/StatusBadge.jsx";
 import BookingJourney from "../components/BookingJourney.jsx";
 import { api } from "../lib/api.js";
 import { money, pricingModeLabel, rentalDurationLabel, rentalRates } from "../lib/format.js";
+import { holdSecondsUntil } from "../lib/holdTimer.js";
 import { localDateTime, returnTimeForRentalRate } from "../lib/rentalWindow.js";
 
 function unavailableRangeMessage(products, pickupTime, returnTime) {
@@ -1143,12 +1144,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
       }
       holdTokenRef.current = hold.holdToken;
       setHoldToken(hold.holdToken);
-      setHoldSeconds(
-        Math.max(
-          0,
-          Math.ceil((new Date(hold.expiresAt).getTime() - Date.now()) / 1000),
-        ),
-      );
+      setHoldSeconds(holdSecondsUntil(hold.expiresAt));
       const identityUpload = await api.uploadIdentity(
         identity.front,
         identity.back,
