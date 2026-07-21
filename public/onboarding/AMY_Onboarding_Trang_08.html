@@ -409,6 +409,7 @@
 
     startBtn.addEventListener("click", () => {
       showToast("Hoàn tất hướng dẫn. Sẵn sàng chuyển sang trang đặt thiết bị.");
+      window.parent.postMessage({ type: "amy-onboarding-complete" }, window.location.origin);
     });
 
     document.getElementById("backBtn").addEventListener("click", () => {

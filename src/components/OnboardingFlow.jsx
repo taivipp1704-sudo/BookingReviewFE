@@ -1,23 +1,40 @@
 import { Loader2, X } from "lucide-react";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const PAGE_COUNT = 8;
 
 export default function OnboardingFlow({ onComplete }) {
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const iframeRef = useRef(null);
+  const completionLock = useRef(false);
   const source = `/onboarding/AMY_Onboarding_Trang_${String(page).padStart(2, "0")}.html`;
 
-  async function complete() {
-    if (busy) return;
+  const complete = useCallback(async () => {
+    if (completionLock.current) return;
+    completionLock.current = true;
     setBusy(true);
+    setError("");
     try {
       await onComplete();
+    } catch (nextError) {
+      completionLock.current = false;
+      setError(nextError?.message || "Không thể hoàn tất hướng dẫn. Vui lòng thử lại.");
     } finally {
       setBusy(false);
     }
-  }
+  }, [onComplete]);
+
+  useEffect(() => {
+    function receiveMessage(event) {
+      if (event.origin !== window.location.origin) return;
+      if (event.source !== iframeRef.current?.contentWindow) return;
+      if (event.data?.type === "amy-onboarding-complete") complete();
+    }
+    window.addEventListener("message", receiveMessage);
+    return () => window.removeEventListener("message", receiveMessage);
+  }, [complete]);
 
   function bindPageControls() {
     const doc = iframeRef.current?.contentDocument;
@@ -45,6 +62,7 @@ export default function OnboardingFlow({ onComplete }) {
         <button type="button" disabled title="Hoàn tất hướng dẫn để đóng" className="grid h-9 w-9 place-items-center rounded-full border border-line text-muted opacity-40"><X className="h-4 w-4" /></button>
       </header>
       <iframe ref={iframeRef} key={source} src={source} onLoad={bindPageControls} title={`Onboarding bước ${page}`} className="h-[calc(100vh-56px)] w-full border-0 bg-white" />
+      {error ? <div role="alert" className="absolute bottom-20 left-1/2 w-[min(92vw,560px)] -translate-x-1/2 rounded-lg border border-red-200 bg-white p-4 text-center text-sm font-bold text-red-700 shadow-2xl">{error}</div> : null}
       {busy ? <div className="absolute inset-0 grid place-items-center bg-white/80"><div className="flex items-center gap-3 rounded-lg bg-ink px-5 py-4 text-sm font-black text-acid"><Loader2 className="h-5 w-5 animate-spin" /> Đang hoàn tất hướng dẫn</div></div> : null}
     </div>
   );

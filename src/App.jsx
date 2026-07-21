@@ -90,8 +90,9 @@ export default function App() {
 
   if (customerAccount && Number(customerAccount.onboardingVersion || 0) < 1) {
     return <OnboardingFlow onComplete={async () => {
-      await api.completeCustomerOnboarding();
-      window.location.replace('/');
+      const updatedAccount = await api.completeCustomerOnboarding();
+      setCustomerAccount(updatedAccount);
+      navigate('/');
     }} />;
   }
 
