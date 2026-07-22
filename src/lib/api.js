@@ -61,6 +61,43 @@ async function adminIdentityDocument(bookingId, side) {
   return URL.createObjectURL(await response.blob());
 }
 
+async function uploadCatalogImage(file) {
+  const token = await getCsrf();
+  const body = new FormData();
+  body.append('file', file);
+  const response = await fetch(`${API_BASE}/api/admin/media/catalog-images`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { [token.headerName]: token.token },
+    body
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.message || `Tải ảnh thất bại (${response.status}).`);
+  return payload;
+}
+
+async function adminPaymentProof(bookingId) {
+  const response = await fetch(`${API_BASE}/api/admin/bookings/${encodeURIComponent(bookingId)}/payment-proof`, {
+    credentials: 'include',
+    headers: { Accept: 'image/jpeg' }
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.message || `Không thể mở ảnh chuyển khoản (${response.status}).`);
+  }
+  return URL.createObjectURL(await response.blob());
+}
+
+async function uploadPaymentProof(file) {
+  const token = await getCsrf();
+  const body = new FormData();
+  body.append('file', file);
+  const response = await fetch(`${API_BASE}/api/customer/account/payment-proof`, { method: 'POST', credentials: 'include', headers: { [token.headerName]: token.token }, body });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.message || `Tải bằng chứng thanh toán thất bại (${response.status}).`);
+  return payload;
+}
+
 export const api = {
   csrf: getCsrf,
   products: () => request('/api/catalog/products'),
@@ -81,6 +118,7 @@ export const api = {
   releaseBookingHold: payload => request('/api/bookings/hold/release', { method: 'POST', body: payload }),
   createBooking: payload => request('/api/bookings', { method: 'POST', body: payload }),
   uploadIdentity,
+  uploadPaymentProof,
   trackBooking: payload => request('/api/bookings/track', { method: 'POST', body: payload }),
   login: payload => request('/api/auth/login', { method: 'POST', body: payload }),
   me: () => request('/api/auth/me'),
@@ -90,6 +128,8 @@ export const api = {
   bookingOperations: id => request(`/api/admin/bookings/${encodeURIComponent(id)}/operations`),
   autoAllocateBooking: id => request(`/api/admin/bookings/${encodeURIComponent(id)}/allocations/auto`, { method: 'POST', body: {} }),
   adminIdentityDocument,
+  adminPaymentProof,
+  uploadCatalogImage,
   changeBookingState: (id, state, reason) => request(`/api/admin/bookings/${encodeURIComponent(id)}/state`, { method: 'PATCH', body: { state, reason } }),
   adminProducts: () => request('/api/admin/catalog/products'),
   createProduct: payload => request('/api/admin/catalog/products/with-inventory', { method: 'POST', body: payload }),

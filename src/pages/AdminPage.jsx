@@ -32,7 +32,8 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import writeXlsxFile from "write-excel-file";
 import Metric from "../components/Metric.jsx";
-import StatusBadge from "../components/StatusBadge.jsx";
+import BrandMark from "../components/BrandMark.jsx";
+import StatusBadge, { bookingStateLabels } from "../components/StatusBadge.jsx";
 import { api } from "../lib/api.js";
 import { money, shortDate } from "../lib/format.js";
 import { invoiceHtml } from "../lib/invoiceTemplate.js";
@@ -348,17 +349,7 @@ export default function AdminPage({
   return (
     <div className="min-h-screen bg-[#EBEBE9]">
       <header className={`fixed left-4 right-4 top-4 z-40 mx-auto flex max-w-[1600px] items-center justify-between rounded-full border border-white/70 bg-white/90 px-4 py-3 shadow-soft backdrop-blur transition-[transform,opacity] duration-300 ease-out will-change-transform sm:px-5 ${headerVisible ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-[calc(100%+2rem)] opacity-0"}`}>
-        <div className="flex items-center gap-3">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-ink text-acid">
-            <ShieldCheck className="h-4 w-4" />
-          </span>
-          <div>
-            <p className="text-sm font-black leading-none">ClarityCam</p>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted">
-              Internal operations
-            </p>
-          </div>
-        </div>
+        <BrandMark compact />
         <div className="flex items-center gap-3">
           <div className="hidden text-right sm:block">
             <p className="text-xs font-black">{user.email}</p>
@@ -927,6 +918,19 @@ function Orders({
     }
   }
 
+  async function openPaymentProof() {
+    const preview = window.open("", "_blank", "noopener,noreferrer");
+    try {
+      const url = await api.adminPaymentProof(selected.id);
+      if (preview) preview.location = url;
+      else window.open(url, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      if (preview) preview.close();
+      window.alert(error.message);
+    }
+  }
+
   return (
     <div className="grid gap-5 xl:grid-cols-[390px_1fr]">
       <section>
@@ -954,7 +958,7 @@ function Orders({
               onClick={() => setFilter(state)}
               className={`shrink-0 rounded-lg border px-3 py-2 text-[10px] font-black ${filter === state ? "border-ink bg-ink text-acid" : "border-line bg-white text-muted"}`}
             >
-              {state === "ALL" ? "TẤT CẢ" : state}
+              {bookingStateLabels[state] || state}
             </button>
           ))}
         </div>
@@ -1054,6 +1058,12 @@ function Orders({
               <button onClick={() => openIdentity("back")} className="rounded-lg bg-white px-3 py-2 text-xs font-black">Xem mặt sau</button>
             </div>
           ) : null}
+          {selected.paymentProofAvailable && canViewIdentity ? (
+            <div className="mb-5 flex flex-wrap items-center gap-3 rounded-lg border border-green-200 bg-green-50 p-4 text-green-950">
+              <div className="mr-auto"><p className="text-xs font-black uppercase">Bằng chứng chuyển khoản</p><p className="mt-1 text-[10px] font-semibold">Chỉ ghi nhận tiền vào Sổ quỹ sau khi đối chiếu đúng số tiền, nội dung và tài khoản nhận.</p></div>
+              <button onClick={openPaymentProof} className="rounded-lg bg-white px-3 py-2 text-xs font-black">Mở ảnh giao dịch</button>
+            </div>
+          ) : null}
           {selected.earlyPickupRequested ? (
             <EarlyPickupPanel
               booking={selected}
@@ -1104,7 +1114,7 @@ function Orders({
             >
               <option value="">Chọn trạng thái</option>
               {(transitions[selected.state] || []).map((state) => (
-                <option key={state}>{state}</option>
+                <option key={state} value={state}>{bookingStateLabels[state] || state}</option>
               ))}
             </select>
             <input
@@ -1143,6 +1153,8 @@ function Orders({
 function FinanceLifecycle({ booking, data, productById, onChanged }) {
   const allocated = (data.paymentAllocations || []).reduce((sum, item) => sum + Number(item.amount || 0), 0);
   const missing = Math.max(0, Number(booking.amountDueNow || 0) - allocated);
+  const reviewStates = ["PENDING_REVIEW", "NEGOTIATION", "CONDITIONAL", "TEMP_HOLD"];
+  const preDeliveryStates = [...reviewStates, "CONFIRMED", "READY_FOR_PICKUP"];
   const [paymentAmount, setPaymentAmount] = useState(missing);
   const [paymentMethod, setPaymentMethod] = useState("BANK_TRANSFER");
   const [chargeType, setChargeType] = useState("LATE_FEE");
@@ -1207,19 +1219,22 @@ function FinanceLifecycle({ booking, data, productById, onChanged }) {
         <div>
           <p className="text-[10px] font-black uppercase text-muted">Finance & settlement</p>
           <h3 className="mt-1 text-lg font-black">Dòng tiền và quyết toán</h3>
-          <p className="mt-1 text-xs font-bold text-muted">Snapshot {data.snapshot?.pricingRuleVersion || "chưa đóng băng"} · Ledger bất biến</p>
+          <p className="mt-1 text-xs font-bold text-muted">Booking là công nợ cần thu; Sổ quỹ chỉ tăng khi admin xác nhận tiền thực nhận.</p>
         </div>
         <button type="button" disabled={working} onClick={() => run(() => api.reconcileBookingFinance(booking.id))} className="rounded-lg border border-line bg-paper px-3 py-2 text-[10px] font-black uppercase">Đối soát</button>
       </div>
       {financeError ? <p className="mt-3 border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700">{financeError}</p> : null}
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Detail label="Đã nhận và phân bổ" value={money(allocated)} />
-        <Detail label="Còn thiếu trước giao" value={money(missing)} />
-        <Detail label="Trạng thái tài chính" value={settlement?.state || "CHƯA QUYẾT TOÁN"} />
-        <Detail label="Hoàn ngay / Công nợ" value={`${money(settlement?.refundDueNow || 0)} / ${money(settlement?.receivableAmount || 0)}`} />
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <Detail label="Tiền thuê sau giảm" value={money(booking.totalAmount || 0)} />
+        <Detail label="Tiền cọc" value={money(booking.depositRequired || 0)} />
+        <Detail label="Cần thu trước giao" value={money(booking.amountDueNow || 0)} />
+        <Detail label="Đã thực nhận" value={money(allocated)} />
+        <Detail label="Còn phải thu" value={money(missing)} />
       </div>
 
-      {missing > 0 && booking.state !== "REJECTED" ? (
+      {reviewStates.includes(booking.state) ? <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs font-semibold leading-5 text-amber-950"><strong className="block text-sm">Giai đoạn PREVIEW / chờ duyệt</strong>Kiểm tra báo giá, cọc, khuyến mãi và ảnh chuyển khoản tại đây trước khi xác nhận đơn. Chưa tạo phí trả trễ hoặc hư hỏng ở giai đoạn này.</div> : null}
+
+      {missing > 0 && preDeliveryStates.includes(booking.state) ? (
         <form onSubmit={recordPayment} className="mt-4 grid gap-2 md:grid-cols-[1fr_190px_auto]">
           <input type="number" min="1" value={paymentAmount} onChange={(event) => setPaymentAmount(event.target.value)} className="rounded-lg border border-line bg-paper px-3 py-3 text-sm font-bold" aria-label="Số tiền thực nhận" />
           <select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value)} className="rounded-lg border border-line bg-paper px-3 py-3 text-sm font-bold">
@@ -1231,6 +1246,7 @@ function FinanceLifecycle({ booking, data, productById, onChanged }) {
 
       {["IN_USE", "INCIDENT", "COMPLETED"].includes(booking.state) ? (
         <form onSubmit={proposeCharge} className="mt-5 grid gap-2 border-t border-line pt-4 sm:grid-cols-2 xl:grid-cols-6">
+          <p className="text-[10px] font-black uppercase text-muted sm:col-span-2 xl:col-span-6">Phát sinh sau bàn giao · chỉ dùng cho trả trễ, hư hỏng, thất lạc hoặc gia hạn có bằng chứng</p>
           <select value={chargeType} onChange={(event) => setChargeType(event.target.value)} className="rounded-lg border border-line bg-paper px-3 py-3 text-xs font-bold">
             <option value="LATE_FEE">Phí trả trễ</option><option value="DAMAGE">Hư hỏng</option><option value="MISSING">Thiếu/mất</option><option value="EXTENSION">Gia hạn</option><option value="CUSTOMER_COMPENSATION">Bồi thường</option><option value="REFUND_ADJUSTMENT">Điều chỉnh hoàn</option>
           </select>
@@ -1730,14 +1746,12 @@ function AccessoryForm({ form, setForm, onSubmit, onClose, saving, error }) {
           <h3 className="text-sm font-black">Thông tin định danh</h3>
         </div>
         <label className="grid gap-1 text-xs font-black text-muted">
-          Mã sản phẩm (SKU)
+          Mã sản phẩm (hệ thống tự sinh)
           <input
-            value={form.productCode}
-            onChange={(event) => field("productCode", event.target.value.toUpperCase())}
-            readOnly={Boolean(form.id)}
-            pattern="[A-Za-z0-9][A-Za-z0-9_-]{2,31}"
-            placeholder="Ví dụ: GEAR-005"
-            className="rounded-lg border border-line bg-paper px-3 py-3 text-base font-semibold uppercase text-ink read-only:opacity-60"
+            value={form.id ? form.productCode : "TỰ ĐỘNG SAU KHI LƯU"}
+            readOnly
+            aria-readonly="true"
+            className="cursor-not-allowed rounded-lg border border-line bg-paper px-3 py-3 text-base font-semibold uppercase text-muted"
           />
         </label>
         <label className="grid gap-1 text-xs font-black text-muted">
@@ -1922,24 +1936,8 @@ function AccessoryForm({ form, setForm, onSubmit, onClose, saving, error }) {
         <div className="border-b border-line pb-2 md:col-span-2">
           <h3 className="text-sm font-black">Nội dung hiển thị cho khách hàng</h3>
         </div>
-        <label className="grid gap-1 text-xs font-black text-muted">
-          Ảnh đại diện
-          <input
-            value={form.imageUrl}
-            onChange={(event) => field("imageUrl", event.target.value)}
-            placeholder="https://..."
-            className="rounded-lg border border-line bg-paper px-3 py-3 text-base font-semibold text-ink"
-          />
-        </label>
-        <label className="grid gap-1 text-xs font-black text-muted">
-          Ảnh chi tiết
-          <input
-            value={form.detailImageUrl}
-            onChange={(event) => field("detailImageUrl", event.target.value)}
-            placeholder="Để trống nếu dùng ảnh đại diện"
-            className="rounded-lg border border-line bg-paper px-3 py-3 text-base font-semibold text-ink"
-          />
-        </label>
+        <CatalogImageUpload label="Ảnh đại diện" value={form.imageUrl} onChange={(value) => field("imageUrl", value)} required />
+        <CatalogImageUpload label="Ảnh chi tiết" value={form.detailImageUrl} onChange={(value) => field("detailImageUrl", value)} />
         <label className="grid gap-1 text-xs font-black text-muted md:col-span-2">
           Thông số nổi bật
           <input
@@ -2084,6 +2082,8 @@ function Bundles({ bundles, products, assets, stock, refresh, canManage }) {
     setBusy(true);
     setError("");
     try {
+      const mainProductId = form.items.find((line) => products.find((item) => item.id === line.productId)?.levelCode === "L1")?.productId;
+      const mainProductImage = products.find((item) => item.id === mainProductId)?.imageUrl || "";
       const payload = {
         name: form.name,
         hourlyPrice: Math.max(0, Number(form.hourlyPrice) || 0),
@@ -2091,8 +2091,8 @@ function Bundles({ bundles, products, assets, stock, refresh, canManage }) {
         multiDayPrice: Math.max(0, Number(form.multiDayPrice) || 0),
         multiDayDays: Math.max(2, Number(form.multiDayDays) || 3),
         active: form.active,
-        imageUrl: form.imageUrl,
-        detailImageUrl: form.detailImageUrl,
+        imageUrl: mainProductImage,
+        detailImageUrl: form.detailImageUrl || mainProductImage,
         note: form.note,
         items: form.items,
       };
@@ -2140,7 +2140,7 @@ function Bundles({ bundles, products, assets, stock, refresh, canManage }) {
         </div>
         <form onSubmit={save} className="grid items-start gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="overflow-hidden rounded-lg border border-line bg-white xl:sticky xl:top-28">
-            <img src={form.imageUrl || mainProduct?.imageUrl} alt="" className="aspect-[4/3] w-full bg-paper object-cover" />
+             <img src={mainProduct?.imageUrl || form.detailImageUrl} alt="" className="aspect-[4/3] w-full bg-paper object-contain" />
             <div className="p-5">
               <p className="text-[10px] font-black uppercase text-muted">{form.id || "Gói mới"}</p>
               <h3 className="mt-2 text-2xl font-black">{form.name || "Tên gói thuê"}</h3>
@@ -2162,8 +2162,11 @@ function Bundles({ bundles, products, assets, stock, refresh, canManage }) {
               <div className="mb-4 flex items-center gap-2"><Settings2 className="h-4 w-4" /><h3 className="font-black">Thông tin gói</h3></div>
               <div className="grid gap-3 md:grid-cols-2">
                 <label className="grid gap-1 text-xs font-black text-muted md:col-span-2">Tên gói thuê<input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Ví dụ: Gói thuê Canon R100" className="rounded-lg border border-line bg-paper px-3 py-3 text-base font-semibold text-ink" /></label>
-                <label className="grid gap-1 text-xs font-black text-muted">Ảnh máy chính<input value={form.imageUrl} onChange={(event) => setForm({ ...form, imageUrl: event.target.value })} placeholder="URL ảnh đại diện" className="rounded-lg border border-line bg-paper px-3 py-3 text-sm font-semibold text-ink" /></label>
-                <label className="grid gap-1 text-xs font-black text-muted">Ảnh toàn bộ combo<input value={form.detailImageUrl || ""} onChange={(event) => setForm({ ...form, detailImageUrl: event.target.value })} placeholder="URL ảnh chi tiết" className="rounded-lg border border-line bg-paper px-3 py-3 text-sm font-semibold text-ink" /></label>
+                 <div className="grid gap-2 text-xs font-black text-muted">
+                   Ảnh 1 · Máy chính tự động
+                   <div className="aspect-[4/3] overflow-hidden rounded-lg border border-line bg-paper">{mainProduct ? <img src={mainProduct.imageUrl} alt={mainProduct.name} className="h-full w-full object-contain" /> : <p className="grid h-full place-items-center px-4 text-center text-[11px] font-bold">Chọn máy chính trong thành phần để hệ thống lấy ảnh.</p>}</div>
+                 </div>
+                 <CatalogImageUpload label="Ảnh 2 · Toàn bộ combo" value={form.detailImageUrl || ""} onChange={(value) => setForm({ ...form, detailImageUrl: value })} required />
                 <label className="grid gap-1 text-xs font-black text-muted md:col-span-2">Ghi chú<textarea value={form.note || ""} onChange={(event) => setForm({ ...form, note: event.target.value })} maxLength="1000" placeholder="Ghi chú cấu hình, điều kiện bàn giao hoặc lưu ý vận hành..." className="min-h-20 rounded-lg border border-line bg-paper p-3 text-sm font-semibold text-ink" /></label>
               </div>
             </section>
@@ -2318,8 +2321,9 @@ function Promotions({ promotions, refresh }) {
         <button onClick={() => setForm(null)} className="flex h-10 w-10 items-center justify-center rounded-full bg-paper" aria-label="Đóng"><X className="h-4 w-4" /></button>
       </div>
       <form onSubmit={save} className="grid gap-3 md:grid-cols-2">
-        <input required minLength="3" maxLength="40" value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "") })} placeholder="Mã, ví dụ T7SALE" className="rounded-lg border border-line bg-paper px-3 py-3 font-black uppercase" />
-        <input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Tên chương trình" className="rounded-lg border border-line bg-paper px-3 py-3 font-semibold" />
+        <label className="space-y-1"><span className="text-[10px] font-black uppercase text-muted">ID hệ thống</span><input readOnly value={form.id || "Tự động sau khi lưu"} className="w-full cursor-not-allowed rounded-lg border border-line bg-paper px-3 py-3 font-black uppercase text-muted" /></label>
+        <label className="space-y-1"><span className="text-[10px] font-black uppercase text-muted">Tên chương trình</span><input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Tên chương trình" className="w-full rounded-lg border border-line bg-paper px-3 py-3 font-semibold" /></label>
+        <label className="space-y-1"><span className="text-[10px] font-black uppercase text-muted">Mã khách nhập</span><input required minLength="3" maxLength="40" value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g, "") })} placeholder="Ví dụ T7SALE" className="w-full rounded-lg border border-line bg-paper px-3 py-3 font-black uppercase" /></label>
         <label className="space-y-1"><span className="text-[10px] font-black uppercase text-muted">Giảm (%)</span><input required type="number" min="1" max="90" value={form.discountPercent} onChange={(event) => setForm({ ...form, discountPercent: event.target.value })} className="w-full rounded-lg border border-line bg-paper px-3 py-3 font-black" /></label>
         <label className="space-y-1"><span className="text-[10px] font-black uppercase text-muted">Ngày chẵn/lẻ</span><select value={form.dayParity} onChange={(event) => setForm({ ...form, dayParity: event.target.value })} className="w-full rounded-lg border border-line bg-paper px-3 py-3 font-bold"><option value="ALL">Tất cả ngày</option><option value="ODD">Ngày lẻ</option><option value="EVEN">Ngày chẵn</option></select></label>
         <label className="space-y-1"><span className="text-[10px] font-black uppercase text-muted">Bắt đầu</span><input required type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} className="w-full rounded-lg border border-line bg-paper px-3 py-3 font-bold" /></label>
@@ -2673,10 +2677,10 @@ function Inventory({
         </div>
         <div className="overflow-x-auto rounded-lg border border-line bg-white">
           <table className="w-full min-w-[820px] text-left text-xs">
-            <thead className="bg-paper text-[10px] font-black uppercase text-muted"><tr><th className="p-3">Thời gian</th><th className="p-3">Chứng từ</th><th className="p-3">Sản phẩm/serial</th><th className="p-3">Nghiệp vụ</th><th className="p-3 text-right">Biến động</th><th className="p-3">Lý do</th><th className="p-3">Người tạo</th></tr></thead>
+            <thead className="bg-paper text-[10px] font-black uppercase text-muted"><tr><th className="p-3">Thời gian</th><th className="p-3">Chứng từ</th><th className="p-3">Mã booking</th><th className="p-3">Sản phẩm/serial</th><th className="p-3">Nghiệp vụ</th><th className="p-3 text-right">Biến động</th><th className="p-3">Lý do</th><th className="p-3">Người tạo</th></tr></thead>
             <tbody className="divide-y divide-line">
-              {ledgerEntries.slice(0, 80).map((entry) => <tr key={entry.id}><td className="p-3 font-bold">{shortDate(entry.createdAt)}</td><td className="p-3 font-black">{entry.documentId}</td><td className="p-3">{entry.serialId || productById[entry.productId]?.name || entry.productId}</td><td className="p-3 font-bold">{entry.movementType}</td><td className={`p-3 text-right font-black ${entry.quantityDelta < 0 ? "text-red-700" : "text-green-700"}`}>{entry.quantityDelta > 0 ? "+" : ""}{entry.quantityDelta}</td><td className="max-w-[260px] p-3 text-muted">{entry.reason}</td><td className="p-3 text-muted">{entry.actor}</td></tr>)}
-              {ledgerEntries.length === 0 ? <tr><td colSpan="7" className="p-6 text-center font-bold text-muted">Chưa có bút toán kho.</td></tr> : null}
+              {ledgerEntries.slice(0, 80).map((entry) => <tr key={entry.id}><td className="p-3 font-bold">{shortDate(entry.createdAt)}</td><td className="p-3 font-black">{entry.documentId}</td><td className="p-3"><span className="rounded bg-paper px-2 py-1 font-black">{inventoryBookingId(entry.documentId) || "-"}</span></td><td className="p-3">{entry.serialId || productById[entry.productId]?.name || entry.productId}</td><td className="p-3 font-bold">{entry.movementType}</td><td className={`p-3 text-right font-black ${entry.quantityDelta < 0 ? "text-red-700" : "text-green-700"}`}>{entry.quantityDelta > 0 ? "+" : ""}{entry.quantityDelta}</td><td className="max-w-[260px] p-3 text-muted">{entry.reason}</td><td className="p-3 text-muted">{entry.actor}</td></tr>)}
+              {ledgerEntries.length === 0 ? <tr><td colSpan="8" className="p-6 text-center font-bold text-muted">Chưa có bút toán kho.</td></tr> : null}
             </tbody>
           </table>
         </div>
@@ -2691,6 +2695,46 @@ function Detail({ label, value }) {
       <p className="text-[10px] font-black uppercase text-muted">{label}</p>
       <p className="mt-2 break-words text-sm font-black">{String(value)}</p>
     </div>
+  );
+}
+
+function inventoryBookingId(documentId) {
+  const match = /^BOOKING-(.+)-(?:CHECKOUT|RETURN)$/.exec(String(documentId || ""));
+  return match?.[1] || "";
+}
+
+function CatalogImageUpload({ label, value, onChange, required = false }) {
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
+  async function upload(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadError("");
+    try {
+      const result = await api.uploadCatalogImage(file);
+      onChange(result.url);
+    } catch (error) {
+      setUploadError(error.message);
+    } finally {
+      setUploading(false);
+      event.target.value = "";
+    }
+  }
+
+  return (
+    <label className="grid gap-2 text-xs font-black text-muted">
+      {label}
+      <span className="relative block aspect-[4/3] overflow-hidden rounded-lg border border-dashed border-line bg-paper">
+        {value ? <img src={value} alt="" className="h-full w-full object-contain" /> : <span className="grid h-full place-items-center px-4 text-center text-[11px] font-bold">Ảnh sẽ được chuẩn hóa về 1200 × 900, nền trắng</span>}
+        <span className="absolute inset-x-3 bottom-3 rounded-lg bg-ink px-3 py-2 text-center text-[10px] font-black uppercase text-acid shadow-lg">
+          {uploading ? "Đang tải ảnh..." : value ? "Thay ảnh" : "Chọn ảnh từ máy"}
+        </span>
+      </span>
+      <input required={required && !value} disabled={uploading} type="file" accept="image/jpeg,image/png" onChange={upload} className="sr-only" />
+      {uploadError ? <span className="text-[11px] font-bold text-red-700">{uploadError}</span> : null}
+    </label>
   );
 }
 
@@ -2905,7 +2949,7 @@ function Finance({ finance, entries, bookings, products, assets, refreshDashboar
       height: 28,
     };
     const summary = [
-      [{ value: "CLARITYCAM - BÁO CÁO SỔ QUỸ", ...heading }, null],
+      [{ value: "AMY DIGITAL - BÁO CÁO SỔ QUỸ", ...heading }, null],
       [
         { value: "Chỉ tiêu", fontWeight: "bold" },
         { value: "Giá trị", fontWeight: "bold" },
@@ -2953,7 +2997,7 @@ function Finance({ finance, entries, bookings, products, assets, refreshDashboar
     ];
     await writeXlsxFile([summary, transactions], {
       sheets: ["Tổng quan", "Giao dịch"],
-      fileName: `ClarityCam-So-Quy-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      fileName: `AMY-DIGITAL-So-Quy-${new Date().toISOString().slice(0, 10)}.xlsx`,
       stickyRowsCount: 1,
       columns: [
         [{ width: 28 }, { width: 22 }],
@@ -2998,6 +3042,17 @@ function Finance({ finance, entries, bookings, products, assets, refreshDashboar
       </div>
       {message ? <p className="mb-5 border border-line bg-white p-3 text-sm font-bold">{message}</p> : null}
       {tab === "overview" ? <>
+      <section className="mb-5 rounded-lg border border-line bg-white p-5">
+        <p className="text-[10px] font-black uppercase tracking-widest text-muted">Nguyên tắc ghi nhận</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          {[
+            ["1", "Booking tạo công nợ", "Tổng thuê + cọc là số cần thu, chưa phải tiền trong quỹ."],
+            ["2", "Admin xác nhận tiền", "Chỉ ảnh chuyển khoản hoặc tiền mặt đã đối soát mới tạo Payment."],
+            ["3", "Ledger ghi hai vế", "Tiền vào, doanh thu, cọc giữ hộ và hoàn tiền được tách tài khoản."],
+            ["4", "Quyết toán khi trả máy", "Phí phát sinh, hoàn cọc và công nợ được chốt bằng chứng từ."],
+          ].map(([number, title, copy]) => <div key={number} className="rounded-lg bg-paper p-4"><span className="grid h-7 w-7 place-items-center rounded bg-ink text-[10px] font-black text-acid">{number}</span><h3 className="mt-3 text-sm font-black">{title}</h3><p className="mt-1 text-xs font-semibold leading-5 text-muted">{copy}</p></div>)}
+        </div>
+      </section>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <Metric label="Tiền thực đang có" value={money(finance.physicalCash || 0)} />
         <Metric label="Tiền khách bị hạn chế" value={money(finance.restrictedCustomerFunds || 0)} />

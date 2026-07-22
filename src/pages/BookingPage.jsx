@@ -1,4 +1,5 @@
 import {
+  Building2,
   CalendarDays,
   CheckCircle2,
   ChevronLeft,
@@ -11,6 +12,7 @@ import {
   Plus,
   ShieldCheck,
   Smartphone,
+  Upload,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -20,6 +22,12 @@ import { api } from "../lib/api.js";
 import { money, pricingModeLabel, rentalDurationLabel, rentalRates } from "../lib/format.js";
 import { holdSecondsUntil } from "../lib/holdTimer.js";
 import { localDateTime, returnTimeForRentalRate } from "../lib/rentalWindow.js";
+
+const paymentAccount = {
+  bank: import.meta.env.VITE_PAYMENT_BANK || "MB BANK",
+  accountNumber: import.meta.env.VITE_PAYMENT_ACCOUNT_NUMBER || "0123456789",
+  accountName: import.meta.env.VITE_PAYMENT_ACCOUNT_NAME || "AMY DIGITAL",
+};
 
 function unavailableRangeMessage(products, pickupTime, returnTime) {
   const pickup = new Date(pickupTime).toLocaleString("vi-VN", {
@@ -903,6 +911,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
   const [liveQuoteError, setLiveQuoteError] = useState("");
   const [busy, setBusy] = useState(false);
   const [identity, setIdentity] = useState({ front: null, back: null });
+  const [paymentProof, setPaymentProof] = useState(null);
   const [holdSeconds, setHoldSeconds] = useState(0);
   const [holdToken, setHoldToken] = useState("");
   const holdTokenRef = useRef("");
@@ -1171,6 +1180,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
     setBusy(true);
     setBookingError("");
     try {
+      if (!paymentProof) throw new Error("Vui lòng gửi ảnh chụp giao dịch chuyển khoản để admin đối soát.");
       const refreshedQuote = await api.quote({
         pickupTime: form.pickupTime,
         returnTime: form.returnTime,
@@ -1184,6 +1194,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
         setCommitmentChecks({ identity: false, fees: false });
         throw new Error("Giá hoặc chính sách vừa được admin cập nhật. Vui lòng xem lại và xác nhận lại cam kết.");
       }
+      const paymentProofUpload = await api.uploadPaymentProof(paymentProof);
       const nextBooking = await api.createBooking({
         customerName: form.customerName,
         phone: form.phone,
@@ -1194,6 +1205,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
         bundleId: selectedBundleId || null,
         items: bookingItems,
         identityUploadToken: verifiedBooking.identityUploadToken,
+        paymentProofUploadToken: paymentProofUpload.uploadToken,
         holdToken,
         promotionCode: form.promotionCode.trim() || null,
       });
@@ -1209,7 +1221,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
   }
 
   function beginCommitmentHold() {
-    if (busy || holdSeconds <= 0 || !commitmentChecks.identity || !commitmentChecks.fees) return;
+    if (busy || holdSeconds <= 0 || !paymentProof || !commitmentChecks.identity || !commitmentChecks.fees) return;
     setCommitmentHolding(true);
     window.clearTimeout(commitmentTimerRef.current);
     commitmentTimerRef.current = window.setTimeout(() => {
@@ -1304,6 +1316,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
     }
     setBookingStep("form");
     setIdentity({ front: null, back: null });
+    setPaymentProof(null);
     setConsent(false);
     setBookingError("");
     setForm((current) => ({ ...current, ...bookingDefaults(), note: "", promotionCode: "", earlyPickup: false, earlyPickupTime: "" }));
@@ -1753,7 +1766,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                       className="mt-0.5 h-4 w-4 accent-black"
                     />
                     <span>
-                      Tôi đồng ý để ClarityCam xử lý thông tin này nhằm kiểm tra
+                      Tôi đồng ý để AMY DIGITAL xử lý thông tin này nhằm kiểm tra
                       yêu cầu thuê và liên hệ phản hồi.
                     </span>
                   </label>
@@ -1816,6 +1829,26 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                       <div className="shrink-0 text-right"><p className="text-[9px] font-black uppercase text-muted">Trách nhiệm tối đa</p><strong className="mt-1 block text-sm">{money(quote.damageLiabilityLimit)}</strong></div>
                     </div>
 
+                    <section className="rounded-lg border border-white/15 bg-white p-4 text-ink">
+                      <div className="flex items-start gap-3">
+                        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-ink text-acid"><Building2 className="h-5 w-5" /></span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] font-black uppercase tracking-wider text-muted">Thông tin chuyển khoản</p>
+                          <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3">
+                            <div><span className="block text-[9px] font-black uppercase text-muted">Ngân hàng</span><strong className="mt-1 block">{paymentAccount.bank}</strong></div>
+                            <div><span className="block text-[9px] font-black uppercase text-muted">Số tài khoản</span><strong className="mt-1 block font-mono text-sm">{paymentAccount.accountNumber}</strong></div>
+                            <div><span className="block text-[9px] font-black uppercase text-muted">Chủ tài khoản</span><strong className="mt-1 block">{paymentAccount.accountName}</strong></div>
+                          </div>
+                          <p className="mt-3 rounded bg-paper px-3 py-2 text-[11px] font-bold">Nội dung: {form.phone} {product.id} · Số cần thanh toán ban đầu: {money(quote.amountDueNow)}</p>
+                        </div>
+                      </div>
+                      <label className={`mt-4 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed p-3 ${paymentProof ? "border-green-500 bg-green-50" : "border-line bg-paper"}`}>
+                        <Upload className="h-5 w-5 shrink-0" />
+                        <span className="min-w-0 flex-1"><strong className="block text-xs">Ảnh chụp giao dịch chuyển khoản</strong><span className="mt-1 block truncate text-[10px] font-semibold text-muted">{paymentProof?.name || "JPG hoặc PNG, tối đa 5 MB"}</span></span>
+                        <input required type="file" accept="image/jpeg,image/png" className="sr-only" onChange={(event) => setPaymentProof(event.target.files?.[0] || null)} />
+                      </label>
+                    </section>
+
                     <div className="space-y-2 pt-1">
                       <label className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-xs font-semibold leading-relaxed ${commitmentChecks.identity ? "border-acid bg-acid/10" : "border-white/15 bg-white/5"}`}>
                         <input type="checkbox" checked={commitmentChecks.identity} onChange={(event) => setCommitmentChecks((current) => ({ ...current, identity: event.target.checked }))} className="mt-0.5 h-4 w-4 accent-[#D7FF3F]" />
@@ -1831,7 +1864,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                     {holdSeconds <= 0 ? <button type="button" onClick={restartReservation} className="w-full rounded-lg border border-white/30 px-4 py-3 text-xs font-black uppercase">Phiên đã hết hạn · Bắt đầu lại</button> : null}
                     <button
                       type="button"
-                      disabled={busy || holdSeconds <= 0 || !commitmentChecks.identity || !commitmentChecks.fees}
+                      disabled={busy || holdSeconds <= 0 || !paymentProof || !commitmentChecks.identity || !commitmentChecks.fees}
                       onPointerDown={beginCommitmentHold}
                       onPointerUp={cancelCommitmentHold}
                       onPointerLeave={cancelCommitmentHold}
@@ -1877,7 +1910,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                 </div>
               ) : null}
             </div>
-            <div className="md:col-span-2">
+            {bookingStep === "form" ? <div className="md:col-span-2">
               <RentalCalendar
                 month={calendarMonth}
                 schedule={schedule}
@@ -1904,7 +1937,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                   });
                 }}
               />
-            </div>
+            </div> : null}
           </div>
         </div>
       </div>

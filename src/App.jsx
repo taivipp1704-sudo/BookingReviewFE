@@ -1,4 +1,4 @@
-import { Camera, Menu, ShieldCheck, ShoppingCart, UserRound } from 'lucide-react';
+import { FileSearch, Handshake, ShieldCheck, ShoppingCart } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from './lib/api.js';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
@@ -11,6 +11,7 @@ import OnboardingFlow from './components/OnboardingFlow.jsx';
 import CartPage from './pages/CartPage.jsx';
 import ProductDetailsPage from './pages/ProductDetailsPage.jsx';
 import PublicFooter from './components/PublicFooter.jsx';
+import BrandMark from './components/BrandMark.jsx';
 
 function currentPath() {
   return window.location.pathname.replace(/\/$/, '') || '/';
@@ -61,6 +62,7 @@ export default function App() {
   const isAccountRoute = path === '/account';
   const isProductRoute = path.startsWith('/products/');
   const isCartRoute = path === '/cart';
+  const isGearRoute = path === '/gear';
 
   function addToCart(product, quantity) {
     setCart(current => {
@@ -102,19 +104,8 @@ export default function App() {
     if (!customerAccount) return <CustomerLoginPage onLogin={setCustomerAccount} onBack={() => navigate(`/products/${productId}`)} loginMessage="Vui lòng đăng nhập để tiếp tục đặt thuê thiết bị." />;
     return (
       <div className="min-h-screen bg-[#EBEBE9]">
-        <header className="fixed left-4 right-4 top-4 z-40 mx-auto flex max-w-7xl items-center justify-between rounded-full border border-white/70 bg-white/90 px-4 py-3 shadow-soft backdrop-blur sm:px-5">
-          <button onClick={() => navigate('/')} className="flex items-center gap-3 text-left" aria-label="Về trang chủ ClarityCam">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-ink text-acid">
-              <Camera className="h-4 w-4" />
-            </span>
-            <span>
-              <span className="block text-sm font-black leading-none">ClarityCam</span>
-              <span className="block text-[10px] font-bold uppercase tracking-widest text-muted">Camera rental</span>
-            </span>
-          </button>
-          <button onClick={() => navigate('/')} className="rounded-full bg-ink px-4 py-2 text-[10px] font-black uppercase tracking-wider text-acid">Quay về danh sách</button>
-        </header>
-        <BookingPage productId={productId} customerAccount={customerAccount} onBack={() => navigate('/')} onViewOrders={() => navigate('/account')} />
+        <PublicHeader navigate={navigate} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} />
+        <BookingPage productId={productId} customerAccount={customerAccount} onBack={() => navigate('/gear')} onViewOrders={() => navigate('/account')} />
         <PublicFooter onNavigate={navigate} />
       </div>
     );
@@ -128,53 +119,40 @@ export default function App() {
 
   if (isProductRoute) {
     const productId = decodeURIComponent(path.replace('/products/', ''));
-    return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} /><ProductDetailsPage productId={productId} onBack={() => navigate('/')} onBook={product => navigate(`/booking/${product.id}`)} onAddToCart={addToCart} onViewProduct={product => navigate(`/products/${product.id}`)} /><PublicFooter onNavigate={navigate} /></div>;
+    return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} /><ProductDetailsPage productId={productId} onBack={() => navigate('/gear')} onBook={product => navigate(`/booking/${product.id}`)} onAddToCart={addToCart} onViewProduct={product => navigate(`/products/${product.id}`)} /><PublicFooter onNavigate={navigate} /></div>;
   }
 
   if (isCartRoute) {
-    return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} /><CartPage cart={cart} onBack={() => navigate('/')} onUpdate={updateCart} onRemove={id => setCart(current => current.filter(item => item.id !== id))} onBook={product => navigate(`/booking/${product.id}`)} /><PublicFooter onNavigate={navigate} /></div>;
+    return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} /><CartPage cart={cart} onBack={() => navigate('/gear')} onUpdate={updateCart} onRemove={id => setCart(current => current.filter(item => item.id !== id))} onBook={product => navigate(`/booking/${product.id}`)} /><PublicFooter onNavigate={navigate} /></div>;
+  }
+
+  if (isGearRoute) {
+    return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} /><CustomerPage mode="catalog" onSelect={product => navigate(`/products/${product.id}`)} /><PublicFooter onNavigate={navigate} /></div>;
   }
 
   return (
     <div className="min-h-screen bg-[#EBEBE9]">
-      <header className="fixed left-4 right-4 top-4 z-40 mx-auto flex max-w-7xl items-center justify-between rounded-full border border-white/70 bg-white/90 px-4 py-3 shadow-soft backdrop-blur sm:px-5">
-        <button onClick={() => navigate('/')} className="flex items-center gap-3 text-left" aria-label="Về trang chủ ClarityCam">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-ink text-acid">
-            <Camera className="h-4 w-4" />
-          </span>
-          <span>
-            <span className="block text-sm font-black leading-none">ClarityCam</span>
-            <span className="block text-[10px] font-bold uppercase tracking-widest text-muted">Camera rental</span>
-          </span>
-        </button>
-        <nav className="hidden items-center gap-6 text-[11px] font-black uppercase tracking-widest text-muted md:flex">
-          <a href="#gear" className="hover:text-ink">Thiết bị</a>
-          <a href="#process" className="hover:text-ink">Quy trình</a>
-          <a href="#track" className="hover:text-ink">Tra cứu đơn</a>
-          <button onClick={() => navigate('/admin/login')} className="flex items-center gap-2 hover:text-ink" title="Khu vực quản trị">
-            <ShieldCheck className="h-3.5 w-3.5" />
-            Quản trị
-          </button>
-          <button onClick={() => navigate('/account')} className="flex items-center gap-2 hover:text-ink" title="Tài khoản khách hàng"><UserRound className="h-3.5 w-3.5" />Tài khoản</button>
-        </nav>
-        <a href="#track" className="flex items-center gap-2 rounded-full bg-ink px-3 py-2 text-[10px] font-black uppercase tracking-wider text-acid md:hidden">
-          <Menu className="h-3.5 w-3.5" />
-          Tra cứu
-        </a>
-        <a href="#process" className="hidden items-center gap-2 rounded-full bg-ink px-4 py-2 text-[10px] font-black uppercase tracking-wider text-acid md:flex">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          Đặt thuê
-        </a>
-      </header>
-      <CustomerPage onSelect={product => navigate(`/products/${product.id}`)} />
+      <PublicHeader navigate={navigate} landing cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} />
+      <CustomerPage mode="landing" onBrowse={() => navigate('/gear')} onSelect={product => navigate(`/products/${product.id}`)} />
       <PublicFooter onNavigate={navigate} />
     </div>
   );
 }
 
-function PublicHeader({ navigate, cartCount }) {
-  return <header className="fixed left-4 right-4 top-4 z-40 mx-auto flex max-w-7xl items-center justify-between rounded-full border border-white/70 bg-white/90 px-4 py-3 shadow-soft backdrop-blur sm:px-5">
-    <button onClick={() => navigate('/')} className="flex items-center gap-3 text-left"><span className="flex h-9 w-9 items-center justify-center rounded-full bg-ink text-acid"><Camera className="h-4 w-4" /></span><span><span className="block text-sm font-black leading-none">ClarityCam</span><span className="block text-[10px] font-bold uppercase tracking-widest text-muted">Camera rental</span></span></button>
-    <button onClick={() => navigate('/cart')} className="relative flex h-10 w-10 items-center justify-center rounded-full bg-ink text-acid" aria-label="Mở giỏ hàng"><ShoppingCart className="h-4 w-4" />{cartCount > 0 ? <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-acid px-1 text-[10px] font-black text-ink">{cartCount}</span> : null}</button>
+function PublicHeader({ navigate, cartCount, landing = false }) {
+  function openHomeSection(id) {
+    if (!landing) navigate('/');
+    window.setTimeout(() => document.querySelector(`#${id}`)?.scrollIntoView({ behavior: 'smooth' }), landing ? 0 : 120);
+  }
+  return <header className="fixed inset-x-0 top-0 z-40 border-b border-line bg-white/95 shadow-[0_10px_35px_rgba(16,16,16,.08)] backdrop-blur-xl">
+    <div className="mx-auto flex min-h-[76px] max-w-[1600px] items-center gap-2 px-3 sm:gap-4 sm:px-7 lg:px-10">
+      <button onClick={() => navigate('/')} className="shrink-0" aria-label="Về trang chủ AMY Digital"><BrandMark compact className="[&>span:last-child]:hidden sm:[&>span:last-child]:flex" /></button>
+      <nav className="hide-scrollbar ml-auto flex min-w-0 flex-1 items-center justify-end gap-2 overflow-x-auto py-2 sm:gap-3">
+        <button onClick={() => openHomeSection('cooperate')} className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-line px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:text-ink sm:px-4 sm:text-[11px]"><Handshake className="h-4 w-4" />Hợp tác</button>
+        <button onClick={() => openHomeSection('track')} className="flex h-11 items-center gap-2 rounded-lg border border-line px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:text-ink sm:px-4 sm:text-[11px]"><FileSearch className="h-4 w-4" />Tra cứu đơn</button>
+        <button onClick={() => navigate('/gear')} className="flex h-11 items-center gap-2 rounded-lg bg-ink px-4 text-[10px] font-black uppercase tracking-wider text-acid shadow-sm transition hover:bg-acid hover:text-ink sm:px-6 sm:text-[11px]"><ShieldCheck className="h-4 w-4" />Đặt thuê</button>
+        {!landing ? <button onClick={() => navigate('/cart')} className="relative hidden h-11 w-11 items-center justify-center rounded-lg border border-line bg-white text-ink sm:flex" aria-label="Mở giỏ hàng"><ShoppingCart className="h-4 w-4" />{cartCount > 0 ? <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-acid px-1 text-[10px] font-black text-ink">{cartCount}</span> : null}</button> : null}
+      </nav>
+    </div>
   </header>;
 }

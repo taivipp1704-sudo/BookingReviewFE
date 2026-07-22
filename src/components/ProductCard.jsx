@@ -1,8 +1,6 @@
 import { ArrowUpRight, Camera, ShoppingBag } from 'lucide-react';
-import { money, rentalRates } from '../lib/format.js';
 
 export default function ProductCard({ product, onSelect }) {
-  const rates = rentalRates(product);
   return (
     <article className="group overflow-hidden rounded-lg border border-line bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-soft">
       <button type="button" onClick={() => onSelect(product)} className="block w-full text-left" aria-label={`Xem chi tiết ${product.name}`}>
@@ -21,15 +19,9 @@ export default function ProductCard({ product, onSelect }) {
             <ShoppingBag className="h-3.5 w-3.5" />
             Đã có {Number(product.bookingCount || 0).toLocaleString('vi-VN')} lượt đặt
           </p>
-          <div className="mt-5 flex items-end justify-between gap-3">
-            <div className="min-w-0 space-y-1">
-              {rates.map((rate, index) => (
-                <p key={rate.key} className={index === 0 ? "text-lg font-black" : "text-[10px] font-bold text-muted"}>
-                  {money(rate.value)}<span className="ml-0.5 text-[10px]">{rate.suffix}</span>
-                </p>
-              ))}
-            </div>
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-ink text-acid transition group-hover:bg-acid group-hover:text-ink"><ArrowUpRight className="h-4 w-4" /></span>
+          <div className="mt-5 flex items-center justify-between gap-3 border-t border-line pt-4">
+            <span className="text-[11px] font-black uppercase tracking-wider">Xem chi tiết và đặt thuê</span>
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink text-acid transition group-hover:bg-acid group-hover:text-ink"><ArrowUpRight className="h-4 w-4" /></span>
           </div>
         </div>
       </button>

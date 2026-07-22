@@ -1,4 +1,4 @@
-import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react";
+import { ArrowRight, ChevronDown, Handshake, Search, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import ProductCard from "../components/ProductCard.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
@@ -16,7 +16,7 @@ const brands = [
   "BLACKMAGIC",
 ];
 
-export default function CustomerPage({ onSelect }) {
+export default function CustomerPage({ onSelect, onBrowse, mode = "landing" }) {
   const [products, setProducts] = useState([]);
   const [bundles, setBundles] = useState([]);
   const [catalogError, setCatalogError] = useState("");
@@ -151,11 +151,12 @@ export default function CustomerPage({ onSelect }) {
 
   return (
     <main className="pt-24">
+      {mode === "landing" ? (
       <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
         <div className="flex min-h-[500px] flex-col justify-between rounded-lg bg-ink p-7 text-white shadow-soft sm:p-8">
           <div className="flex items-center justify-between gap-4">
             <p className="text-[11px] font-black uppercase tracking-[0.35em] text-acid">
-              Camera rental
+              AMY Digital
             </p>
             <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">
               Đặt thuê rõ ràng
@@ -191,26 +192,26 @@ export default function CustomerPage({ onSelect }) {
             className="h-full w-full object-cover grayscale"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent" />
-          <div className="absolute bottom-6 left-6 right-6 border border-white/15 bg-white/90 p-4 backdrop-blur">
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted">
-              Thiết bị đang chọn
-            </p>
-            <div className="mt-2 flex items-center justify-between gap-4">
-              <p className="text-sm font-black">Chọn một thiết bị để bắt đầu</p>
-              <p className="text-lg font-black">—</p>
-            </div>
-          </div>
+          <button type="button" onClick={onBrowse} className="group absolute bottom-6 left-6 right-6 flex items-center justify-between gap-4 rounded-lg border border-white/40 bg-white/95 p-4 text-left shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:bg-acid">
+            <span>
+              <span className="block text-[10px] font-black uppercase tracking-widest text-muted">Bắt đầu đặt thuê</span>
+              <span className="mt-2 block text-base font-black">Chọn thiết bị phù hợp với lịch của bạn</span>
+            </span>
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-ink text-acid transition group-hover:translate-x-1"><ArrowRight className="h-5 w-5" /></span>
+          </button>
         </div>
       </section>
+      ) : null}
 
       <div className="overflow-hidden border-y border-line bg-white py-3">
-        <div className="flex min-w-max gap-10 px-4 text-[11px] font-black uppercase tracking-[0.35em] text-muted">
+        <div className="amy-brand-marquee flex w-max min-w-max gap-12 px-4 text-[11px] font-black uppercase tracking-[0.35em] text-muted">
           {[...brands, ...brands].map((brand, index) => (
             <span key={`${brand}-${index}`}>{brand}</span>
           ))}
         </div>
       </div>
 
+      {mode === "catalog" ? (
       <section id="gear" className="mx-auto max-w-7xl px-4 py-12">
         <div className="mb-7 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
@@ -301,8 +302,9 @@ export default function CustomerPage({ onSelect }) {
           </div>
         </div>
       </section>
+      ) : null}
 
-      {bundles.length ? (
+      {mode === "catalog" && bundles.length ? (
         <section className="border-t border-line bg-paper py-12">
           <div className="mx-auto max-w-7xl px-4">
             <p className="text-[11px] font-black uppercase tracking-[0.35em] text-muted">
@@ -352,6 +354,7 @@ export default function CustomerPage({ onSelect }) {
       ) : null}
       {selectedBundle ? <BundleDialog bundle={selectedBundle} products={products} onClose={() => setSelectedBundle(null)} onBook={(main) => { sessionStorage.setItem("claritycam-preferred-bundle", selectedBundle.id); onSelect(main); }} /> : null}
 
+      {mode === "landing" ? (
       <section id="track" className="border-t border-line bg-white py-12">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 lg:grid-cols-[0.85fr_1.15fr]">
           <div>
@@ -424,6 +427,20 @@ export default function CustomerPage({ onSelect }) {
           </div>
         </div>
       </section>
+      ) : null}
+
+      {mode === "landing" ? (
+        <section id="cooperate" className="border-t border-line bg-paper py-12">
+          <div className="mx-auto grid max-w-7xl gap-6 px-4 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.35em] text-muted">Hợp tác cùng AMY</p>
+              <h2 className="mt-2 text-3xl font-black">Đối tác thiết bị và sản xuất nội dung</h2>
+              <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-muted">Liên hệ để nhận hồ sơ hợp tác, mẫu hợp đồng và chính sách dành cho đối tác. Nội dung chi tiết có thể được cập nhật từ trang quản trị ở giai đoạn tiếp theo.</p>
+            </div>
+            <a href="tel:+84901234567" className="flex h-12 items-center justify-center gap-2 rounded-lg bg-ink px-6 text-xs font-black uppercase text-acid"><Handshake className="h-4 w-4" />Liên hệ hợp tác</a>
+          </div>
+        </section>
+      ) : null}
     </main>
   );
 }

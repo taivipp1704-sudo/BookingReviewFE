@@ -30,3 +30,23 @@ textarea {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@keyframes amy-brand-marquee-left-to-right {
+  from {
+    transform: translateX(-50%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.amy-brand-marquee {
+  animation: amy-brand-marquee-left-to-right 42s linear infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .amy-brand-marquee {
+    animation: none;
+  }
+}
