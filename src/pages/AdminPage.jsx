@@ -160,6 +160,9 @@ export default function AdminPage({
     refresh();
   }, [filter, page]);
   useEffect(() => {
+    if (page === "orders" && detailId) setSelectedId(detailId);
+  }, [detailId, page]);
+  useEffect(() => {
     if (!selected?.id) return;
     Promise.allSettled([
       api.bookingAudit(selected.id),
@@ -430,7 +433,7 @@ export default function AdminPage({
             onOpenOrders={() => navigate("orders")}
             onOpenBooking={(bookingId) => {
               setSelectedId(bookingId);
-              onNavigate("/admin/orders");
+              onNavigate(`/admin/orders/${encodeURIComponent(bookingId)}`);
             }}
             onNavigate={navigate}
           />
@@ -838,7 +841,10 @@ export function BookingCalendar({ bookings, productById, onOpenBooking }) {
                             <button
                               key={`${booking.id}-${day.toISOString()}`}
                               type="button"
-                              onClick={() => setSelectedBookingId(booking.id)}
+                              onClick={() => {
+                                setSelectedBookingId(booking.id);
+                                onOpenBooking(booking.id);
+                              }}
                               title={`${booking.id} · ${booking.customerName}`}
                               className={`absolute z-10 overflow-hidden rounded border-l-4 p-2 text-left shadow-sm ${calendarEventTone(booking.state)} ${selectedBooking?.id === booking.id ? "ring-2 ring-ink ring-offset-1" : ""}`}
                               style={{
@@ -865,7 +871,10 @@ export function BookingCalendar({ bookings, productById, onOpenBooking }) {
           ) : (
             <div className="divide-y divide-line">
               {weekBookings.map((booking) => (
-                <button key={booking.id} type="button" onClick={() => setSelectedBookingId(booking.id)} className="grid w-full gap-3 p-4 text-left hover:bg-paper sm:grid-cols-[150px_1fr_auto] sm:items-center">
+                <button key={booking.id} type="button" onClick={() => {
+                  setSelectedBookingId(booking.id);
+                  onOpenBooking(booking.id);
+                }} className="grid w-full gap-3 p-4 text-left hover:bg-paper sm:grid-cols-[150px_1fr_auto] sm:items-center">
                   <span className="text-xs font-black">{shortDate(booking.pickupTime)}</span>
                   <span><strong className="block text-sm">{booking.customerName}</strong><span className="mt-1 block text-[10px] font-bold text-muted">{booking.id} · {bookingTitle(booking)}</span></span>
                   <StatusBadge state={booking.state} />
