@@ -1130,6 +1130,10 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
     try {
       if (!identity.front || !identity.back)
         throw new Error("Vui lòng tải ảnh mặt trước và mặt sau CCCD.");
+      const identityUpload = await api.uploadIdentity(
+        identity.front,
+        identity.back,
+      );
       const hold = await api.holdBooking({
         pickupTime: form.pickupTime,
         returnTime: form.returnTime,
@@ -1154,10 +1158,6 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
       holdTokenRef.current = hold.holdToken;
       setHoldToken(hold.holdToken);
       setHoldSeconds(holdSecondsUntil(hold.expiresAt));
-      const identityUpload = await api.uploadIdentity(
-        identity.front,
-        identity.back,
-      );
       setQuote(nextQuote);
       setVerifiedBooking({
         identityUploadToken: identityUpload.uploadToken,
