@@ -153,7 +153,7 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing" }) {
     <main className="pt-24">
       {mode === "landing" ? (
       <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
-        <div className="flex min-h-[500px] flex-col justify-between rounded-lg bg-ink p-7 text-white shadow-soft sm:p-8">
+        <div className="flex min-h-[440px] min-w-0 flex-col justify-between rounded-lg bg-ink p-7 text-white shadow-soft sm:min-h-[500px] sm:p-8">
           <div className="flex items-center justify-between gap-4">
             <p className="text-[11px] font-black uppercase tracking-[0.35em] text-acid">
               AMY Digital
@@ -163,7 +163,7 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing" }) {
             </span>
           </div>
           <div>
-            <h1 className="max-w-3xl text-5xl font-black leading-[0.95] sm:text-7xl">
+            <h1 className="max-w-3xl break-words text-4xl font-black leading-none sm:text-6xl lg:text-7xl">
               Mỗi khung hình, đúng lúc.
             </h1>
             <p className="mt-6 max-w-xl text-sm font-semibold leading-6 text-white/70">
@@ -185,14 +185,16 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing" }) {
             ))}
           </div>
         </div>
-        <div className="relative min-h-[500px] overflow-hidden rounded-lg bg-paper shadow-soft">
-          <img
-            src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=1200"
-            alt="Máy ảnh chuyên nghiệp"
-            className="h-full w-full object-cover grayscale"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/5 to-transparent" />
-          <button type="button" onClick={onBrowse} className="group absolute bottom-6 left-6 right-6 flex items-center justify-between gap-4 rounded-lg border border-white/40 bg-white/95 p-4 text-left shadow-soft backdrop-blur transition hover:-translate-y-0.5 hover:bg-acid">
+        <div className="grid min-h-[440px] min-w-0 grid-rows-[minmax(300px,1fr)_auto] overflow-hidden rounded-lg bg-paper shadow-soft sm:min-h-[500px]">
+          <div className="relative min-h-0 overflow-hidden">
+            <img
+              src="https://images.unsplash.com/photo-1516035069371-29a1b244cc32?auto=format&fit=crop&q=80&w=1200"
+              alt="Máy ảnh chuyên nghiệp"
+              className="absolute inset-0 h-full w-full object-cover grayscale"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/5 to-transparent" />
+          </div>
+          <button type="button" onClick={onBrowse} className="group m-4 flex min-w-0 items-center justify-between gap-4 rounded-lg border border-line bg-white p-4 text-left shadow-soft transition hover:-translate-y-0.5 hover:bg-acid sm:m-6">
             <span>
               <span className="block text-[10px] font-black uppercase tracking-widest text-muted">Bắt đầu đặt thuê</span>
               <span className="mt-2 block text-base font-black">Chọn thiết bị phù hợp với lịch của bạn</span>
