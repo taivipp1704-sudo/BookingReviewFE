@@ -140,11 +140,36 @@ export default function App() {
 }
 
 function PublicHeader({ navigate, cartCount, landing = false }) {
+  const [headerVisible, setHeaderVisible] = useState(true);
+
+  useEffect(() => {
+    let previousY = window.scrollY;
+    let frameId = 0;
+
+    const handleScroll = () => {
+      if (frameId) return;
+      frameId = window.requestAnimationFrame(() => {
+        const currentY = window.scrollY;
+        if (currentY <= 32) setHeaderVisible(true);
+        else if (currentY > previousY + 2) setHeaderVisible(false);
+        else if (currentY < previousY - 2) setHeaderVisible(true);
+        previousY = currentY;
+        frameId = 0;
+      });
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (frameId) window.cancelAnimationFrame(frameId);
+    };
+  }, []);
+
   function openHomeSection(id) {
     if (!landing) navigate('/');
     window.setTimeout(() => document.querySelector(`#${id}`)?.scrollIntoView({ behavior: 'smooth' }), landing ? 0 : 120);
   }
-  return <header className="fixed inset-x-0 top-0 z-40 border-b border-line bg-white/95 shadow-[0_10px_35px_rgba(16,16,16,.08)] backdrop-blur-xl">
+  return <header className={`fixed inset-x-0 top-0 z-40 border-b border-line bg-white/95 shadow-[0_10px_35px_rgba(16,16,16,.08)] backdrop-blur-xl transition-[transform,opacity] duration-300 ease-out will-change-transform ${headerVisible ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-full opacity-0'}`}>
     <div className="mx-auto flex min-h-[76px] max-w-[1600px] items-center gap-2 px-3 sm:gap-4 sm:px-7 md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:px-10">
       <button onClick={() => navigate('/')} className="shrink-0 md:justify-self-start" aria-label="Về trang chủ AMY Digital"><BrandMark compact className="[&>span:last-child]:hidden sm:[&>span:last-child]:flex" /></button>
       <nav className="hide-scrollbar mx-auto flex min-w-0 flex-1 items-center justify-center gap-2 overflow-x-auto py-2 sm:gap-3 md:justify-self-center">
