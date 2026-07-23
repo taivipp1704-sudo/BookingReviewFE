@@ -163,13 +163,15 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing" }) {
             </span>
           </div>
           <div className="flex min-w-0 flex-col justify-center py-7 sm:py-8 lg:py-6">
-            <h1 className="max-w-[16ch] break-words text-4xl font-black leading-[1.02] sm:text-5xl lg:text-6xl">
-              Có đồ xịn, không lo thiếu hình đẹp!
+            <h1 className="max-w-[13ch] text-4xl font-black leading-[1.02] sm:text-5xl lg:text-6xl">
+              <span className="block">Có đồ xịn</span>
+              <span className="block">Không lo thiếu</span>
+              <span className="block">Hình đẹp</span>
             </h1>
-            <p className="mt-5 max-w-2xl text-sm font-semibold leading-6 text-white/70 lg:text-[15px]">
-              Bạn chỉ cần chọn thiết bị và thời gian, AMY sẽ báo giá tự động.
-              AMY tụi mình sẽ check lại kỹ càng trước khi xác nhận lịch thuê nha.
-            </p>
+            <div className="mt-6 max-w-xl border-l-2 border-acid pl-4 text-sm font-semibold leading-6 text-white/70 lg:text-[15px]">
+              <p>Bạn chọn thiết bị và thời gian</p>
+              <p>AMY báo giá tự động rồi kiểm tra kỹ trước khi xác nhận lịch thuê</p>
+            </div>
           </div>
           <div id="process" className="grid gap-4 sm:grid-cols-3">
             {[
