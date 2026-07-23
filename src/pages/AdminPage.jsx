@@ -324,7 +324,7 @@ export default function AdminPage({
   }
 
   return (
-    <div className="min-h-screen bg-[#EBEBE9]">
+    <div className="min-h-screen overflow-x-hidden bg-[#EBEBE9]">
       <header className="fixed left-0 right-0 top-0 z-40 flex h-20 items-center justify-between border-b border-line bg-white px-4 sm:px-6 lg:left-[88px] lg:px-8">
         <BrandMark compact />
         <div className="flex items-center gap-3">
@@ -955,7 +955,7 @@ function Orders({
         onClose={() => setImagePreview(null)}
       />
       <div className="grid gap-5 xl:grid-cols-[390px_1fr]">
-      <section>
+      <section className="min-w-0">
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -984,7 +984,7 @@ function Orders({
             </button>
           ))}
         </div>
-        <div className="space-y-3">
+        <div className="max-h-[55vh] space-y-3 overflow-y-auto pr-1 xl:max-h-[calc(100vh-280px)]">
           {bookings.map((item) => (
             <button
               key={item.id}
@@ -1006,7 +1006,7 @@ function Orders({
         </div>
       </section>
       {selected ? (
-        <section className="rounded-lg border border-line bg-white p-5">
+        <section className="min-w-0 rounded-lg border border-line bg-white p-5">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line pb-5">
             <div>
               <h2 className="text-2xl font-black">{selected.customerName}</h2>
@@ -1038,7 +1038,7 @@ function Orders({
             ))}
           </div>
           {detailTab === "overview" ? (
-          <div className="grid gap-3 border-b border-line py-5 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="grid gap-3 border-b border-line py-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
             <div className="rounded-lg bg-paper p-4">
               <p className="text-[10px] font-black uppercase text-muted">Tạm tính</p>
               <p className="mt-1 font-black">{money(selected.subtotalAmount)}</p>
@@ -1330,7 +1330,7 @@ function FinanceLifecycle({ booking, data, productById, onChanged }) {
         <button type="button" disabled={working} onClick={() => run(() => api.reconcileBookingFinance(booking.id))} className="rounded-lg border border-line bg-paper px-3 py-2 text-[10px] font-black uppercase">Đối soát</button>
       </div>
       {financeError ? <p className="mt-3 border border-red-200 bg-red-50 p-3 text-xs font-bold text-red-700">{financeError}</p> : null}
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
         <Detail label="Tiền thuê sau giảm" value={money(booking.totalAmount || 0)} />
         <Detail label="Tiền cọc" value={money(booking.depositRequired || 0)} />
         <Detail label="Cần thu trước giao" value={money(booking.amountDueNow || 0)} />
