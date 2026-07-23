@@ -18,6 +18,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import StatusBadge from "../components/StatusBadge.jsx";
 import BookingJourney from "../components/BookingJourney.jsx";
+import SecureImagePreview from "../components/SecureImagePreview.jsx";
 import { api } from "../lib/api.js";
 import { money, pricingModeLabel, rentalDurationLabel, rentalRates } from "../lib/format.js";
 import { holdSecondsUntil } from "../lib/holdTimer.js";
@@ -916,6 +917,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
   const [busy, setBusy] = useState(false);
   const [identity, setIdentity] = useState({ front: null, back: null });
   const [paymentProof, setPaymentProof] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
   const [holdSeconds, setHoldSeconds] = useState(0);
   const [holdToken, setHoldToken] = useState("");
   const holdTokenRef = useRef("");
@@ -923,6 +925,18 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
   const commitmentTimerRef = useRef(null);
 
   useEffect(() => () => window.clearTimeout(commitmentTimerRef.current), []);
+
+  useEffect(
+    () => () => {
+      if (imagePreview?.url) URL.revokeObjectURL(imagePreview.url);
+    },
+    [imagePreview],
+  );
+
+  function openLocalImage(file, title) {
+    if (!file) return;
+    setImagePreview({ url: URL.createObjectURL(file), title });
+  }
 
   useEffect(() => {
     let ignore = false;
@@ -1348,7 +1362,12 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
     bundles.find((bundle) => bundle.id === selectedBundleId) || product;
 
   return (
-    <main className="pt-24">
+    <>
+      <SecureImagePreview
+        preview={imagePreview}
+        onClose={() => setImagePreview(null)}
+      />
+      <main className="pt-24">
       <div className="mx-auto max-w-7xl px-4 pb-12">
         <div className="overflow-hidden rounded-lg bg-white shadow-soft">
           <div className="grid gap-6 p-5 md:grid-cols-[0.85fr_1.15fr] md:p-7">
@@ -1718,6 +1737,22 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                               {identity[side].name}
                             </span>
                           ) : null}
+                          {identity[side] ? (
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                openLocalImage(
+                                  identity[side],
+                                  side === "front" ? "Mặt trước CCCD" : "Mặt sau CCCD",
+                                );
+                              }}
+                              className="mt-3 rounded-lg border border-line bg-paper px-3 py-2 text-[10px] font-black uppercase"
+                            >
+                              Xem ảnh đã chọn
+                            </button>
+                          ) : null}
                         </label>
                       ))}
                     </div>
@@ -1859,6 +1894,19 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                         <Upload className="h-5 w-5 shrink-0" />
                         <span className="min-w-0 flex-1"><strong className="block text-xs">Ảnh chụp giao dịch chuyển khoản</strong><span className="mt-1 block truncate text-[10px] font-semibold text-muted">{paymentProof?.name || "JPG hoặc PNG, tối đa 5 MB"}</span></span>
                         <input required type="file" accept="image/jpeg,image/png" className="sr-only" onChange={(event) => setPaymentProof(event.target.files?.[0] || null)} />
+                        {paymentProof ? (
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              openLocalImage(paymentProof, "Ảnh chuyển khoản đã chọn");
+                            }}
+                            className="shrink-0 rounded-lg border border-green-300 bg-white px-3 py-2 text-[10px] font-black uppercase text-green-900"
+                          >
+                            Xem ảnh
+                          </button>
+                        ) : null}
                       </label>
                     </section>
 
@@ -1954,6 +2002,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
           </div>
         </div>
       </div>
-    </main>
+      </main>
+    </>
   );
 }

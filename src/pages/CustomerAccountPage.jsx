@@ -1,14 +1,17 @@
 import {
   ArrowLeft,
+  IdCard,
   LifeBuoy,
   Loader2,
   LogOut,
+  ReceiptText,
   Smartphone,
   UserRound,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import StatusBadge from "../components/StatusBadge.jsx";
 import BookingJourney from "../components/BookingJourney.jsx";
+import SecureImagePreview from "../components/SecureImagePreview.jsx";
 import { api } from "../lib/api.js";
 import { money, shortDate } from "../lib/format.js";
 
@@ -30,6 +33,14 @@ export default function CustomerAccountPage({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [products, setProducts] = useState({});
+  const [imagePreview, setImagePreview] = useState(null);
+
+  useEffect(
+    () => () => {
+      if (imagePreview?.url) URL.revokeObjectURL(imagePreview.url);
+    },
+    [imagePreview],
+  );
 
   useEffect(() => {
     if (account)
@@ -78,6 +89,16 @@ export default function CustomerAccountPage({
       setError(nextError.message);
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function openStoredImage(loader, title) {
+    setError("");
+    try {
+      const image = await loader();
+      setImagePreview({ url: URL.createObjectURL(image), title });
+    } catch (nextError) {
+      setError(nextError.message);
     }
   }
 
@@ -136,7 +157,12 @@ export default function CustomerAccountPage({
     );
 
   return (
-    <main className="mx-auto min-h-screen max-w-5xl px-4 pb-12 pt-28">
+    <>
+      <SecureImagePreview
+        preview={imagePreview}
+        onClose={() => setImagePreview(null)}
+      />
+      <main className="mx-auto min-h-screen max-w-5xl px-4 pb-12 pt-28">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <p className="text-[10px] font-black uppercase text-muted">
@@ -189,6 +215,49 @@ export default function CustomerAccountPage({
               </div>
               <p className="mt-2 text-sm font-black">Thanh toán ban đầu: {money(item.amountDueNow)}</p>
               {item.discountAmount > 0 ? <p className="mt-2 text-xs font-bold text-green-700">Đã giảm {money(item.discountAmount)} với mã {item.promotionCode}</p> : null}
+              {item.identityDocumentsAvailable || item.paymentProofAvailable ? (
+                <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-4">
+                  {item.identityDocumentsAvailable ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => openStoredImage(
+                          () => api.customerIdentityDocument(item.id, "front"),
+                          `Mặt trước CCCD · ${item.id}`,
+                        )}
+                        className="flex items-center gap-2 rounded-lg border border-line bg-paper px-3 py-2 text-xs font-black"
+                      >
+                        <IdCard className="h-4 w-4" />
+                        Xem CCCD mặt trước
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openStoredImage(
+                          () => api.customerIdentityDocument(item.id, "back"),
+                          `Mặt sau CCCD · ${item.id}`,
+                        )}
+                        className="flex items-center gap-2 rounded-lg border border-line bg-paper px-3 py-2 text-xs font-black"
+                      >
+                        <IdCard className="h-4 w-4" />
+                        Xem CCCD mặt sau
+                      </button>
+                    </>
+                  ) : null}
+                  {item.paymentProofAvailable ? (
+                    <button
+                      type="button"
+                      onClick={() => openStoredImage(
+                        () => api.customerPaymentProof(item.id),
+                        `Ảnh chuyển khoản · ${item.id}`,
+                      )}
+                      className="flex items-center gap-2 rounded-lg border border-green-200 bg-green-50 px-3 py-2 text-xs font-black text-green-900"
+                    >
+                      <ReceiptText className="h-4 w-4" />
+                      Xem ảnh chuyển khoản
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
               <div className="mt-5 border-t border-line pt-4"><BookingJourney state={item.state} compact /></div>
               {item.earlyPickupRequested ? (
                 <p className="mt-2 text-xs font-bold text-muted">
@@ -283,6 +352,7 @@ export default function CustomerAccountPage({
           ))}
         </div>
       </section>
-    </main>
+      </main>
+    </>
   );
 }

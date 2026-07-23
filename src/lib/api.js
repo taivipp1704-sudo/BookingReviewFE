@@ -58,7 +58,7 @@ async function adminIdentityDocument(bookingId, side) {
     const payload = await response.json().catch(() => ({}));
     throw new Error(payload.message || `Không thể mở ảnh CCCD (${response.status}).`);
   }
-  return URL.createObjectURL(await response.blob());
+  return response.blob();
 }
 
 async function uploadCatalogImage(file) {
@@ -85,7 +85,31 @@ async function adminPaymentProof(bookingId) {
     const payload = await response.json().catch(() => ({}));
     throw new Error(payload.message || `Không thể mở ảnh chuyển khoản (${response.status}).`);
   }
-  return URL.createObjectURL(await response.blob());
+  return response.blob();
+}
+
+async function customerIdentityDocument(bookingId, side) {
+  const response = await fetch(`${API_BASE}/api/customer/account/bookings/${encodeURIComponent(bookingId)}/identity/${encodeURIComponent(side)}`, {
+    credentials: 'include',
+    headers: { Accept: 'image/jpeg,image/png' }
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.message || `Không thể mở ảnh CCCD (${response.status}).`);
+  }
+  return response.blob();
+}
+
+async function customerPaymentProof(bookingId) {
+  const response = await fetch(`${API_BASE}/api/customer/account/bookings/${encodeURIComponent(bookingId)}/payment-proof`, {
+    credentials: 'include',
+    headers: { Accept: 'image/jpeg,image/png' }
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.message || `Không thể mở ảnh chuyển khoản (${response.status}).`);
+  }
+  return response.blob();
 }
 
 async function uploadPaymentProof(file) {
@@ -167,6 +191,8 @@ export const api = {
   completeCustomerOnboarding: () => request('/api/customer/account/onboarding/complete', { method: 'POST', body: {} }),
   customerLogout: () => request('/api/customer/account/logout', { method: 'POST', body: {} }),
   customerBookings: () => request('/api/customer/account/bookings'),
+  customerIdentityDocument,
+  customerPaymentProof,
   reviewEarlyPickup: (id, payload) => request(`/api/admin/bookings/${encodeURIComponent(id)}/early-pickup`, { method: 'PATCH', body: payload })
   ,customerSupport: () => request('/api/customer/support'),
   createCustomerSupport: payload => request('/api/customer/support', { method: 'POST', body: payload }),

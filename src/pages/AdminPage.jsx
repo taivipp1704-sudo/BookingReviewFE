@@ -33,6 +33,7 @@ import { useEffect, useMemo, useState } from "react";
 import writeXlsxFile from "write-excel-file";
 import Metric from "../components/Metric.jsx";
 import BrandMark from "../components/BrandMark.jsx";
+import SecureImagePreview from "../components/SecureImagePreview.jsx";
 import StatusBadge, { bookingStateLabels } from "../components/StatusBadge.jsx";
 import { api } from "../lib/api.js";
 import { money, shortDate } from "../lib/format.js";
@@ -914,34 +915,50 @@ function Orders({
   autoAllocate,
   canViewIdentity,
 }) {
+  const [imagePreview, setImagePreview] = useState(null);
+
+  useEffect(
+    () => () => {
+      if (imagePreview?.url) URL.revokeObjectURL(imagePreview.url);
+    },
+    [imagePreview],
+  );
+
+  function showImage(blob, title) {
+    setImagePreview({
+      url: URL.createObjectURL(blob),
+      title,
+    });
+  }
+
   async function openIdentity(side) {
-    const preview = window.open("", "_blank", "noopener,noreferrer");
     try {
-      const url = await api.adminIdentityDocument(selected.id, side);
-      if (preview) preview.location = url;
-      else window.open(url, "_blank", "noopener,noreferrer");
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      const image = await api.adminIdentityDocument(selected.id, side);
+      showImage(
+        image,
+        `${side === "front" ? "Mặt trước" : "Mặt sau"} CCCD · ${selected.id}`,
+      );
     } catch (error) {
-      if (preview) preview.close();
       window.alert(error.message);
     }
   }
 
   async function openPaymentProof() {
-    const preview = window.open("", "_blank", "noopener,noreferrer");
     try {
-      const url = await api.adminPaymentProof(selected.id);
-      if (preview) preview.location = url;
-      else window.open(url, "_blank", "noopener,noreferrer");
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      const image = await api.adminPaymentProof(selected.id);
+      showImage(image, `Ảnh chuyển khoản · ${selected.id}`);
     } catch (error) {
-      if (preview) preview.close();
       window.alert(error.message);
     }
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[390px_1fr]">
+    <>
+      <SecureImagePreview
+        preview={imagePreview}
+        onClose={() => setImagePreview(null)}
+      />
+      <div className="grid gap-5 xl:grid-cols-[390px_1fr]">
       <section>
         <form
           onSubmit={(event) => {
@@ -1155,7 +1172,8 @@ function Orders({
           </div>
         </section>
       ) : null}
-    </div>
+      </div>
+    </>
   );
 }
 
