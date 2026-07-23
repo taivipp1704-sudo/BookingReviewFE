@@ -903,10 +903,15 @@ function Orders({
   products,
 }) {
   const [imagePreview, setImagePreview] = useState(null);
+  const [detailTab, setDetailTab] = useState("overview");
   const selectedInvoiceEntries = useMemo(
     () => invoiceEntries.filter((entry) => entry.bookingId === selected?.id),
     [invoiceEntries, selected?.id],
   );
+
+  useEffect(() => {
+    setDetailTab("overview");
+  }, [selected?.id]);
 
   useEffect(
     () => () => {
@@ -1011,6 +1016,28 @@ function Orders({
             </div>
             <StatusBadge state={selected.state} />
           </div>
+          <div className="hide-scrollbar flex gap-2 overflow-x-auto border-b border-line py-3">
+            {[
+              { id: "overview", label: "Tổng quan", icon: LayoutDashboard },
+              { id: "finance", label: "Thanh toán & hóa đơn", icon: Wallet },
+              { id: "operations", label: "Vận hành", icon: Boxes },
+            ].map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setDetailTab(id)}
+                className={`flex shrink-0 items-center gap-2 rounded-lg px-4 py-2.5 text-xs font-black transition ${
+                  detailTab === id
+                    ? "bg-ink text-acid"
+                    : "border border-line bg-paper text-muted hover:text-ink"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+          {detailTab === "overview" ? (
           <div className="grid gap-3 border-b border-line py-5 sm:grid-cols-3 lg:grid-cols-6">
             <div className="rounded-lg bg-paper p-4">
               <p className="text-[10px] font-black uppercase text-muted">Tạm tính</p>
@@ -1038,7 +1065,8 @@ function Orders({
               <p className="mt-1 font-black text-acid">{money(selected.amountDueNow)}</p>
             </div>
           </div>
-          {canManageInvoices ? (
+          ) : null}
+          {detailTab === "finance" && canManageInvoices ? (
             <section className="border-b border-line py-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -1088,7 +1116,7 @@ function Orders({
               )}
             </section>
           ) : null}
-          {financeData ? (
+          {detailTab === "finance" && financeData ? (
             <FinanceLifecycle
               booking={selected}
               data={financeData}
@@ -1096,6 +1124,7 @@ function Orders({
               onChanged={refreshFinance}
             />
           ) : null}
+          {detailTab === "overview" ? (
           <div className="grid gap-3 py-5 sm:grid-cols-2">
             {selected.items.map((item) => (
               <div
@@ -1111,11 +1140,14 @@ function Orders({
               </div>
             ))}
           </div>
+          ) : null}
+          {detailTab === "overview" ? (
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-orange-200 bg-orange-50 p-4 text-orange-900">
             <div><p className="text-[10px] font-black uppercase">Cấu hình trả trễ</p><p className="mt-1 text-xs font-bold">Mức phí được cộng theo từng giờ trễ; trường hợp ảnh hưởng booking kế tiếp cần admin xác nhận thêm.</p></div>
             <strong>{money(selected.items.reduce((sum, item) => sum + Number(productById[item.productId]?.lateFeePerHour || 0) * Number(item.quantity || 0), 0))}/giờ</strong>
           </div>
-          {selected.identityDocumentsAvailable && canViewIdentity ? (
+          ) : null}
+          {detailTab === "operations" && selected.identityDocumentsAvailable && canViewIdentity ? (
             <div className="mb-5 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-paper p-4">
               <div className="mr-auto flex items-center gap-2">
                 <IdCard className="h-4 w-4" />
@@ -1125,19 +1157,20 @@ function Orders({
               <button onClick={() => openIdentity("back")} className="rounded-lg bg-white px-3 py-2 text-xs font-black">Xem mặt sau</button>
             </div>
           ) : null}
-          {selected.paymentProofAvailable && canViewIdentity ? (
+          {detailTab === "finance" && selected.paymentProofAvailable && canViewIdentity ? (
             <div className="mb-5 flex flex-wrap items-center gap-3 rounded-lg border border-green-200 bg-green-50 p-4 text-green-950">
               <div className="mr-auto"><p className="text-xs font-black uppercase">Bằng chứng chuyển khoản</p><p className="mt-1 text-[10px] font-semibold">Chỉ ghi nhận tiền vào Sổ quỹ sau khi đối chiếu đúng số tiền, nội dung và tài khoản nhận.</p></div>
               <button onClick={openPaymentProof} className="rounded-lg bg-white px-3 py-2 text-xs font-black">Mở ảnh giao dịch</button>
             </div>
           ) : null}
-          {selected.earlyPickupRequested ? (
+          {detailTab === "operations" && selected.earlyPickupRequested ? (
             <EarlyPickupPanel
               booking={selected}
               busy={busy}
               onReview={reviewEarlyPickup}
             />
           ) : null}
+          {detailTab === "operations" ? (
           <section className="mb-5 border-y border-line py-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div><p className="text-[10px] font-black uppercase text-muted">Reservation & Allocation</p><h3 className="mt-1 text-lg font-black">Điều phối nguồn lực</h3></div>
@@ -1160,7 +1193,8 @@ function Orders({
               </div>
             </div>
           </section>
-          {["CONFIRMED", "READY_FOR_PICKUP"].includes(selected.state) ? (
+          ) : null}
+          {detailTab === "operations" && ["CONFIRMED", "READY_FOR_PICKUP"].includes(selected.state) ? (
             <button
               onClick={approveHandover}
               disabled={busy}
@@ -1170,6 +1204,7 @@ function Orders({
               Duyệt giao máy · Chuyển sang IN USE
             </button>
           ) : null}
+          {detailTab === "operations" ? (
           <form
             onSubmit={changeState}
             className="grid gap-3 border-t border-line pt-5 md:grid-cols-[220px_1fr_auto]"
@@ -1197,6 +1232,8 @@ function Orders({
               Cập nhật
             </button>
           </form>
+          ) : null}
+          {detailTab === "operations" ? (
           <div className="mt-6 border-t border-line pt-5">
             <div className="mb-3 flex items-center gap-2">
               <FileClock className="h-4 w-4" />
@@ -1211,6 +1248,7 @@ function Orders({
               </p>
             ))}
           </div>
+          ) : null}
         </section>
       ) : null}
       </div>
