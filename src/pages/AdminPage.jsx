@@ -41,7 +41,6 @@ import { invoiceHtml } from "../lib/invoiceTemplate.js";
 
 const pages = [
   { id: "dashboard", label: "Tổng quan & lịch", icon: LayoutDashboard },
-  { id: "invoices", label: "Hóa đơn", icon: Printer, roles: ["ADMIN", "MANAGER"] },
   { id: "orders", label: "Đơn thuê", icon: ClipboardList, roles: ["ADMIN", "MANAGER", "OPS", "SALES", "WAREHOUSE"] },
   { id: "catalog", label: "Danh mục", icon: Package },
   { id: "bundles", label: "Combo", icon: Package },
@@ -87,7 +86,11 @@ export default function AdminPage({
   const canReadFinance = ["ADMIN", "MANAGER"].includes(user.role);
   const canReadPromotions = ["ADMIN", "MANAGER", "SALES"].includes(user.role);
   const canReadSupport = ["ADMIN", "MANAGER", "OPS", "SALES"].includes(user.role);
-  const requestedPage = activePage === "calendar" ? "dashboard" : activePage;
+  const requestedPage = activePage === "calendar"
+    ? "dashboard"
+    : activePage === "invoices"
+      ? "orders"
+      : activePage;
   const page = visiblePages.some((item) => item.id === requestedPage)
     ? requestedPage
     : "dashboard";
@@ -409,9 +412,6 @@ export default function AdminPage({
             onNavigate={navigate}
           />
         ) : null}
-        {page === "invoices" ? (
-          <Invoices entries={entries} bookings={bookings} products={products} />
-        ) : null}
         {page === "orders" ? (
           <Orders
             bookings={bookings}
@@ -437,6 +437,9 @@ export default function AdminPage({
             refreshFinance={refreshSelectedFinance}
             autoAllocate={autoAllocate}
             canViewIdentity={["ADMIN", "MANAGER"].includes(user.role)}
+            canManageInvoices={canReadFinance}
+            invoiceEntries={entries}
+            products={products}
           />
         ) : null}
         {page === "catalog" ? (
@@ -871,121 +874,6 @@ function openInvoiceDocument(entry, booking, products) {
   popup.document.close();
 }
 
-function Invoices({ entries, bookings, products }) {
-  const [search, setSearch] = useState("");
-  const bookingById = useMemo(
-    () => Object.fromEntries(bookings.map((item) => [item.id, item])),
-    [bookings],
-  );
-  const invoiceEntries = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
-    return entries
-      .filter((entry) => entry.bookingId && bookingById[entry.bookingId])
-      .filter((entry) => {
-        if (!normalizedSearch) return true;
-        const booking = bookingById[entry.bookingId];
-        return [
-          entry.id,
-          entry.bookingId,
-          booking?.customerName,
-          booking?.phone,
-        ].some((value) => String(value || "").toLowerCase().includes(normalizedSearch));
-      });
-  }, [bookingById, entries, search]);
-  const invoiceTotal = invoiceEntries.reduce(
-    (sum, entry) => sum + Math.abs(Number(entry.amount || 0)),
-    0,
-  );
-
-  return (
-    <div className="space-y-5">
-      <section className="flex flex-col gap-4 border-y border-line bg-white px-5 py-5 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-widest text-muted">
-            Chứng từ khách hàng
-          </p>
-          <h2 className="mt-1 text-2xl font-black">Xuất hóa đơn theo đơn thuê</h2>
-          <p className="mt-2 text-sm font-semibold text-muted">
-            Chọn giao dịch đã ghi nhận để mở mẫu hóa đơn và in hoặc lưu PDF
-          </p>
-        </div>
-        <div className="grid shrink-0 grid-cols-2 gap-5 text-right">
-          <div>
-            <p className="text-[10px] font-black uppercase text-muted">Hóa đơn</p>
-            <p className="mt-1 text-xl font-black">{invoiceEntries.length}</p>
-          </div>
-          <div>
-            <p className="text-[10px] font-black uppercase text-muted">Tổng giá trị</p>
-            <p className="mt-1 text-xl font-black">{money(invoiceTotal)}</p>
-          </div>
-        </div>
-      </section>
-
-      <label className="flex max-w-xl items-center gap-3 rounded-lg border border-line bg-white px-4">
-        <Search className="h-4 w-4 shrink-0 text-muted" />
-        <input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Tìm mã đơn khách hàng hoặc số điện thoại"
-          className="min-w-0 flex-1 bg-transparent py-3 text-sm font-semibold outline-none"
-        />
-      </label>
-
-      <div className="overflow-x-auto rounded-lg border border-line bg-white">
-        <table className="w-full min-w-[820px] text-left text-sm">
-          <thead className="bg-paper text-[10px] font-black uppercase text-muted">
-            <tr>
-              <th className="p-4">Giao dịch</th>
-              <th>Đơn thuê</th>
-              <th>Khách hàng</th>
-              <th>Thời gian</th>
-              <th className="text-right">Giá trị</th>
-              <th className="px-4 text-right">Thao tác</th>
-            </tr>
-          </thead>
-          <tbody>
-            {invoiceEntries.map((entry) => {
-              const booking = bookingById[entry.bookingId];
-              return (
-                <tr key={entry.id} className="border-t border-line">
-                  <td className="p-4 font-black">{entry.id}</td>
-                  <td>
-                    <p className="font-black">{entry.bookingId}</p>
-                    <StatusBadge state={booking.state} />
-                  </td>
-                  <td>
-                    <p className="font-black">{booking.customerName}</p>
-                    <p className="mt-1 text-xs font-semibold text-muted">{booking.phone}</p>
-                  </td>
-                  <td>{shortDate(entry.postedAt)}</td>
-                  <td className="text-right font-black">{money(Math.abs(Number(entry.amount || 0)))}</td>
-                  <td className="px-4 text-right">
-                    <button
-                      type="button"
-                      onClick={() => openInvoiceDocument(entry, booking, products)}
-                      className="inline-flex items-center gap-2 rounded-lg bg-ink px-3 py-2 text-[10px] font-black uppercase text-acid"
-                    >
-                      <Printer className="h-4 w-4" />
-                      Xuất hóa đơn
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-            {!invoiceEntries.length ? (
-              <tr>
-                <td colSpan="6" className="p-10 text-center text-sm font-bold text-muted">
-                  Chưa có giao dịch phù hợp để xuất hóa đơn
-                </td>
-              </tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 function Orders({
   bookings,
   selected,
@@ -1010,8 +898,15 @@ function Orders({
   refreshFinance,
   autoAllocate,
   canViewIdentity,
+  canManageInvoices,
+  invoiceEntries,
+  products,
 }) {
   const [imagePreview, setImagePreview] = useState(null);
+  const selectedInvoiceEntries = useMemo(
+    () => invoiceEntries.filter((entry) => entry.bookingId === selected?.id),
+    [invoiceEntries, selected?.id],
+  );
 
   useEffect(
     () => () => {
@@ -1143,6 +1038,56 @@ function Orders({
               <p className="mt-1 font-black text-acid">{money(selected.amountDueNow)}</p>
             </div>
           </div>
+          {canManageInvoices ? (
+            <section className="border-b border-line py-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="grid h-10 w-10 place-items-center rounded-lg bg-ink text-acid">
+                    <Printer className="h-4 w-4" />
+                  </span>
+                  <div>
+                    <p className="text-[10px] font-black uppercase text-muted">Chứng từ khách hàng</p>
+                    <h3 className="mt-1 text-lg font-black">Hóa đơn của đơn thuê</h3>
+                  </div>
+                </div>
+                <p className="text-xs font-bold text-muted">
+                  {selectedInvoiceEntries.length} giao dịch đã ghi nhận
+                </p>
+              </div>
+              {selectedInvoiceEntries.length ? (
+                <div className="mt-4 max-h-72 divide-y divide-line overflow-y-auto border-y border-line">
+                  {selectedInvoiceEntries.map((entry) => (
+                    <div
+                      key={entry.id}
+                      className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-black">{entry.id}</p>
+                        <p className="mt-1 text-[10px] font-bold text-muted">
+                          {shortDate(entry.postedAt)} · {entry.type}
+                        </p>
+                      </div>
+                      <strong className="text-sm">
+                        {money(Math.abs(Number(entry.amount || 0)))}
+                      </strong>
+                      <button
+                        type="button"
+                        onClick={() => openInvoiceDocument(entry, selected, products)}
+                        className="inline-flex items-center justify-center gap-2 rounded-lg bg-ink px-3 py-2 text-[10px] font-black uppercase text-acid"
+                      >
+                        <Printer className="h-4 w-4" />
+                        Xuất hóa đơn
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 rounded-lg bg-paper p-4 text-xs font-bold text-muted">
+                  Đơn thuê này chưa có giao dịch để xuất hóa đơn
+                </p>
+              )}
+            </section>
+          ) : null}
           {financeData ? (
             <FinanceLifecycle
               booking={selected}
