@@ -882,6 +882,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
   const [product, setProduct] = useState(null);
   const [accessories, setAccessories] = useState([]);
   const [bundles, setBundles] = useState([]);
+  const [stores, setStores] = useState([]);
   const [selectedBundleId, setSelectedBundleId] = useState("");
   const [selectedRentalRate, setSelectedRentalRate] = useState("DAILY");
   const [accessoryQuantities, setAccessoryQuantities] = useState({});
@@ -894,6 +895,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
     promotionCode: "",
     earlyPickup: false,
     earlyPickupTime: "",
+    storeBranchId: "",
     ...bookingDefaults(),
   });
   const [mainQuantity, setMainQuantity] = useState(1);
@@ -943,10 +945,11 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
 
     async function loadProduct() {
       try {
-        const [catalog, availability, nextBundles] = await Promise.all([
+        const [catalog, availability, nextBundles, nextStores] = await Promise.all([
           api.products(),
           api.availability(),
           api.bundles(),
+          api.stores(),
         ]);
         const availabilityById = Object.fromEntries(
           availability.map((item) => [item.productId, item]),
@@ -984,6 +987,13 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
               bundle.items.some((line) => line.productId === productId),
             ),
           );
+          setStores(nextStores);
+          setForm((current) => ({
+            ...current,
+            storeBranchId: nextStores.some((store) => store.id === current.storeBranchId)
+              ? current.storeBranchId
+              : nextStores[0]?.id || "",
+          }));
           const initialQuantities = Object.fromEntries(
               nextAccessories
                 .filter((item) => item.included && item.availableQty > 0)
@@ -1039,6 +1049,10 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
         .filter((item) => item.quantity > 0),
     ];
   }, [accessories, accessoryQuantities, mainQuantity, product]);
+  const selectedStore = useMemo(
+    () => stores.find((store) => store.id === form.storeBranchId) || null,
+    [form.storeBranchId, stores],
+  );
   const dailyEquipmentTotal = useMemo(() => {
     if (!product) return 0;
     return (
@@ -1206,6 +1220,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
         bundleId: selectedBundleId || null,
         holdToken,
         promotionCode: form.promotionCode.trim() || null,
+        storeBranchId: form.storeBranchId,
       });
       if (commitmentFingerprint(refreshedQuote) !== commitmentFingerprint(quote)) {
         setQuote(refreshedQuote);
@@ -1370,7 +1385,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
       <main className="pt-24">
       <div className="mx-auto max-w-7xl px-4 pb-12">
         <div className="overflow-hidden rounded-lg bg-white shadow-soft">
-          <div className="grid gap-6 p-5 md:grid-cols-[0.85fr_1.15fr] md:p-7">
+          <div className="grid grid-cols-[minmax(0,1fr)] gap-6 p-5 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:p-7">
             <div className="space-y-4">
               <div className="rounded-lg bg-paper p-4">
                 <img
@@ -1583,7 +1598,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                 </div>
               </section>
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-widest text-muted">
@@ -1601,7 +1616,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
               </div>
 
               {bookingStep === "form" ? (
-                <form onSubmit={beginBookingCommitment} className="space-y-4">
+                <form onSubmit={beginBookingCommitment} className="min-w-0 space-y-4">
                   {holdToken ? (
                     <>
                       <div className={`flex items-center justify-between rounded-lg border p-3 ${holdSeconds > 60 ? "border-line bg-paper" : "border-red-200 bg-red-50 text-red-700"}`}><div className="flex items-center gap-2 text-xs font-black"><Clock3 className="h-4 w-4" />Phiên giữ lựa chọn</div><strong className="font-mono text-lg">{String(Math.floor(holdSeconds / 60)).padStart(2, "0")}:{String(holdSeconds % 60).padStart(2, "0")}</strong></div>
@@ -1615,7 +1630,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                     Yêu cầu sẽ được gắn với tài khoản khách hàng đang đăng nhập. Đội ngũ
                     sẽ kiểm tra và phản hồi trước khi chốt đơn.
                   </div>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="min-w-0 grid gap-3 sm:grid-cols-2">
                     <input
                       required
                       value={form.customerName}
@@ -1632,6 +1647,41 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                       placeholder="Số điện thoại đã xác thực"
                       className="rounded-lg border border-line bg-line/40 px-4 py-3 text-sm font-semibold text-muted outline-none"
                     />
+                    <label className="min-w-0 space-y-1 sm:col-span-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-muted">
+                        Chi nhánh nhận và trả máy
+                      </span>
+                      <span className="relative block">
+                        <Building2 className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+                        <select
+                          required
+                          value={form.storeBranchId}
+                          onChange={(event) => setForm({ ...form, storeBranchId: event.target.value })}
+                          className="min-w-0 w-full appearance-none rounded-lg border border-line bg-paper py-3 pl-11 pr-4 text-sm font-semibold outline-none focus:border-ink"
+                        >
+                          <option value="" disabled>Chọn chi nhánh</option>
+                          {stores.map((store) => (
+                            <option key={store.id} value={store.id}>
+                              {store.name}
+                            </option>
+                          ))}
+                        </select>
+                      </span>
+                      {selectedStore ? (
+                        <span className="flex items-start gap-2 rounded-lg bg-paper px-4 py-3 text-xs font-semibold leading-5 text-muted">
+                          <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-ink" />
+                          <span>
+                            <strong className="block text-ink">{selectedStore.address}</strong>
+                            {selectedStore.phone ? <span className="block">{selectedStore.phone}</span> : null}
+                          </span>
+                        </span>
+                      ) : null}
+                      {stores.length === 0 ? (
+                        <span className="block text-xs font-bold text-red-700">
+                          Chưa có chi nhánh đang hoạt động. Vui lòng liên hệ AMY DIGITAL.
+                        </span>
+                      ) : null}
+                    </label>
                     <label className="space-y-1">
                       <span className="text-[10px] font-black uppercase tracking-widest text-muted">
                         Nhận máy

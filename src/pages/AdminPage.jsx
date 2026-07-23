@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   LifeBuoy,
   LogOut,
+  MapPin,
   Minus,
   Package,
   Pencil,
@@ -45,6 +46,7 @@ const pages = [
   { id: "catalog", label: "Danh mục", icon: Package },
   { id: "bundles", label: "Combo", icon: Package },
   { id: "promotions", label: "Khuyến mãi", icon: Tags, roles: ["ADMIN", "MANAGER", "SALES"] },
+  { id: "stores", label: "Chi nhánh", icon: MapPin, roles: ["ADMIN", "MANAGER"] },
   { id: "inventory", label: "Kho máy", icon: Boxes, roles: ["ADMIN", "MANAGER", "WAREHOUSE", "TECH"] },
   { id: "finance", label: "Sổ quỹ", icon: Wallet, roles: ["ADMIN", "MANAGER"] },
   { id: "support", label: "Hỗ trợ", icon: LifeBuoy, roles: ["ADMIN", "MANAGER", "OPS", "SALES"] },
@@ -101,6 +103,7 @@ export default function AdminPage({
   const [stock, setStock] = useState([]);
   const [bundles, setBundles] = useState([]);
   const [promotions, setPromotions] = useState([]);
+  const [stores, setStores] = useState([]);
   const [finance, setFinance] = useState({
     revenue: 0,
     expense: 0,
@@ -177,6 +180,7 @@ export default function AdminPage({
           ? api.inventoryLedger()
           : Promise.resolve([]),
         user.role === "ADMIN" ? api.adminUsers() : Promise.resolve([]),
+        ["ADMIN", "MANAGER"].includes(user.role) ? api.adminStores() : Promise.resolve([]),
       ]);
       setBookings(data[0]);
       setProducts(data[1]);
@@ -198,6 +202,7 @@ export default function AdminPage({
       setPromotions(data[8]);
       setLedgerEntries(data[9]);
       setStaffUsers(data[10]);
+      setStores(data[11]);
       setSelectedId((current) =>
         data[0].some((item) => item.id === current)
           ? current
@@ -461,6 +466,9 @@ export default function AdminPage({
         {page === "promotions" ? (
           <Promotions promotions={promotions} refresh={refresh} />
         ) : null}
+        {page === "stores" ? (
+          <Stores stores={stores} refresh={refresh} />
+        ) : null}
         {page === "inventory" ? (
           <Inventory
             assets={assets}
@@ -482,6 +490,182 @@ export default function AdminPage({
           <Staff users={staffUsers} refresh={refresh} />
         ) : null}
       </main>
+    </div>
+  );
+}
+
+const emptyStoreForm = {
+  id: "",
+  code: "",
+  name: "",
+  address: "",
+  phone: "",
+  note: "",
+  active: true,
+  sortOrder: 10,
+};
+
+function Stores({ stores, refresh }) {
+  const [form, setForm] = useState(emptyStoreForm);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  function edit(store) {
+    setForm({
+      id: store.id,
+      code: store.code,
+      name: store.name,
+      address: store.address,
+      phone: store.phone || "",
+      note: store.note || "",
+      active: store.active,
+      sortOrder: Number(store.sortOrder || 0),
+    });
+    setMessage("");
+  }
+
+  async function save(event) {
+    event.preventDefault();
+    setSaving(true);
+    setMessage("");
+    try {
+      const payload = {
+        name: form.name.trim(),
+        address: form.address.trim(),
+        phone: form.phone.trim(),
+        note: form.note.trim(),
+        active: form.active,
+        sortOrder: Number(form.sortOrder || 0),
+      };
+      if (form.id) await api.updateStore(form.id, payload);
+      else await api.createStore(payload);
+      setForm(emptyStoreForm);
+      setMessage("Đã lưu cấu hình chi nhánh.");
+      await refresh();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function archive(store) {
+    if (!window.confirm(`Ẩn ${store.name} khỏi danh sách khách hàng?`)) return;
+    setSaving(true);
+    setMessage("");
+    try {
+      await api.deleteStore(store.id);
+      if (form.id === store.id) setForm(emptyStoreForm);
+      setMessage("Đã ẩn chi nhánh. Các đơn cũ vẫn giữ nguyên địa chỉ đã chọn.");
+      await refresh();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(340px,.6fr)]">
+      <section className="min-w-0 rounded-lg border border-line bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line p-5">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted">Điểm nhận và trả máy</p>
+            <h2 className="mt-1 text-xl font-black">Danh sách chi nhánh</h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => setForm(emptyStoreForm)}
+            className="flex items-center gap-2 rounded-lg bg-ink px-4 py-3 text-xs font-black uppercase text-acid"
+          >
+            <Plus className="h-4 w-4" />
+            Thêm chi nhánh
+          </button>
+        </div>
+        <div className="divide-y divide-line">
+          {stores.map((store) => (
+            <article key={store.id} className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
+              <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-lg ${store.active ? "bg-ink text-acid" : "bg-paper text-muted"}`}>
+                <MapPin className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-black">{store.name}</h3>
+                  <span className={`rounded px-2 py-1 text-[9px] font-black uppercase ${store.active ? "bg-green-50 text-green-700" : "bg-paper text-muted"}`}>
+                    {store.active ? "Đang hiển thị" : "Đã ẩn"}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs font-bold text-muted">{store.code} · Thứ tự {store.sortOrder}</p>
+                <p className="mt-2 text-sm font-semibold">{store.address}</p>
+                {store.phone ? <p className="mt-1 text-xs font-semibold text-muted">{store.phone}</p> : null}
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <button type="button" onClick={() => edit(store)} className="grid h-10 w-10 place-items-center rounded-lg border border-line" title="Sửa chi nhánh">
+                  <Pencil className="h-4 w-4" />
+                </button>
+                {store.active ? (
+                  <button type="button" onClick={() => archive(store)} className="grid h-10 w-10 place-items-center rounded-lg border border-red-100 text-red-700" title="Ẩn chi nhánh">
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                ) : null}
+              </div>
+            </article>
+          ))}
+          {!stores.length ? (
+            <p className="p-8 text-center text-sm font-bold text-muted">Chưa có chi nhánh. Hãy tạo điểm nhận máy đầu tiên.</p>
+          ) : null}
+        </div>
+      </section>
+
+      <form onSubmit={save} className="h-fit rounded-lg border border-line bg-white p-5 xl:sticky xl:top-28">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted">Cấu hình</p>
+            <h2 className="mt-1 text-xl font-black">{form.id ? "Sửa chi nhánh" : "Thêm chi nhánh"}</h2>
+          </div>
+          {form.id ? (
+            <button type="button" onClick={() => setForm(emptyStoreForm)} className="grid h-9 w-9 place-items-center rounded-full bg-paper" title="Đóng">
+              <X className="h-4 w-4" />
+            </button>
+          ) : null}
+        </div>
+        <div className="mt-5 space-y-4">
+          <label className="block">
+            <span className="text-[10px] font-black uppercase text-muted">Mã hệ thống</span>
+            <input readOnly value={form.code || "Tự động tạo khi lưu"} className="mt-1 w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm font-bold text-muted" />
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-black uppercase text-muted">Tên chi nhánh</span>
+            <input required maxLength="180" value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Chi nhánh trung tâm" className="mt-1 w-full rounded-lg border border-line px-4 py-3 text-sm font-semibold outline-none focus:border-ink" />
+          </label>
+          <label className="block">
+            <span className="text-[10px] font-black uppercase text-muted">Địa chỉ</span>
+            <textarea required maxLength="500" value={form.address} onChange={(event) => setForm({ ...form, address: event.target.value })} placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành" className="mt-1 min-h-24 w-full rounded-lg border border-line px-4 py-3 text-sm font-semibold outline-none focus:border-ink" />
+          </label>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+            <label className="block">
+              <span className="text-[10px] font-black uppercase text-muted">Số điện thoại</span>
+              <input maxLength="30" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} placeholder="090..." className="mt-1 w-full rounded-lg border border-line px-4 py-3 text-sm font-semibold outline-none focus:border-ink" />
+            </label>
+            <label className="block">
+              <span className="text-[10px] font-black uppercase text-muted">Thứ tự hiển thị</span>
+              <input required min="0" max="9999" type="number" value={form.sortOrder} onChange={(event) => setForm({ ...form, sortOrder: event.target.value })} className="mt-1 w-full rounded-lg border border-line px-4 py-3 text-sm font-semibold outline-none focus:border-ink" />
+            </label>
+          </div>
+          <label className="block">
+            <span className="text-[10px] font-black uppercase text-muted">Ghi chú nội bộ</span>
+            <textarea maxLength="500" value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} placeholder="Giờ hoạt động hoặc lưu ý bàn giao" className="mt-1 min-h-20 w-full rounded-lg border border-line px-4 py-3 text-sm font-semibold outline-none focus:border-ink" />
+          </label>
+          <label className="flex items-center gap-3 rounded-lg bg-paper p-4 text-sm font-black">
+            <input type="checkbox" checked={form.active} onChange={(event) => setForm({ ...form, active: event.target.checked })} className="h-4 w-4 accent-black" />
+            Hiển thị cho khách chọn
+          </label>
+          {message ? <p className="text-xs font-bold text-muted">{message}</p> : null}
+          <button disabled={saving} className="w-full rounded-lg bg-ink px-4 py-4 text-xs font-black uppercase text-acid disabled:opacity-50">
+            {saving ? "Đang lưu..." : "Lưu chi nhánh"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -1013,6 +1197,12 @@ function Orders({
               <p className="mt-1 text-xs font-bold text-muted">
                 {selected.phone} · {selected.id}
               </p>
+              {selected.storeBranchName ? (
+                <p className="mt-2 flex items-start gap-2 text-xs font-bold">
+                  <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted" />
+                  <span>{selected.storeBranchName} · <span className="text-muted">{selected.storeBranchAddress}</span></span>
+                </p>
+              ) : null}
             </div>
             <StatusBadge state={selected.state} />
           </div>

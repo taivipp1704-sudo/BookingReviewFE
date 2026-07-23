@@ -4,6 +4,7 @@ import {
   LifeBuoy,
   Loader2,
   LogOut,
+  MapPin,
   ReceiptText,
   Smartphone,
   UserRound,
@@ -202,6 +203,15 @@ export default function CustomerAccountPage({
                 <StatusBadge state={item.state} />
               </div>
               <div className="mt-4 space-y-2 border-y border-line py-3">
+                {item.storeBranchName ? (
+                  <div className="mb-3 flex items-start gap-2 rounded-lg bg-paper p-3">
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div>
+                      <p className="text-xs font-black">{item.storeBranchName}</p>
+                      <p className="mt-1 text-xs font-semibold text-muted">{item.storeBranchAddress}</p>
+                    </div>
+                  </div>
+                ) : null}
                 {(item.items || []).map((line) => (
                   <div key={line.id || line.productId} className="flex items-center justify-between gap-3 text-sm">
                     <span className="font-bold">{products[line.productId]?.name || line.productId}</span>
