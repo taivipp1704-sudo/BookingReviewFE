@@ -21,7 +21,11 @@ import BookingJourney from "../components/BookingJourney.jsx";
 import { api } from "../lib/api.js";
 import { money, pricingModeLabel, rentalDurationLabel, rentalRates } from "../lib/format.js";
 import { holdSecondsUntil } from "../lib/holdTimer.js";
-import { localDateTime, returnTimeForRentalRate } from "../lib/rentalWindow.js";
+import {
+  earlyPickupTimeForPickup,
+  localDateTime,
+  returnTimeForRentalRate,
+} from "../lib/rentalWindow.js";
 
 const paymentAccount = {
   bank: import.meta.env.VITE_PAYMENT_BANK || "MB BANK",
@@ -1453,11 +1457,6 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                       <span>-{money(liveQuote.discountAmount)}</span>
                     </div>
                   ) : null}
-                  {liveQuoteError ? (
-                    <p className="mt-2 text-xs font-bold text-red-700">
-                      {liveQuoteError}
-                    </p>
-                  ) : null}
                 </div>
               </div>
               <section className="rounded-lg border border-line bg-white p-4">
@@ -1622,9 +1621,16 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                         required
                         type="datetime-local"
                         value={form.pickupTime}
-                        onChange={(event) =>
-                          setForm({ ...form, pickupTime: event.target.value })
-                        }
+                        onChange={(event) => {
+                          const pickupTime = event.target.value;
+                          setForm((current) => ({
+                            ...current,
+                            pickupTime,
+                            earlyPickupTime: current.earlyPickup
+                              ? earlyPickupTimeForPickup(pickupTime)
+                              : current.earlyPickupTime,
+                          }));
+                        }}
                         className="w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm font-semibold outline-none focus:border-ink"
                       />
                     </label>
@@ -1643,6 +1649,11 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                       />
                     </label>
                   </div>
+                  {liveQuoteError ? (
+                    <p className="rounded-lg border border-red-100 bg-red-50 p-3 text-xs font-bold leading-5 text-red-700">
+                      {liveQuoteError}
+                    </p>
+                  ) : null}
                   <div className="rounded-lg border border-orange-200 bg-orange-50 p-3 text-xs font-semibold leading-5 text-orange-900">
                     Hệ thống giữ thêm 30 phút sau mỗi đơn để kiểm tra, vệ sinh và đóng gói. Khung giờ đã có booking hoặc không đủ thời gian chuẩn bị sẽ không thể chọn.
                   </div>
@@ -1720,15 +1731,16 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                       <input
                         type="checkbox"
                         checked={form.earlyPickup}
-                        onChange={(event) =>
-                          setForm({
-                            ...form,
-                            earlyPickup: event.target.checked,
-                            earlyPickupTime: event.target.checked
-                              ? form.earlyPickupTime
+                        onChange={(event) => {
+                          const earlyPickup = event.target.checked;
+                          setForm((current) => ({
+                            ...current,
+                            earlyPickup,
+                            earlyPickupTime: earlyPickup
+                              ? earlyPickupTimeForPickup(current.pickupTime)
                               : "",
-                          })
-                        }
+                          }));
+                        }}
                         className="h-4 w-4 accent-black"
                       />
                       Yêu cầu nhận máy sớm
@@ -1741,6 +1753,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                         <input
                           required
                           type="datetime-local"
+                          min={earlyPickupTimeForPickup(form.pickupTime)}
                           max={form.pickupTime}
                           value={form.earlyPickupTime}
                           onChange={(event) =>

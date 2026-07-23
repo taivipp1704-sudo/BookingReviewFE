@@ -3,6 +3,16 @@ export function localDateTime(date) {
   return local.toISOString().slice(0, 16);
 }
 
+export function earlyPickupTimeForPickup(pickupTime) {
+  const pickup = new Date(pickupTime);
+  if (Number.isNaN(pickup.getTime())) return "";
+
+  const earlyPickup = new Date(pickup);
+  earlyPickup.setDate(earlyPickup.getDate() - 1);
+  earlyPickup.setHours(21, 0, 0, 0);
+  return localDateTime(earlyPickup);
+}
+
 export function returnTimeForRentalDays(pickupTime, currentReturnTime, rentalDays) {
   const pickup = new Date(pickupTime);
   const currentReturn = new Date(currentReturnTime);

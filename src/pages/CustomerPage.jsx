@@ -164,12 +164,11 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing" }) {
           </div>
           <div>
             <h1 className="max-w-3xl break-words text-4xl font-black leading-none sm:text-6xl lg:text-7xl">
-              Mỗi khung hình, đúng lúc.
+              Có đồ xịn, không lo thiếu hình đẹp!
             </h1>
             <p className="mt-6 max-w-xl text-sm font-semibold leading-6 text-white/70">
-              Chọn thiết bị, nhận báo giá theo thời gian thuê và gửi yêu cầu
-              trực tiếp. Mọi yêu cầu đều được đội ngũ kiểm tra
-              trước khi xác nhận.
+              Bạn chỉ cần chọn thiết bị và thời gian, AMY sẽ báo giá tự động.
+              AMY tụi mình sẽ check lại kỹ càng trước khi xác nhận lịch thuê nha.
             </p>
           </div>
           <div id="process" className="grid gap-3 sm:grid-cols-3">
