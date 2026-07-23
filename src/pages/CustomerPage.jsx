@@ -152,8 +152,8 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing" }) {
   return (
     <main className="pt-24">
       {mode === "landing" ? (
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-10 lg:grid-cols-[1.05fr_0.95fr] lg:items-stretch">
-        <div className="flex min-h-[440px] min-w-0 flex-col justify-between rounded-lg bg-ink p-7 text-white shadow-soft sm:min-h-[500px] sm:p-8">
+      <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-10 lg:grid-cols-2 lg:items-stretch">
+        <div className="grid min-h-[440px] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] rounded-lg bg-ink p-7 text-white shadow-soft sm:min-h-[500px] sm:p-8">
           <div className="flex items-center justify-between gap-4">
             <p className="text-[11px] font-black uppercase tracking-[0.35em] text-acid">
               AMY Digital
@@ -162,16 +162,16 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing" }) {
               Đặt thuê rõ ràng
             </span>
           </div>
-          <div>
-            <h1 className="max-w-3xl break-words text-4xl font-black leading-none sm:text-6xl lg:text-7xl">
+          <div className="flex min-w-0 flex-col justify-center py-7 sm:py-8 lg:py-6">
+            <h1 className="max-w-[16ch] break-words text-4xl font-black leading-[1.02] sm:text-5xl lg:text-6xl">
               Có đồ xịn, không lo thiếu hình đẹp!
             </h1>
-            <p className="mt-6 max-w-xl text-sm font-semibold leading-6 text-white/70">
+            <p className="mt-5 max-w-2xl text-sm font-semibold leading-6 text-white/70 lg:text-[15px]">
               Bạn chỉ cần chọn thiết bị và thời gian, AMY sẽ báo giá tự động.
               AMY tụi mình sẽ check lại kỹ càng trước khi xác nhận lịch thuê nha.
             </p>
           </div>
-          <div id="process" className="grid gap-3 sm:grid-cols-3">
+          <div id="process" className="grid gap-4 sm:grid-cols-3">
             {[
               ["01", "Chọn thiết bị"],
               ["02", "Gửi yêu cầu"],
