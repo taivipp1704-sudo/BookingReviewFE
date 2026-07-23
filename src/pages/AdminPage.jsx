@@ -82,7 +82,6 @@ export default function AdminPage({
   onNavigate,
   onLogout,
 }) {
-  const [headerVisible, setHeaderVisible] = useState(true);
   const visiblePages = pages.filter((item) => !item.roles || item.roles.includes(user.role));
   const canReadBookings = ["ADMIN", "MANAGER", "OPS", "SALES", "WAREHOUSE"].includes(user.role);
   const canReadFinance = ["ADMIN", "MANAGER"].includes(user.role);
@@ -93,36 +92,6 @@ export default function AdminPage({
     ? requestedPage
     : "dashboard";
 
-  useEffect(() => {
-    let lastScrollY = window.scrollY;
-    let frameRequested = false;
-
-    function updateHeader() {
-      const currentScrollY = window.scrollY;
-      const delta = currentScrollY - lastScrollY;
-
-      if (currentScrollY <= 24) {
-        setHeaderVisible(true);
-      } else if (currentScrollY > 80 && delta > 6) {
-        setHeaderVisible(false);
-      } else if (delta < -6) {
-        setHeaderVisible(true);
-      }
-
-      lastScrollY = currentScrollY;
-      frameRequested = false;
-    }
-
-    function handleScroll() {
-      if (!frameRequested) {
-        frameRequested = true;
-        window.requestAnimationFrame(updateHeader);
-      }
-    }
-
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
   const [bookings, setBookings] = useState([]);
   const [products, setProducts] = useState([]);
   const [assets, setAssets] = useState([]);
@@ -353,7 +322,7 @@ export default function AdminPage({
 
   return (
     <div className="min-h-screen bg-[#EBEBE9]">
-      <header className={`fixed left-4 right-4 top-4 z-40 mx-auto flex max-w-[1600px] items-center justify-between rounded-full border border-white/70 bg-white/90 px-4 py-3 shadow-soft backdrop-blur transition-[transform,opacity] duration-300 ease-out will-change-transform sm:px-5 ${headerVisible ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-[calc(100%+2rem)] opacity-0"}`}>
+      <header className="fixed left-0 right-0 top-0 z-40 flex h-20 items-center justify-between border-b border-line bg-white px-4 sm:px-6 lg:left-[88px] lg:px-8">
         <BrandMark compact />
         <div className="flex items-center gap-3">
           <div className="hidden text-right sm:block">
@@ -372,7 +341,7 @@ export default function AdminPage({
         </div>
       </header>
 
-      <div className={`fixed left-0 right-0 z-30 flex overflow-x-auto border-b border-line bg-ink px-3 text-white transition-[top] duration-300 ease-out lg:hidden ${headerVisible ? "top-[84px]" : "top-0"}`}>
+      <div className="fixed left-0 right-0 top-20 z-30 flex overflow-x-auto border-b border-line bg-ink px-3 text-white lg:hidden">
         {visiblePages.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
