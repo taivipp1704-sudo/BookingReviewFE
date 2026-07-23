@@ -31,6 +31,30 @@ textarea {
   scrollbar-width: none;
 }
 
+.finance-table-scroll {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-color: #121212 #d7d7d3;
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+}
+
+.finance-table-scroll::-webkit-scrollbar {
+  height: 12px;
+}
+
+.finance-table-scroll::-webkit-scrollbar-track {
+  background: #d7d7d3;
+}
+
+.finance-table-scroll::-webkit-scrollbar-thumb {
+  border: 3px solid #d7d7d3;
+  border-radius: 6px;
+  background: #121212;
+}
+
 @keyframes amy-brand-marquee-left-to-right {
   from {
     transform: translateX(-50%);

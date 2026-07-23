@@ -180,7 +180,7 @@ export default function AdminPage({
           ? api.inventoryLedger()
           : Promise.resolve([]),
         user.role === "ADMIN" ? api.adminUsers() : Promise.resolve([]),
-        ["ADMIN", "MANAGER"].includes(user.role) ? api.adminStores() : Promise.resolve([]),
+        ["ADMIN", "MANAGER"].includes(user.role) ? api.adminStores() : api.stores(),
       ]);
       setBookings(data[0]);
       setProducts(data[1]);
@@ -453,6 +453,7 @@ export default function AdminPage({
             assets={assets}
             stock={stock}
             bundles={bundles}
+            stores={stores}
             detailId={detailId}
             onNavigate={onNavigate}
             refresh={refresh}
@@ -1623,7 +1624,7 @@ function EarlyPickupPanel({ booking, busy, onReview }) {
   );
 }
 
-function Catalog({ products, assets, stock, bundles, detailId, onNavigate, refresh, canManage }) {
+function Catalog({ products, assets, stock, bundles, stores, detailId, onNavigate, refresh, canManage }) {
   const emptyForm = {
     productCode: "",
     levelCode: "L2",
@@ -1655,6 +1656,7 @@ function Catalog({ products, assets, stock, bundles, detailId, onNavigate, refre
     specs: "",
     trackingMode: "SERIALIZED",
     serialPrefix: "",
+    storeBranchId: "",
     initialStockQty: 0,
     serialNumbersText: "",
     description: "",
@@ -1668,7 +1670,9 @@ function Catalog({ products, assets, stock, bundles, detailId, onNavigate, refre
   const [catalogQuery, setCatalogQuery] = useState("");
   const [bundleFilter, setBundleFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [storeFilter, setStoreFilter] = useState("ALL");
   const selected = products.find((item) => item.id === detailId);
+  const storeById = Object.fromEntries(stores.map((store) => [store.id, store]));
   const inventoryByProduct = useMemo(() => {
     const summary = {};
     assets.forEach((asset) => {
@@ -1697,7 +1701,10 @@ function Catalog({ products, assets, stock, bundles, detailId, onNavigate, refre
       || (statusFilter === "ACTIVE" && item.active)
       || (statusFilter === "HIDDEN" && !item.active)
       || (statusFilter === "LOW" && inventory.availableQty <= 1);
-    return matchesQuery && matchesBundle && matchesStatus;
+    const matchesStore = storeFilter === "ALL"
+      || (storeFilter === "UNASSIGNED" && !item.storeBranchId)
+      || item.storeBranchId === storeFilter;
+    return matchesQuery && matchesBundle && matchesStatus && matchesStore;
   };
   const machines = products.filter((item) => item.levelCode === "L1");
   const accessories = products.filter((item) => item.levelCode !== "L1");
@@ -1773,6 +1780,7 @@ function Catalog({ products, assets, stock, bundles, detailId, onNavigate, refre
       specs: form.specs,
       trackingMode: form.trackingMode,
       serialPrefix: form.serialPrefix,
+      storeBranchId: form.storeBranchId || null,
       customAttributes: JSON.stringify({
         description: form.description,
         usageGuide: form.usageGuide,
@@ -1821,6 +1829,8 @@ function Catalog({ products, assets, stock, bundles, detailId, onNavigate, refre
         onClose={() => setForm(null)}
         saving={saving}
         error={formError}
+        stores={stores}
+        onManageStores={() => onNavigate("/admin/stores")}
       />
     );
   if (selected) {
@@ -1890,6 +1900,10 @@ function Catalog({ products, assets, stock, bundles, detailId, onNavigate, refre
               <Detail label="Thông số" value={selected.specs} />
               <Detail label="Quản lý kho" value={selected.trackingMode} />
               <Detail
+                label="Chi nhánh"
+                value={storeById[selected.storeBranchId]?.name || "Chưa phân chi nhánh"}
+              />
+              <Detail
                 label="Tổng lượt đặt"
                 value={Number(selected.bookingCount || 0).toLocaleString("vi-VN")}
               />
@@ -1931,7 +1945,7 @@ function Catalog({ products, assets, stock, bundles, detailId, onNavigate, refre
       </section>
 
       <section className="rounded-lg border border-line bg-white p-4">
-        <div className="grid gap-3 lg:grid-cols-[minmax(240px,1fr)_220px_180px_auto]">
+        <div className="grid gap-3 lg:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_200px_180px_190px_auto]">
           <label className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
             <input value={catalogQuery} onChange={(event) => setCatalogQuery(event.target.value)} placeholder="Tìm tên hoặc mã máy, phụ kiện..." className="h-11 w-full rounded-lg border border-line bg-paper pl-10 pr-3 text-sm font-semibold outline-none focus:border-ink" />
@@ -1946,8 +1960,18 @@ function Catalog({ products, assets, stock, bundles, detailId, onNavigate, refre
             <option value="LOW">Tồn thấp / hết</option>
             <option value="HIDDEN">Đã ẩn</option>
           </select>
+          <select value={storeFilter} onChange={(event) => setStoreFilter(event.target.value)} className="h-11 rounded-lg border border-line bg-paper px-3 text-xs font-black">
+            <option value="ALL">Tất cả chi nhánh</option>
+            <option value="UNASSIGNED">Chưa phân chi nhánh</option>
+            {stores.map((store) => (
+              <option key={store.id} value={store.id}>
+                {store.name}{store.active ? "" : " · Đã ẩn"}
+              </option>
+            ))}
+          </select>
           <div className="flex gap-2">
-            {(catalogQuery || bundleFilter !== "ALL" || statusFilter !== "ALL") ? <button type="button" onClick={() => { setCatalogQuery(""); setBundleFilter("ALL"); setStatusFilter("ALL"); }} className="flex h-11 w-11 items-center justify-center rounded-lg border border-line" title="Xóa bộ lọc"><X className="h-4 w-4" /></button> : null}
+            {(catalogQuery || bundleFilter !== "ALL" || statusFilter !== "ALL" || storeFilter !== "ALL") ? <button type="button" onClick={() => { setCatalogQuery(""); setBundleFilter("ALL"); setStatusFilter("ALL"); setStoreFilter("ALL"); }} className="flex h-11 w-11 items-center justify-center rounded-lg border border-line" title="Xóa bộ lọc"><X className="h-4 w-4" /></button> : null}
+            {canManage ? <button type="button" onClick={() => onNavigate("/admin/stores")} className="flex h-11 w-11 items-center justify-center rounded-lg border border-line" title="Quản lý chi nhánh"><MapPin className="h-4 w-4" /></button> : null}
             {canManage ? <>
               <button type="button" onClick={() => setForm({ ...emptyForm, levelCode: "L1", category: "Camera", trackingMode: "SERIALIZED" })} className="flex h-11 items-center gap-2 rounded-lg bg-ink px-3 text-[10px] font-black uppercase text-acid"><Camera className="h-4 w-4" /> Thêm máy</button>
               <button type="button" onClick={() => setForm({ ...emptyForm, levelCode: "L2", category: "Accessory", trackingMode: "QUANTITY" })} className="flex h-11 items-center gap-2 rounded-lg border border-ink px-3 text-[10px] font-black uppercase"><Plus className="h-4 w-4" /> Phụ kiện</button>
@@ -1958,14 +1982,14 @@ function Catalog({ products, assets, stock, bundles, detailId, onNavigate, refre
       </section>
 
       <div className="grid gap-5 xl:grid-cols-2">
-        <CatalogTable title="Danh sách máy ảnh" subtitle={`${filteredMachines.length}/${machines.length} máy`} items={filteredMachines} inventoryByProduct={inventoryByProduct} onOpen={(id) => onNavigate(`/admin/catalog/${encodeURIComponent(id)}`)} />
-        <CatalogTable title="Linh kiện và phụ kiện" subtitle={`${filteredAccessories.length}/${accessories.length} phụ kiện`} items={filteredAccessories} inventoryByProduct={inventoryByProduct} onOpen={(id) => onNavigate(`/admin/catalog/${encodeURIComponent(id)}`)} />
+        <CatalogTable title="Danh sách máy ảnh" subtitle={`${filteredMachines.length}/${machines.length} máy`} items={filteredMachines} inventoryByProduct={inventoryByProduct} storeById={storeById} onOpen={(id) => onNavigate(`/admin/catalog/${encodeURIComponent(id)}`)} />
+        <CatalogTable title="Linh kiện và phụ kiện" subtitle={`${filteredAccessories.length}/${accessories.length} phụ kiện`} items={filteredAccessories} inventoryByProduct={inventoryByProduct} storeById={storeById} onOpen={(id) => onNavigate(`/admin/catalog/${encodeURIComponent(id)}`)} />
       </div>
     </div>
   );
 }
 
-function CatalogTable({ title, subtitle, items, inventoryByProduct, onOpen }) {
+function CatalogTable({ title, subtitle, items, inventoryByProduct, storeById, onOpen }) {
   return (
     <section className="min-w-0 overflow-hidden rounded-lg border border-line bg-white">
       <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-4">
@@ -1973,14 +1997,19 @@ function CatalogTable({ title, subtitle, items, inventoryByProduct, onOpen }) {
         <Package className="h-5 w-5 text-muted" />
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[620px] text-left">
-          <thead className="bg-paper text-[9px] font-black uppercase text-muted"><tr><th className="px-4 py-3">Sản phẩm</th><th className="px-3 py-3">Khả dụng</th><th className="px-3 py-3">Giá/ngày</th><th className="px-3 py-3">Trạng thái</th><th className="w-12" /></tr></thead>
+        <table className="w-full min-w-[760px] text-left">
+          <thead className="bg-paper text-[9px] font-black uppercase text-muted"><tr><th className="px-4 py-3">Sản phẩm</th><th className="px-3 py-3">Chi nhánh</th><th className="px-3 py-3">Khả dụng</th><th className="px-3 py-3">Giá/ngày</th><th className="px-3 py-3">Trạng thái</th><th className="w-12" /></tr></thead>
           <tbody className="divide-y divide-line">
             {items.map((item) => {
               const inventory = inventoryByProduct[item.id] || { totalQty: 0, availableQty: 0 };
               return (
                 <tr key={item.id} onClick={() => onOpen(item.id)} className="cursor-pointer transition hover:bg-paper">
                   <td className="px-4 py-3"><div className="flex items-center gap-3"><img src={item.imageUrl} alt="" className="h-12 w-14 rounded object-cover grayscale" /><div className="min-w-0"><p className="text-[9px] font-black text-muted">{item.id} · {item.levelCode}</p><p className="mt-1 max-w-[220px] truncate text-sm font-black">{item.name}</p><p className="mt-1 text-[9px] font-bold text-muted">{item.brand} · {item.category}</p></div></div></td>
+                  <td className="max-w-[150px] px-3 py-3 text-xs font-bold">
+                    <span className={item.storeBranchId ? "text-ink" : "text-orange-700"}>
+                      {storeById[item.storeBranchId]?.name || "Chưa phân"}
+                    </span>
+                  </td>
                   <td className={`px-3 py-3 text-sm font-black ${inventory.availableQty <= 0 ? "text-red-700" : ""}`}>{inventory.availableQty}<span className="text-[9px] text-muted">/{inventory.totalQty}</span></td>
                   <td className="px-3 py-3 text-xs font-black">{money(item.dailyPrice)}</td>
                   <td className="px-3 py-3"><span className={`inline-flex rounded px-2 py-1 text-[9px] font-black uppercase ${item.active ? "bg-green-50 text-green-800" : "bg-red-50 text-red-700"}`}>{item.active ? "Đang bán" : "Đã ẩn"}</span></td>
@@ -1996,7 +2025,7 @@ function CatalogTable({ title, subtitle, items, inventoryByProduct, onOpen }) {
   );
 }
 
-function AccessoryForm({ form, setForm, onSubmit, onClose, saving, error }) {
+function AccessoryForm({ form, setForm, onSubmit, onClose, saving, error, stores, onManageStores }) {
   const field = (key, value) =>
     setForm((current) => ({ ...current, [key]: value }));
   const setBookingTotal = (value) =>
@@ -2107,6 +2136,25 @@ function AccessoryForm({ form, setForm, onSubmit, onClose, saving, error }) {
             <option value="Accessory" />
             <option value="Transport" />
           </datalist>
+        </label>
+        <label className="grid gap-1 text-xs font-black text-muted">
+          Chi nhánh quản lý
+          <select
+            value={form.storeBranchId || ""}
+            onChange={(event) => field("storeBranchId", event.target.value)}
+            className="rounded-lg border border-line bg-paper px-3 py-3 text-base font-bold text-ink"
+          >
+            <option value="">Chưa phân chi nhánh</option>
+            {stores.map((store) => (
+              <option key={store.id} value={store.id}>
+                {store.name}{store.active ? "" : " · Đã ẩn"}
+              </option>
+            ))}
+          </select>
+          <button type="button" onClick={onManageStores} className="mt-1 flex w-fit items-center gap-2 text-[10px] font-black uppercase text-ink">
+            <MapPin className="h-3.5 w-3.5" />
+            Thêm hoặc sửa chi nhánh
+          </button>
         </label>
         <section className="rounded-lg border border-line bg-paper p-4 md:col-span-2">
           <p className="text-[10px] font-black uppercase text-muted">Thiết lập bảng giá</p>
@@ -3313,7 +3361,7 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
   }
 
   return (
-    <>
+    <div className="min-w-0 max-w-full">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex overflow-x-auto rounded-lg border border-line bg-white p-1">
           {[["overview", "Tổng quan"], ["expenses", "Chi phí"], ["assets", "Hiệu quả máy"], ["control", "Kiểm soát"]].map(([id, label]) => (
@@ -3355,8 +3403,9 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
       </div>
       <section className="mt-6">
         <h2 className="mb-3 text-lg font-black">Financial ledger bất biến</h2>
-        <div className="overflow-x-auto rounded-lg border border-line bg-white">
-          <table className="w-full min-w-[820px] text-left text-sm">
+        <p className="mb-2 text-[10px] font-bold uppercase text-muted md:hidden">Kéo ngang để xem đầy đủ bảng</p>
+        <div className="finance-table-scroll rounded-lg border border-line bg-white">
+          <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="bg-paper text-[10px] font-black uppercase text-muted">
               <tr>
                 <th className="p-4">Mã</th>
@@ -3404,7 +3453,7 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
             <button disabled={working} className="rounded-lg bg-ink px-4 py-3 text-xs font-black uppercase text-acid disabled:opacity-50">Gửi duyệt chi phí</button>
           </div>
         </form>
-        <div className="overflow-x-auto rounded-lg border border-line bg-white">
+        <div className="finance-table-scroll min-w-0 rounded-lg border border-line bg-white">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-paper text-[10px] font-black uppercase text-muted"><tr><th className="p-4">Chứng từ</th><th>Máy / Booking</th><th>Trạng thái</th><th className="text-right">Giá trị</th><th className="px-4 text-right">Thao tác</th></tr></thead>
             <tbody>{expenses.map((item) => <tr key={item.id} className="border-t border-line"><td className="p-4"><p className="font-black">{item.invoiceReference}</p><p className="text-xs text-muted">{item.vendorName} · {item.category}</p></td><td>{item.assetId || item.bookingId || "Chi phí chung"}</td><td><StatusBadge state={item.state} /></td><td className="text-right font-black">{money(item.amount)}<p className="text-xs text-muted">Đã chi {money(item.paidAmount)}</p></td><td className="px-4 text-right">{item.state === "SUBMITTED" ? <button disabled={working} onClick={() => run(() => api.approveExpense(item.id), "Đã duyệt và post chi phí.")} className="rounded-md bg-ink px-3 py-2 text-[10px] font-black uppercase text-acid">Duyệt</button> : null}{["APPROVED", "PARTIALLY_PAID"].includes(item.state) ? <button disabled={working} onClick={() => payExpense(item)} className="ml-2 rounded-md border border-line px-3 py-2 text-[10px] font-black uppercase">Chi tiền</button> : null}</td></tr>)}{!expenses.length ? <tr><td colSpan="5" className="p-8 text-center font-bold text-muted">Chưa có chi phí.</td></tr> : null}</tbody>
@@ -3412,7 +3461,7 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
         </div>
       </div> : null}
 
-      {tab === "assets" ? <div className="overflow-x-auto rounded-lg border border-line bg-white">
+      {tab === "assets" ? <div className="finance-table-scroll min-w-0 rounded-lg border border-line bg-white">
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead className="bg-paper text-[10px] font-black uppercase text-muted"><tr><th className="p-4">Serial máy</th><th className="text-right">Doanh thu phân bổ</th><th className="text-right">Chi phí vòng đời</th><th className="text-right">Thu hồi đã nhận</th><th className="px-4 text-right">Biên đóng góp</th></tr></thead>
           <tbody>{profitability.map((item) => <tr key={item.assetId} className="border-t border-line"><td className="p-4 font-black">{item.assetId}</td><td className="text-right">{money(item.allocatedRevenue)}</td><td className="text-right">{money(item.grossLifecycleCost)}</td><td className="text-right">{money(item.recoveryReceived)}</td><td className="px-4 text-right font-black">{money(item.contributionMargin)}</td></tr>)}{!profitability.length ? <tr><td colSpan="5" className="p-8 text-center font-bold text-muted">Chưa có doanh thu hoặc chi phí được phân bổ theo máy.</td></tr> : null}</tbody>
@@ -3426,9 +3475,9 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
         </section>
         <section>
           <h2 className="mb-3 text-lg font-black">Chứng từ đã post</h2>
-          <div className="overflow-x-auto rounded-lg border border-line bg-white"><table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-paper text-[10px] font-black uppercase text-muted"><tr><th className="p-4">Mã</th><th>Loại</th><th>Trạng thái</th><th className="text-right">Tổng</th><th className="px-4 text-right">Điều chỉnh</th></tr></thead><tbody>{documents.map((item) => <tr key={item.id} className="border-t border-line"><td className="p-4 font-black">{item.id}</td><td>{item.type}</td><td><StatusBadge state={item.status} /></td><td className="text-right font-black">{money(item.totalDebit)}</td><td className="px-4 text-right">{item.status === "POSTED" && !item.type.startsWith("REVERSAL_") ? <button disabled={working} onClick={() => reverseDocument(item)} className="rounded-md border border-red-200 px-3 py-2 text-[10px] font-black uppercase text-red-700">Đảo chứng từ</button> : <span className="text-xs text-muted">{item.reversalOfDocumentId || "-"}</span>}</td></tr>)}{!documents.length ? <tr><td colSpan="5" className="p-8 text-center font-bold text-muted">Chưa có chứng từ tài chính.</td></tr> : null}</tbody></table></div>
+          <div className="finance-table-scroll min-w-0 rounded-lg border border-line bg-white"><table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-paper text-[10px] font-black uppercase text-muted"><tr><th className="p-4">Mã</th><th>Loại</th><th>Trạng thái</th><th className="text-right">Tổng</th><th className="px-4 text-right">Điều chỉnh</th></tr></thead><tbody>{documents.map((item) => <tr key={item.id} className="border-t border-line"><td className="p-4 font-black">{item.id}</td><td>{item.type}</td><td><StatusBadge state={item.status} /></td><td className="text-right font-black">{money(item.totalDebit)}</td><td className="px-4 text-right">{item.status === "POSTED" && !item.type.startsWith("REVERSAL_") ? <button disabled={working} onClick={() => reverseDocument(item)} className="rounded-md border border-red-200 px-3 py-2 text-[10px] font-black uppercase text-red-700">Đảo chứng từ</button> : <span className="text-xs text-muted">{item.reversalOfDocumentId || "-"}</span>}</td></tr>)}{!documents.length ? <tr><td colSpan="5" className="p-8 text-center font-bold text-muted">Chưa có chứng từ tài chính.</td></tr> : null}</tbody></table></div>
         </section>
       </div> : null}
-    </>
+    </div>
   );
 }
