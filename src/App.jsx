@@ -135,9 +135,9 @@ export default function App() {
     const destination = validCustomerReturn(requestedReturn) || readCustomerReturn();
     if (destination) rememberCustomerReturn(destination);
 
-    if (destination && Number(account.onboardingVersion || 0) >= 1) {
+    if (Number(account.onboardingVersion || 0) >= 1) {
       takeCustomerReturn();
-      navigate(destination);
+      navigate(destination || '/');
       return;
     }
     navigate('/onboarding');
@@ -219,7 +219,7 @@ export default function App() {
   if (isAccountRoute) {
     if (customerAccount === undefined) return <div className="grid min-h-screen place-items-center bg-[#EBEBE9] text-sm font-bold text-muted">Đang kiểm tra tài khoản khách hàng...</div>;
     if (!customerAccount) return <CustomerLoginPage onLogin={account => finishCustomerLogin(account, '/account')} onBack={cancelCustomerLogin} />;
-    return <div className="min-h-screen bg-[#EBEBE9]"><CustomerAccountPage account={customerAccount} onLogin={setCustomerAccount} onBack={() => navigate('/')} onLogout={logoutCustomer} /><PublicFooter onNavigate={navigate} /></div>;
+    return <div className="min-h-screen bg-[#EBEBE9]"><CustomerAccountPage account={customerAccount} onLogin={setCustomerAccount} onBack={() => navigate('/gear')} onLogout={logoutCustomer} /><PublicFooter onNavigate={navigate} /></div>;
   }
 
   if (isProductRoute) {

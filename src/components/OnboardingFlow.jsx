@@ -4,9 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const PAGE_COUNT = 8;
 
 function onboardingScales(page) {
-  if (page <= 3) return { base: 0.74, mobile: 0.64, large: 0.88 };
-  if (page <= 5) return { base: 0.62, mobile: 0.54, large: 0.74 };
-  return { base: 0.68, mobile: 0.58, large: 0.8 };
+  if (page <= 3) return { base: 0.82, mobile: 0.96, large: 0.88 };
+  if (page <= 5) return { base: 0.78, mobile: 0.94, large: 0.84 };
+  return { base: 0.8, mobile: 0.95, large: 0.86 };
 }
 
 export default function OnboardingFlow({ onComplete }) {

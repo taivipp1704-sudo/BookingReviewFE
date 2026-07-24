@@ -164,21 +164,32 @@ export default function CustomerAccountPage({
         onClose={() => setImagePreview(null)}
       />
       <main className="mx-auto min-h-screen max-w-5xl px-4 pb-12 pt-28">
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
+      <div className="mb-6">
+        <button
+          type="button"
+          onClick={onBack}
+          className="mb-5 inline-flex items-center gap-2 rounded-lg border border-line bg-white px-4 py-3 text-xs font-black uppercase transition hover:border-ink"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Quay lại sản phẩm
+        </button>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
           <p className="text-[10px] font-black uppercase text-muted">
             Tài khoản khách
           </p>
           <h1 className="mt-1 text-3xl font-black">{account.name}</h1>
           <p className="mt-1 text-sm font-bold text-muted">{account.phone}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onLogout}
+            className="inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-3 text-xs font-black uppercase text-acid"
+          >
+            <LogOut className="h-4 w-4" />
+            Đăng xuất
+          </button>
         </div>
-        <button
-          onClick={onLogout}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-ink text-acid"
-          title="Đăng xuất"
-        >
-          <LogOut className="h-4 w-4" />
-        </button>
       </div>
       <h2 className="mb-1 text-xl font-black">Lịch sử đơn hàng</h2>
       <p className="mb-4 text-sm font-semibold text-muted">Thiết bị đã đặt, thời gian thuê, chi phí và trạng thái xử lý.</p>

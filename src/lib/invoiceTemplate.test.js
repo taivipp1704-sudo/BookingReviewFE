@@ -13,7 +13,9 @@ test("invoice renders booking, customer and equipment without executable input",
   assert.match(html, /Máy ảnh Sony/);
   assert.match(html, /Thuế suất GTGT/);
   assert.match(html, /Không chịu thuế GTGT/);
-  assert.doesNotMatch(html, /Người mua hàng|Người bán hàng|Signature Valid|Ký bởi:/);
+  assert.match(html, /Người mua hàng/);
+  assert.match(html, /Người bán hàng/);
+  assert.doesNotMatch(html, /Signature Valid|Ký bởi:/);
   assert.doesNotMatch(html, /<script>alert\(1\)<\/script>/);
   assert.match(html, /&lt;script&gt;alert\(1\)&lt;\/script&gt;/);
 });
