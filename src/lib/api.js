@@ -1,4 +1,8 @@
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+// Production traffic stays same-origin so session and CSRF cookies survive the
+// Vercel/Caddy reverse proxy. A custom API base is only useful for local dev.
+const API_BASE = import.meta.env.DEV
+  ? (import.meta.env.VITE_API_BASE_URL || '')
+  : '';
 
 let csrf = null;
 
