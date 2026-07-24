@@ -3,6 +3,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const PAGE_COUNT = 8;
 
+function onboardingScales(page) {
+  if (page <= 3) return { base: 0.68, mobile: 0.58, large: 0.82 };
+  if (page <= 5) return { base: 0.56, mobile: 0.5, large: 0.66 };
+  return { base: 0.62, mobile: 0.54, large: 0.72 };
+}
+
 export default function OnboardingFlow({ onComplete }) {
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(false);
@@ -10,6 +16,7 @@ export default function OnboardingFlow({ onComplete }) {
   const iframeRef = useRef(null);
   const completionLock = useRef(false);
   const source = `/onboarding/AMY_Onboarding_Trang_${String(page).padStart(2, "0")}.html`;
+  const scales = onboardingScales(page);
 
   const complete = useCallback(async () => {
     if (completionLock.current) return;
@@ -51,17 +58,26 @@ export default function OnboardingFlow({ onComplete }) {
 
   return (
     <div className="fixed inset-0 z-[100] bg-[#ECEDEA]">
-      <header className="flex h-14 items-center justify-between border-b border-line bg-white px-4 sm:px-6">
+      <header className="flex h-12 items-center justify-between border-b border-line bg-white px-4 sm:px-6">
         <div className="min-w-0">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted">Hướng dẫn khách hàng</p>
-          <p className="mt-0.5 text-sm font-black">Bước {page} / {PAGE_COUNT}</p>
+          <p className="text-xs font-black">Bước {page} / {PAGE_COUNT}</p>
         </div>
         <div className="mx-4 hidden h-1.5 max-w-md flex-1 overflow-hidden rounded-full bg-line sm:block">
           <span className="block h-full bg-ink transition-[width]" style={{ width: `${page / PAGE_COUNT * 100}%` }} />
         </div>
-        <button type="button" disabled title="Hoàn tất hướng dẫn để đóng" className="grid h-9 w-9 place-items-center rounded-full border border-line text-muted opacity-40"><X className="h-4 w-4" /></button>
+        <button type="button" disabled title="Hoàn tất hướng dẫn để đóng" className="grid h-8 w-8 place-items-center rounded-full border border-line text-muted opacity-40"><X className="h-4 w-4" /></button>
       </header>
-      <iframe ref={iframeRef} key={source} src={source} onLoad={bindPageControls} title={`Onboarding bước ${page}`} className="h-[calc(100vh-56px)] w-full border-0 bg-white" />
+      <div
+        className="onboarding-viewport h-[calc(100vh-48px)] overflow-hidden"
+        style={{
+          "--onboarding-base-scale": scales.base,
+          "--onboarding-mobile-scale": scales.mobile,
+          "--onboarding-large-scale": scales.large,
+        }}
+      >
+        <iframe ref={iframeRef} key={source} src={source} onLoad={bindPageControls} title={`Onboarding bước ${page}`} className="onboarding-frame border-0 bg-white" />
+      </div>
       {error ? <div role="alert" className="absolute bottom-20 left-1/2 w-[min(92vw,560px)] -translate-x-1/2 rounded-lg border border-red-200 bg-white p-4 text-center text-sm font-bold text-red-700 shadow-2xl">{error}</div> : null}
       {busy ? <div className="absolute inset-0 grid place-items-center bg-white/80"><div className="flex items-center gap-3 rounded-lg bg-ink px-5 py-4 text-sm font-black text-acid"><Loader2 className="h-5 w-5 animate-spin" /> Đang hoàn tất hướng dẫn</div></div> : null}
     </div>

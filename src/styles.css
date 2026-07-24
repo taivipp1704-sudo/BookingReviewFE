@@ -74,3 +74,25 @@ textarea {
     animation: none;
   }
 }
+.onboarding-viewport {
+  --onboarding-scale: var(--onboarding-base-scale);
+}
+
+.onboarding-frame {
+  width: calc(100% / var(--onboarding-scale));
+  height: calc(100% / var(--onboarding-scale));
+  transform: scale(var(--onboarding-scale));
+  transform-origin: top left;
+}
+
+@media (max-width: 640px) {
+  .onboarding-viewport {
+    --onboarding-scale: var(--onboarding-mobile-scale);
+  }
+}
+
+@media (min-width: 1536px) and (min-height: 900px) {
+  .onboarding-viewport {
+    --onboarding-scale: var(--onboarding-large-scale);
+  }
+}
