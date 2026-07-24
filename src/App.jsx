@@ -1,4 +1,4 @@
-import { FileSearch, Handshake, ShieldCheck, ShoppingCart } from 'lucide-react';
+import { FileSearch, Handshake, LogIn, ShieldCheck, ShoppingCart, UserRound } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api } from './lib/api.js';
 import AdminLoginPage from './pages/AdminLoginPage.jsx';
@@ -58,6 +58,8 @@ export default function App() {
   }
 
   const isAdminRoute = path.startsWith('/admin');
+  const isCustomerLoginRoute = path === '/login';
+  const isOnboardingRoute = path === '/onboarding';
   const isBookingRoute = path.startsWith('/booking/');
   const isAccountRoute = path === '/account';
   const isProductRoute = path.startsWith('/products/');
@@ -78,6 +80,23 @@ export default function App() {
     setCart(current => current.map(item => item.id === id ? { ...item, quantity: Math.min(item.availableQty, 10, quantity) } : item));
   }
 
+  function startRental() {
+    if (!customerAccount) return navigate('/login');
+    if (Number(customerAccount.onboardingVersion || 0) < 1) return navigate('/onboarding');
+    navigate('/gear');
+  }
+
+  function startProductBooking(product) {
+    if (!customerAccount) return navigate('/login');
+    if (Number(customerAccount.onboardingVersion || 0) < 1) return navigate('/onboarding');
+    navigate(`/booking/${product.id}`);
+  }
+
+  function finishCustomerLogin(account) {
+    setCustomerAccount(account);
+    navigate('/');
+  }
+
   if (isAdminRoute) {
     if (session.loading) {
       return <div className="grid min-h-screen place-items-center bg-paper text-sm font-bold text-muted">Đang kiểm tra phiên làm việc...</div>;
@@ -90,7 +109,15 @@ export default function App() {
     return <AdminPage user={session.user} activePage={adminPage} detailId={adminDetailId} onNavigate={navigate} onLogout={logout} />;
   }
 
-  if (customerAccount && Number(customerAccount.onboardingVersion || 0) < 1) {
+  if (isCustomerLoginRoute) {
+    if (customerAccount === undefined) return <div className="grid min-h-screen place-items-center bg-[#EBEBE9] text-sm font-bold text-muted">Đang kiểm tra tài khoản khách hàng...</div>;
+    if (customerAccount) {
+      return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} customerAccount={customerAccount} onStartBooking={startRental} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} /><CustomerPage mode="landing" onBrowse={startRental} onSelect={product => navigate(`/products/${product.id}`)} /><PublicFooter onNavigate={navigate} /></div>;
+    }
+    return <CustomerLoginPage onLogin={finishCustomerLogin} onBack={() => navigate('/')} />;
+  }
+
+  if (isOnboardingRoute && customerAccount && Number(customerAccount.onboardingVersion || 0) < 1) {
     return <OnboardingFlow onComplete={async () => {
       const updatedAccount = await api.completeCustomerOnboarding();
       setCustomerAccount(updatedAccount);
@@ -98,13 +125,25 @@ export default function App() {
     }} />;
   }
 
+  if (isOnboardingRoute && !customerAccount) {
+    if (customerAccount === undefined) return <div className="grid min-h-screen place-items-center bg-[#EBEBE9] text-sm font-bold text-muted">Đang kiểm tra tài khoản khách hàng...</div>;
+    return <CustomerLoginPage onLogin={finishCustomerLogin} onBack={() => navigate('/')} loginMessage="Vui lòng đăng nhập hoặc đăng ký trước khi xem hướng dẫn đặt thuê." />;
+  }
+
   if (isBookingRoute) {
     const productId = path.replace('/booking/', '');
     if (customerAccount === undefined) return <div className="grid min-h-screen place-items-center bg-[#EBEBE9] text-sm font-bold text-muted">Đang kiểm tra tài khoản khách hàng...</div>;
-    if (!customerAccount) return <CustomerLoginPage onLogin={setCustomerAccount} onBack={() => navigate(`/products/${productId}`)} loginMessage="Vui lòng đăng nhập để tiếp tục đặt thuê thiết bị." />;
+    if (!customerAccount) return <CustomerLoginPage onLogin={finishCustomerLogin} onBack={() => navigate('/')} loginMessage="Vui lòng đăng nhập hoặc đăng ký trước khi đặt thuê. Sau khi hoàn tất, bạn sẽ quay về trang chủ." />;
+    if (Number(customerAccount.onboardingVersion || 0) < 1) {
+      return <OnboardingFlow onComplete={async () => {
+        const updatedAccount = await api.completeCustomerOnboarding();
+        setCustomerAccount(updatedAccount);
+        navigate('/');
+      }} />;
+    }
     return (
       <div className="min-h-screen bg-[#EBEBE9]">
-        <PublicHeader navigate={navigate} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} />
+        <PublicHeader navigate={navigate} customerAccount={customerAccount} onStartBooking={startRental} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} />
         <BookingPage productId={productId} customerAccount={customerAccount} onBack={() => navigate('/gear')} onViewOrders={() => navigate('/account')} />
         <PublicFooter onNavigate={navigate} />
       </div>
@@ -113,33 +152,33 @@ export default function App() {
 
   if (isAccountRoute) {
     if (customerAccount === undefined) return <div className="grid min-h-screen place-items-center bg-[#EBEBE9] text-sm font-bold text-muted">Đang kiểm tra tài khoản khách hàng...</div>;
-    if (!customerAccount) return <CustomerLoginPage onLogin={setCustomerAccount} onBack={() => navigate('/')} />;
+    if (!customerAccount) return <CustomerLoginPage onLogin={finishCustomerLogin} onBack={() => navigate('/')} />;
     return <div className="min-h-screen bg-[#EBEBE9]"><CustomerAccountPage account={customerAccount} onLogin={setCustomerAccount} onBack={() => navigate('/')} onLogout={async () => { await api.customerLogout(); setCustomerAccount(null); }} /><PublicFooter onNavigate={navigate} /></div>;
   }
 
   if (isProductRoute) {
     const productId = decodeURIComponent(path.replace('/products/', ''));
-    return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} /><ProductDetailsPage productId={productId} onBack={() => navigate('/gear')} onBook={product => navigate(`/booking/${product.id}`)} onAddToCart={addToCart} onViewProduct={product => navigate(`/products/${product.id}`)} /><PublicFooter onNavigate={navigate} /></div>;
+    return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} customerAccount={customerAccount} onStartBooking={startRental} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} /><ProductDetailsPage productId={productId} onBack={() => navigate('/gear')} onBook={startProductBooking} onAddToCart={addToCart} onViewProduct={product => navigate(`/products/${product.id}`)} /><PublicFooter onNavigate={navigate} /></div>;
   }
 
   if (isCartRoute) {
-    return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} /><CartPage cart={cart} onBack={() => navigate('/gear')} onUpdate={updateCart} onRemove={id => setCart(current => current.filter(item => item.id !== id))} onBook={product => navigate(`/booking/${product.id}`)} /><PublicFooter onNavigate={navigate} /></div>;
+    return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} customerAccount={customerAccount} onStartBooking={startRental} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} /><CartPage cart={cart} onBack={() => navigate('/gear')} onUpdate={updateCart} onRemove={id => setCart(current => current.filter(item => item.id !== id))} onBook={startProductBooking} /><PublicFooter onNavigate={navigate} /></div>;
   }
 
   if (isGearRoute) {
-    return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} /><CustomerPage mode="catalog" onSelect={product => navigate(`/products/${product.id}`)} /><PublicFooter onNavigate={navigate} /></div>;
+    return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} customerAccount={customerAccount} onStartBooking={startRental} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} /><CustomerPage mode="catalog" onSelect={product => navigate(`/products/${product.id}`)} /><PublicFooter onNavigate={navigate} /></div>;
   }
 
   return (
     <div className="min-h-screen bg-[#EBEBE9]">
-      <PublicHeader navigate={navigate} landing cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} />
-      <CustomerPage mode="landing" onBrowse={() => navigate('/gear')} onSelect={product => navigate(`/products/${product.id}`)} />
+      <PublicHeader navigate={navigate} customerAccount={customerAccount} onStartBooking={startRental} landing cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} />
+      <CustomerPage mode="landing" onBrowse={startRental} onSelect={product => navigate(`/products/${product.id}`)} />
       <PublicFooter onNavigate={navigate} />
     </div>
   );
 }
 
-function PublicHeader({ navigate, cartCount, landing = false }) {
+function PublicHeader({ navigate, customerAccount, onStartBooking, cartCount, landing = false }) {
   const [headerVisible, setHeaderVisible] = useState(true);
 
   useEffect(() => {
@@ -177,7 +216,12 @@ function PublicHeader({ navigate, cartCount, landing = false }) {
         <button onClick={() => openHomeSection('track')} className="flex h-11 items-center gap-2 rounded-lg border border-line px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:text-ink sm:px-4 sm:text-[11px]"><FileSearch className="h-4 w-4" />Tra cứu đơn</button>
       </nav>
       <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3 md:ml-0 md:justify-self-end">
-        <button onClick={() => navigate('/gear')} className="flex h-11 items-center gap-2 rounded-lg bg-ink px-4 text-[10px] font-black uppercase tracking-wider text-acid shadow-sm transition hover:bg-acid hover:text-ink sm:px-6 sm:text-[11px]"><ShieldCheck className="h-4 w-4" />Đặt thuê</button>
+        <button onClick={() => navigate(customerAccount ? '/account' : '/login')} className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-line bg-white px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:text-ink sm:px-4 sm:text-[11px]">
+          {customerAccount ? <UserRound className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
+          <span className="hidden lg:inline">{customerAccount ? "Tài khoản" : "Đăng nhập / Đăng ký"}</span>
+          <span className="lg:hidden">{customerAccount ? "Tài khoản" : "Login / Regis"}</span>
+        </button>
+        <button onClick={onStartBooking} className="flex h-11 items-center gap-2 rounded-lg bg-ink px-4 text-[10px] font-black uppercase tracking-wider text-acid shadow-sm transition hover:bg-acid hover:text-ink sm:px-6 sm:text-[11px]"><ShieldCheck className="h-4 w-4" />Đặt thuê</button>
         {!landing ? <button onClick={() => navigate('/cart')} className="relative hidden h-11 w-11 items-center justify-center rounded-lg border border-line bg-white text-ink sm:flex" aria-label="Mở giỏ hàng"><ShoppingCart className="h-4 w-4" />{cartCount > 0 ? <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-acid px-1 text-[10px] font-black text-ink">{cartCount}</span> : null}</button> : null}
       </div>
     </div>

@@ -193,6 +193,7 @@ export const api = {
   reconcileBookingFinance: id => request(`/api/admin/finance/bookings/${encodeURIComponent(id)}/reconcile`, { method: 'POST', body: {} }),
   customerMe: () => request('/api/customer/account/me'),
   customerLogin: payload => request('/api/customer/account/login', { method: 'POST', body: payload }),
+  customerRegister: payload => request('/api/customer/account/register', { method: 'POST', body: payload }),
   completeCustomerOnboarding: () => request('/api/customer/account/onboarding/complete', { method: 'POST', body: {} }),
   customerLogout: () => request('/api/customer/account/logout', { method: 'POST', body: {} }),
   customerBookings: () => request('/api/customer/account/bookings'),

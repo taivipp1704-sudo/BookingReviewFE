@@ -1,12 +1,12 @@
-import { Loader2, X } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const PAGE_COUNT = 8;
 
 function onboardingScales(page) {
-  if (page <= 3) return { base: 0.68, mobile: 0.58, large: 0.82 };
-  if (page <= 5) return { base: 0.56, mobile: 0.5, large: 0.66 };
-  return { base: 0.62, mobile: 0.54, large: 0.72 };
+  if (page <= 3) return { base: 0.74, mobile: 0.64, large: 0.88 };
+  if (page <= 5) return { base: 0.62, mobile: 0.54, large: 0.74 };
+  return { base: 0.68, mobile: 0.58, large: 0.8 };
 }
 
 export default function OnboardingFlow({ onComplete }) {
@@ -46,6 +46,7 @@ export default function OnboardingFlow({ onComplete }) {
   function bindPageControls() {
     const doc = iframeRef.current?.contentDocument;
     if (!doc) return;
+    doc.querySelector(".topbar")?.remove();
     const next = doc.getElementById(page === 1 || page === 8 ? "startBtn" : "nextBtn");
     const back = doc.getElementById("backBtn");
     const backLink = doc.querySelector("a.back");
@@ -58,18 +59,8 @@ export default function OnboardingFlow({ onComplete }) {
 
   return (
     <div className="fixed inset-0 z-[100] bg-[#ECEDEA]">
-      <header className="flex h-12 items-center justify-between border-b border-line bg-white px-4 sm:px-6">
-        <div className="min-w-0">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted">Hướng dẫn khách hàng</p>
-          <p className="text-xs font-black">Bước {page} / {PAGE_COUNT}</p>
-        </div>
-        <div className="mx-4 hidden h-1.5 max-w-md flex-1 overflow-hidden rounded-full bg-line sm:block">
-          <span className="block h-full bg-ink transition-[width]" style={{ width: `${page / PAGE_COUNT * 100}%` }} />
-        </div>
-        <button type="button" disabled title="Hoàn tất hướng dẫn để đóng" className="grid h-8 w-8 place-items-center rounded-full border border-line text-muted opacity-40"><X className="h-4 w-4" /></button>
-      </header>
       <div
-        className="onboarding-viewport h-[calc(100vh-48px)] overflow-hidden"
+        className="onboarding-viewport h-screen overflow-hidden"
         style={{
           "--onboarding-base-scale": scales.base,
           "--onboarding-mobile-scale": scales.mobile,
