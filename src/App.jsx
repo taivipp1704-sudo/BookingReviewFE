@@ -17,6 +17,31 @@ function currentPath() {
   return window.location.pathname.replace(/\/$/, '') || '/';
 }
 
+const CUSTOMER_RETURN_KEY = 'amy-customer-return-to';
+
+function validCustomerReturn(to) {
+  if (typeof to !== 'string' || !to.startsWith('/') || to.startsWith('//')) return null;
+  if (to === '/gear' || to === '/cart' || to === '/account') return to;
+  if (to.startsWith('/booking/') || to.startsWith('/products/')) return to;
+  return null;
+}
+
+function rememberCustomerReturn(to) {
+  const destination = validCustomerReturn(to);
+  if (!destination) return;
+  sessionStorage.setItem(CUSTOMER_RETURN_KEY, destination);
+}
+
+function readCustomerReturn() {
+  return validCustomerReturn(sessionStorage.getItem(CUSTOMER_RETURN_KEY));
+}
+
+function takeCustomerReturn() {
+  const destination = readCustomerReturn();
+  sessionStorage.removeItem(CUSTOMER_RETURN_KEY);
+  return destination;
+}
+
 export default function App() {
   const [path, setPath] = useState(currentPath);
   const [session, setSession] = useState({ loading: true, user: null });
@@ -81,19 +106,51 @@ export default function App() {
   }
 
   function startRental() {
-    if (!customerAccount) return navigate('/login');
-    if (Number(customerAccount.onboardingVersion || 0) < 1) return navigate('/onboarding');
+    if (!customerAccount) {
+      rememberCustomerReturn('/gear');
+      return navigate('/login');
+    }
+    if (Number(customerAccount.onboardingVersion || 0) < 1) {
+      rememberCustomerReturn('/gear');
+      return navigate('/onboarding');
+    }
     navigate('/gear');
   }
 
   function startProductBooking(product) {
-    if (!customerAccount) return navigate('/login');
-    if (Number(customerAccount.onboardingVersion || 0) < 1) return navigate('/onboarding');
-    navigate(`/booking/${product.id}`);
+    const destination = `/booking/${product.id}`;
+    if (!customerAccount) {
+      rememberCustomerReturn(destination);
+      return navigate('/login');
+    }
+    if (Number(customerAccount.onboardingVersion || 0) < 1) {
+      rememberCustomerReturn(destination);
+      return navigate('/onboarding');
+    }
+    navigate(destination);
   }
 
-  function finishCustomerLogin(account) {
+  function finishCustomerLogin(account, requestedReturn = null) {
     setCustomerAccount(account);
+    const destination = validCustomerReturn(requestedReturn) || readCustomerReturn();
+    if (destination) rememberCustomerReturn(destination);
+
+    if (destination && Number(account.onboardingVersion || 0) >= 1) {
+      takeCustomerReturn();
+      navigate(destination);
+      return;
+    }
+    navigate('/onboarding');
+  }
+
+  async function finishCustomerOnboarding(fallback = '/') {
+    const updatedAccount = await api.completeCustomerOnboarding();
+    setCustomerAccount(updatedAccount);
+    navigate(takeCustomerReturn() || validCustomerReturn(fallback) || '/');
+  }
+
+  function cancelCustomerLogin() {
+    takeCustomerReturn();
     navigate('/');
   }
 
@@ -103,6 +160,7 @@ export default function App() {
     } catch {
       // Clear the local view even when the server session already expired.
     }
+    takeCustomerReturn();
     setCustomerAccount(null);
     navigate('/');
   }
@@ -124,32 +182,30 @@ export default function App() {
     if (customerAccount) {
       return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} customerAccount={customerAccount} onStartBooking={startRental} onLogout={logoutCustomer} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} /><CustomerPage mode="landing" onBrowse={startRental} onSelect={product => navigate(`/products/${product.id}`)} /><PublicFooter onNavigate={navigate} /></div>;
     }
-    return <CustomerLoginPage onLogin={finishCustomerLogin} onBack={() => navigate('/')} />;
+    return <CustomerLoginPage
+      onLogin={finishCustomerLogin}
+      onBack={cancelCustomerLogin}
+      loginMessage={readCustomerReturn()
+        ? "Vui lòng đăng nhập hoặc đăng ký để tiếp tục đặt thuê. Sau khi xác thực, hệ thống sẽ đưa bạn quay lại đúng trang đang thực hiện."
+        : undefined}
+    />;
   }
 
-  if (isOnboardingRoute && customerAccount && Number(customerAccount.onboardingVersion || 0) < 1) {
-    return <OnboardingFlow onComplete={async () => {
-      const updatedAccount = await api.completeCustomerOnboarding();
-      setCustomerAccount(updatedAccount);
-      navigate('/');
-    }} />;
+  if (isOnboardingRoute && customerAccount) {
+    return <OnboardingFlow onComplete={() => finishCustomerOnboarding()} />;
   }
 
   if (isOnboardingRoute && !customerAccount) {
     if (customerAccount === undefined) return <div className="grid min-h-screen place-items-center bg-[#EBEBE9] text-sm font-bold text-muted">Đang kiểm tra tài khoản khách hàng...</div>;
-    return <CustomerLoginPage onLogin={finishCustomerLogin} onBack={() => navigate('/')} loginMessage="Vui lòng đăng nhập hoặc đăng ký trước khi xem hướng dẫn đặt thuê." />;
+    return <CustomerLoginPage onLogin={finishCustomerLogin} onBack={cancelCustomerLogin} loginMessage="Vui lòng đăng nhập hoặc đăng ký trước khi xem hướng dẫn đặt thuê." />;
   }
 
   if (isBookingRoute) {
     const productId = path.replace('/booking/', '');
     if (customerAccount === undefined) return <div className="grid min-h-screen place-items-center bg-[#EBEBE9] text-sm font-bold text-muted">Đang kiểm tra tài khoản khách hàng...</div>;
-    if (!customerAccount) return <CustomerLoginPage onLogin={finishCustomerLogin} onBack={() => navigate('/')} loginMessage="Vui lòng đăng nhập hoặc đăng ký trước khi đặt thuê. Sau khi hoàn tất, bạn sẽ quay về trang chủ." />;
+    if (!customerAccount) return <CustomerLoginPage onLogin={account => finishCustomerLogin(account, `/booking/${productId}`)} onBack={cancelCustomerLogin} loginMessage="Vui lòng đăng nhập hoặc đăng ký trước khi đặt thuê. Sau khi hoàn tất, bạn sẽ quay lại đơn đang thực hiện." />;
     if (Number(customerAccount.onboardingVersion || 0) < 1) {
-      return <OnboardingFlow onComplete={async () => {
-        const updatedAccount = await api.completeCustomerOnboarding();
-        setCustomerAccount(updatedAccount);
-        navigate('/');
-      }} />;
+      return <OnboardingFlow onComplete={() => finishCustomerOnboarding(`/booking/${productId}`)} />;
     }
     return (
       <div className="min-h-screen bg-[#EBEBE9]">
@@ -162,7 +218,7 @@ export default function App() {
 
   if (isAccountRoute) {
     if (customerAccount === undefined) return <div className="grid min-h-screen place-items-center bg-[#EBEBE9] text-sm font-bold text-muted">Đang kiểm tra tài khoản khách hàng...</div>;
-    if (!customerAccount) return <CustomerLoginPage onLogin={finishCustomerLogin} onBack={() => navigate('/')} />;
+    if (!customerAccount) return <CustomerLoginPage onLogin={account => finishCustomerLogin(account, '/account')} onBack={cancelCustomerLogin} />;
     return <div className="min-h-screen bg-[#EBEBE9]"><CustomerAccountPage account={customerAccount} onLogin={setCustomerAccount} onBack={() => navigate('/')} onLogout={logoutCustomer} /><PublicFooter onNavigate={navigate} /></div>;
   }
 
@@ -226,7 +282,13 @@ function PublicHeader({ navigate, customerAccount, onStartBooking, onLogout, car
         <button onClick={() => openHomeSection('track')} className="flex h-11 items-center gap-2 rounded-lg border border-line px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:text-ink sm:px-4 sm:text-[11px]"><FileSearch className="h-4 w-4" />Tra cứu đơn</button>
       </nav>
       <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3 md:ml-0 md:justify-self-end">
-        <button onClick={() => navigate(customerAccount ? '/account' : '/login')} className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-line bg-white px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:text-ink sm:px-4 sm:text-[11px]">
+        <button onClick={() => {
+          if (customerAccount) navigate('/account');
+          else {
+            takeCustomerReturn();
+            navigate('/login');
+          }
+        }} className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-line bg-white px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:text-ink sm:px-4 sm:text-[11px]">
           {customerAccount ? <UserRound className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
           <span className="hidden lg:inline">{customerAccount ? "Tài khoản" : "Đăng nhập / Đăng ký"}</span>
           <span className="lg:hidden">{customerAccount ? "Tài khoản" : "Login / Regis"}</span>

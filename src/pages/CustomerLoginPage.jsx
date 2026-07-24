@@ -44,8 +44,8 @@ export default function CustomerLoginPage({ onLogin, onBack, loginMessage, initi
         <h1 className="mt-2 text-3xl font-black sm:text-4xl">{mode === "register" ? "Tạo tài khoản mới" : "Đăng nhập để tiếp tục"}</h1>
         <p className="mt-2 text-sm font-semibold text-muted">
           {loginMessage || (mode === "register"
-            ? "Đăng ký bằng họ tên và số điện thoại. Hoàn tất xong bạn sẽ quay về trang chủ."
-            : "Đăng nhập bằng số điện thoại đã đăng ký. Hoàn tất xong bạn sẽ quay về trang chủ.")}
+            ? "Đăng ký bằng họ tên và số điện thoại. Tiếp theo bạn sẽ xem hướng dẫn trước khi vào trang chủ."
+            : "Đăng nhập bằng số điện thoại đã đăng ký. Tiếp theo bạn sẽ xem hướng dẫn trước khi vào trang chủ.")}
         </p>
         <div className="mt-6 grid grid-cols-2 rounded-lg border border-line bg-paper p-1">
           <button type="button" onClick={() => selectMode("login")} className={`rounded-md px-3 py-2.5 text-xs font-black uppercase transition ${mode === "login" ? "bg-ink text-acid shadow-sm" : "text-muted hover:text-ink"}`}>Đăng nhập</button>
