@@ -24,7 +24,7 @@ export default function AdminLoginPage({ onLogin, onBack }) {
 
   return (
     <AuthShell audience="admin">
-      <form onSubmit={submit} className="w-full rounded-lg border border-line bg-white p-6 shadow-[0_20px_60px_rgba(16,16,16,.09)] sm:p-8">
+      <form onSubmit={submit} className="admin-auth-card w-full rounded-lg border border-line bg-white p-6 shadow-[0_20px_60px_rgba(16,16,16,.09)] sm:p-8">
         <button type="button" onClick={onBack} className="flex items-center gap-2 text-xs font-bold text-muted hover:text-ink">
           <ArrowLeft className="h-4 w-4" /> Quay lại website AMY
         </button>

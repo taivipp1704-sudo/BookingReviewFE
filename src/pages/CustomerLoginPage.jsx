@@ -33,7 +33,7 @@ export default function CustomerLoginPage({ onLogin, onBack, loginMessage, initi
 
   return (
     <AuthShell audience="customer">
-      <section className="w-full rounded-lg border border-line bg-white p-6 shadow-[0_20px_60px_rgba(16,16,16,.09)] sm:p-9">
+      <section className="customer-auth-card flex w-full flex-col rounded-lg border border-line bg-white p-6 shadow-[0_20px_60px_rgba(16,16,16,.09)] sm:p-9">
         <button type="button" onClick={onBack} className="flex items-center gap-2 text-xs font-bold text-muted hover:text-ink">
           <ArrowLeft className="h-4 w-4" /> Quay lại website
         </button>
@@ -64,7 +64,7 @@ export default function CustomerLoginPage({ onLogin, onBack, loginMessage, initi
           </button>
         </form>
         {error ? <p className="mt-4 rounded-lg border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p> : null}
-        <a href="mailto:contact@amydigital.local" className="mt-6 flex items-center justify-center gap-2 text-[11px] font-semibold text-muted underline underline-offset-2 hover:text-ink"><CircleHelp className="h-4 w-4" />Cần hỗ trợ đăng nhập? Liên hệ AMY Digital.</a>
+        <a href="mailto:contact@amydigital.local" className="mt-auto flex items-center justify-center gap-2 pt-6 text-[11px] font-semibold text-muted underline underline-offset-2 hover:text-ink"><CircleHelp className="h-4 w-4" />Cần hỗ trợ đăng nhập? Liên hệ AMY Digital.</a>
       </section>
     </AuthShell>
   );

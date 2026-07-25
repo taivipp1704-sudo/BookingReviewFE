@@ -15,6 +15,42 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+.auth-shell {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100svh;
+}
+
+.auth-shell__layout {
+  min-height: inherit;
+}
+
+.auth-shell__artwork {
+  width: max(200%, 177.7778dvh);
+}
+
+.auth-shell__panel {
+  min-height: 0;
+  scrollbar-gutter: stable;
+}
+
+@media (min-width: 1024px) {
+  .customer-auth-card {
+    min-height: min(624px, calc(100dvh - 48px));
+  }
+}
+
+@media (min-width: 1024px) and (max-height: 720px) {
+  .auth-shell__panel {
+    align-items: flex-start;
+    padding-block: 18px;
+  }
+
+  .customer-auth-card {
+    min-height: 0;
+  }
+}
+
 button,
 input,
 select,

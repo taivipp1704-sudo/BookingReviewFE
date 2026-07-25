@@ -26,30 +26,52 @@ export default function OnboardingFlow({ onComplete }) {
     }
   }, [onComplete]);
 
+  const fitPageToViewport = useCallback(() => {
+    const frame = iframeRef.current;
+    const doc = frame?.contentDocument;
+    if (!doc) return;
+
+    const root = doc.documentElement;
+    const body = doc.body;
+    const desktop = frame.clientWidth > 640;
+    root.style.zoom = "";
+    root.style.width = "";
+    root.style.overflowX = "hidden";
+    body.style.overflowX = "hidden";
+    body.style.paddingBlock = desktop ? "18px" : "8px";
+
+    if (!desktop) return;
+
+    const naturalHeight = Math.max(root.scrollHeight, body.scrollHeight);
+    const availableHeight = Math.max(1, frame.clientHeight - 4);
+    const zoom = Math.max(0.68, Math.min(1, availableHeight / naturalHeight));
+    root.style.zoom = String(zoom);
+    root.style.width = `${100 / zoom}%`;
+  }, []);
+
   useEffect(() => {
     function receiveMessage(event) {
       if (event.origin !== window.location.origin) return;
       if (event.source !== iframeRef.current?.contentWindow) return;
       if (event.data?.type === "amy-onboarding-complete") complete();
     }
+    function handleResize() {
+      window.requestAnimationFrame(fitPageToViewport);
+    }
     window.addEventListener("message", receiveMessage);
-    return () => window.removeEventListener("message", receiveMessage);
-  }, [complete]);
+    window.addEventListener("resize", handleResize);
+    return () => {
+      window.removeEventListener("message", receiveMessage);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, [complete, fitPageToViewport]);
 
   function bindPageControls() {
     const frame = iframeRef.current;
     const doc = frame?.contentDocument;
     if (!doc) return;
     doc.querySelector(".topbar")?.remove();
-    const root = doc.documentElement;
-    root.style.zoom = "";
-    root.style.width = "";
-    doc.body.style.paddingBlock = frame.clientWidth > 640 ? "18px" : "8px";
-    if (frame.clientWidth > 640) {
-      const naturalHeight = Math.max(root.scrollHeight, doc.body?.scrollHeight || 0);
-      const zoom = Math.max(0.68, Math.min(1, (frame.clientHeight - 4) / naturalHeight));
-      root.style.zoom = String(zoom);
-    }
+    window.requestAnimationFrame(fitPageToViewport);
     const next = doc.getElementById(page === 1 || page === 8 ? "startBtn" : "nextBtn");
     const back = doc.getElementById("backBtn");
     const backLink = doc.querySelector("a.back");
