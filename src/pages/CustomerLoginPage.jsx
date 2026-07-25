@@ -33,7 +33,7 @@ export default function CustomerLoginPage({ onLogin, onBack, loginMessage, initi
 
   return (
     <AuthShell audience="customer">
-      <section className="flex min-h-[650px] w-full flex-col rounded-lg border border-line bg-white p-6 shadow-[0_20px_60px_rgba(16,16,16,.09)] sm:p-9">
+      <section className="flex min-h-[590px] w-full flex-col rounded-lg border border-line bg-white p-6 shadow-[0_20px_60px_rgba(16,16,16,.09)] sm:p-9">
         <button type="button" onClick={onBack} className="flex items-center gap-2 text-xs font-bold text-muted hover:text-ink">
           <ArrowLeft className="h-4 w-4" /> Quay lại website
         </button>
@@ -51,20 +51,20 @@ export default function CustomerLoginPage({ onLogin, onBack, loginMessage, initi
           <button type="button" onClick={() => selectMode("login")} className={`rounded-md px-3 py-2.5 text-xs font-black uppercase transition ${mode === "login" ? "bg-ink text-acid shadow-sm" : "text-muted hover:text-ink"}`}>Đăng nhập</button>
           <button type="button" onClick={() => selectMode("register")} className={`rounded-md px-3 py-2.5 text-xs font-black uppercase transition ${mode === "register" ? "bg-ink text-acid shadow-sm" : "text-muted hover:text-ink"}`}>Đăng ký</button>
         </div>
-        <form onSubmit={submit} className="mt-5 space-y-4">
-          <label className={`block text-xs font-black text-muted ${mode === "register" ? "" : "invisible pointer-events-none select-none"}`}>Họ và tên
+        <form onSubmit={submit} className="mt-5 grid gap-4 sm:grid-cols-2">
+          {mode === "register" ? <label className="block min-w-0 text-xs font-black text-muted">Họ và tên
             <span className="mt-2 flex items-center gap-3 rounded-lg border border-line bg-paper px-4 focus-within:border-ink"><UserRound className="h-4 w-4" /><input disabled={mode !== "register"} required={mode === "register"} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Nguyễn Văn A" className="min-w-0 flex-1 bg-transparent py-3.5 font-semibold outline-none" /></span>
-          </label>
-          <label className="block text-xs font-black text-muted">Số điện thoại
+          </label> : null}
+          <label className={`block min-w-0 text-xs font-black text-muted ${mode === "login" ? "sm:col-span-2" : ""}`}>Số điện thoại
             <span className="mt-2 flex items-center gap-3 rounded-lg border border-line bg-paper px-4 focus-within:border-ink"><Smartphone className="h-4 w-4" /><input required inputMode="tel" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} placeholder="09xx xxx xxx" className="min-w-0 flex-1 bg-transparent py-3.5 font-semibold outline-none" /></span>
           </label>
-          <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-4 py-4 text-xs font-black uppercase tracking-wider text-acid disabled:opacity-50">
+          <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-4 py-4 text-xs font-black uppercase tracking-wider text-acid disabled:opacity-50 sm:col-span-2">
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : mode === "register" ? <UserPlus className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
             {mode === "register" ? "Đăng ký" : "Đăng nhập"} <ArrowRight className="h-4 w-4" />
           </button>
         </form>
         {error ? <p className="mt-4 rounded-lg border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p> : null}
-        <a href="mailto:contact@amydigital.local" className="mt-6 flex items-center justify-center gap-2 text-[11px] font-semibold text-muted underline underline-offset-2 hover:text-ink"><CircleHelp className="h-4 w-4" />Cần hỗ trợ đăng nhập? Liên hệ AMY Digital.</a>
+        <a href="mailto:contact@amydigital.local" className="mt-auto flex items-center justify-center gap-2 pt-6 text-[11px] font-semibold text-muted underline underline-offset-2 hover:text-ink"><CircleHelp className="h-4 w-4" />Cần hỗ trợ đăng nhập? Liên hệ AMY Digital.</a>
       </section>
     </AuthShell>
   );
