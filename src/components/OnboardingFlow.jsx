@@ -44,6 +44,7 @@ export default function OnboardingFlow({ onComplete }) {
     const root = doc.documentElement;
     root.style.zoom = "";
     root.style.width = "";
+    doc.body.style.paddingBlock = frame.clientWidth > 640 ? "18px" : "8px";
     if (frame.clientWidth > 640) {
       const naturalHeight = Math.max(root.scrollHeight, doc.body?.scrollHeight || 0);
       const zoom = Math.max(0.68, Math.min(1, (frame.clientHeight - 4) / naturalHeight));
@@ -61,7 +62,7 @@ export default function OnboardingFlow({ onComplete }) {
 
   return (
     <div className="fixed inset-0 z-[100] bg-[#ECEDEA]">
-      <div className="onboarding-viewport h-screen overflow-hidden">
+      <div className="onboarding-viewport h-[100dvh] overflow-hidden">
         <iframe ref={iframeRef} key={source} src={source} onLoad={bindPageControls} title={`Onboarding bước ${page}`} className="onboarding-frame border-0 bg-white" />
       </div>
       {error ? <div role="alert" className="absolute bottom-20 left-1/2 w-[min(92vw,560px)] -translate-x-1/2 rounded-lg border border-red-200 bg-white p-4 text-center text-sm font-bold text-red-700 shadow-2xl">{error}</div> : null}

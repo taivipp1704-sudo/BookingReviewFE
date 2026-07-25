@@ -1108,6 +1108,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
           bundleId: selectedBundleId || null,
           holdToken: holdTokenRef.current || null,
           promotionCode: form.promotionCode.trim() || null,
+          rentalRate: selectedRentalRate,
         });
         if (version !== holdRequestVersion.current) return;
         setLiveQuote(nextQuote);
@@ -1143,6 +1144,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
     form.returnTime,
     product,
     selectedBundleId,
+    selectedRentalRate,
   ]);
 
   useEffect(() => {
@@ -1173,6 +1175,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
         bundleId: selectedBundleId || null,
         holdToken: holdSeconds > 0 ? holdTokenRef.current || null : null,
         promotionCode: form.promotionCode.trim() || null,
+        rentalRate: selectedRentalRate,
       });
       const nextQuote = hold.quote;
       if (!nextQuote.available) {
@@ -1221,6 +1224,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
         holdToken,
         promotionCode: form.promotionCode.trim() || null,
         storeBranchId: form.storeBranchId,
+        rentalRate: selectedRentalRate,
       });
       if (commitmentFingerprint(refreshedQuote) !== commitmentFingerprint(quote)) {
         setQuote(refreshedQuote);
@@ -1241,6 +1245,8 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
         paymentProofUploadToken: paymentProofUpload.uploadToken,
         holdToken,
         promotionCode: form.promotionCode.trim() || null,
+        storeBranchId: form.storeBranchId,
+        rentalRate: selectedRentalRate,
       });
       holdTokenRef.current = "";
       setHoldToken("");
@@ -1302,6 +1308,11 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
     }
     const bundle = bundles.find((item) => item.id === bundleId);
     if (!bundle) return;
+    const bundleRateKeys = rentalRates(bundle).map((rate) => rate.key);
+    const nextRentalRate = bundleRateKeys.includes(selectedRentalRate)
+      ? selectedRentalRate
+      : "DAILY";
+    if (nextRentalRate !== selectedRentalRate) setSelectedRentalRate(nextRentalRate);
     const quantities = Object.fromEntries(
       bundle.items
         .filter((line) => line.productId !== product.id)
@@ -1310,13 +1321,13 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
     setAccessoryQuantities((current) => ({ ...current, ...quantities }));
     const mainLine = bundle.items.find((line) => line.productId === product.id);
     if (mainLine) setMainQuantity(mainLine.quantity);
-    if (selectedRentalRate === "MULTI_DAY") {
+    if (nextRentalRate === "MULTI_DAY") {
       setForm((current) => ({
         ...current,
         returnTime: returnTimeForRentalRate(
           current.pickupTime,
           current.returnTime,
-          selectedRentalRate,
+          nextRentalRate,
           bundle.multiDayDays,
         ),
       }));
@@ -1375,6 +1386,9 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
 
   const pricingSource =
     bundles.find((bundle) => bundle.id === selectedBundleId) || product;
+  const selectedRate =
+    rentalRates(pricingSource).find((rate) => rate.key === selectedRentalRate) ||
+    rentalRates(pricingSource).find((rate) => rate.key === "DAILY");
 
   return (
     <>
@@ -1401,12 +1415,16 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                     <button
                       type="button"
                       key={rate.key}
-                      onClick={() => chooseRentalRate(rate.key)}
+                      onClick={() => rate.key !== "EXTRA_DAY" && chooseRentalRate(rate.key)}
+                      disabled={rate.key === "EXTRA_DAY"}
                       aria-pressed={selectedRentalRate === rate.key}
+                      title={rate.key === "EXTRA_DAY" ? "Đơn giá áp dụng tự động khi vượt số ngày của gói" : undefined}
                       className={`relative rounded border p-2 text-left transition ${
                         selectedRentalRate === rate.key
                           ? "border-ink bg-ink text-white"
-                          : "border-line bg-white hover:border-ink"
+                          : rate.key === "EXTRA_DAY"
+                            ? "cursor-default border-line bg-paper"
+                            : "border-line bg-white hover:border-ink"
                       }`}
                     >
                       {selectedRentalRate === rate.key ? (
@@ -1465,9 +1483,9 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                 </div>
                 <div className="mt-4 border-t border-line pt-4">
                   <div className="flex items-center justify-between gap-3 text-xs font-bold text-muted">
-                    <span>Giá bộ thiết bị theo ngày</span>
+                    <span>Giá {selectedRate?.label?.toLowerCase() || "gói đang chọn"}</span>
                     <span className="text-base font-black text-ink">
-                      {money(dailyEquipmentTotal)}
+                      {money(selectedRate?.value || dailyEquipmentTotal)}
                     </span>
                   </div>
                   <div className="mt-2 flex items-center justify-between gap-3 text-xs font-bold text-muted">
