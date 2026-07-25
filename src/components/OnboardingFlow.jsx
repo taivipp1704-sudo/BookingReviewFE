@@ -3,12 +3,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 const PAGE_COUNT = 8;
 
-function onboardingScales(page) {
-  if (page <= 3) return { base: 0.82, mobile: 0.96, large: 0.88 };
-  if (page <= 5) return { base: 0.78, mobile: 0.94, large: 0.84 };
-  return { base: 0.8, mobile: 0.95, large: 0.86 };
-}
-
 export default function OnboardingFlow({ onComplete }) {
   const [page, setPage] = useState(1);
   const [busy, setBusy] = useState(false);
@@ -16,7 +10,6 @@ export default function OnboardingFlow({ onComplete }) {
   const iframeRef = useRef(null);
   const completionLock = useRef(false);
   const source = `/onboarding/AMY_Onboarding_Trang_${String(page).padStart(2, "0")}.html`;
-  const scales = onboardingScales(page);
 
   const complete = useCallback(async () => {
     if (completionLock.current) return;
@@ -44,9 +37,19 @@ export default function OnboardingFlow({ onComplete }) {
   }, [complete]);
 
   function bindPageControls() {
-    const doc = iframeRef.current?.contentDocument;
+    const frame = iframeRef.current;
+    const doc = frame?.contentDocument;
     if (!doc) return;
     doc.querySelector(".topbar")?.remove();
+    const root = doc.documentElement;
+    root.style.zoom = "";
+    root.style.width = "";
+    if (frame.clientWidth > 640) {
+      const naturalHeight = Math.max(root.scrollHeight, doc.body?.scrollHeight || 0);
+      const zoom = Math.max(0.68, Math.min(1, (frame.clientHeight - 4) / naturalHeight));
+      root.style.zoom = String(zoom);
+      root.style.width = `${100 / zoom}%`;
+    }
     const next = doc.getElementById(page === 1 || page === 8 ? "startBtn" : "nextBtn");
     const back = doc.getElementById("backBtn");
     const backLink = doc.querySelector("a.back");
@@ -59,14 +62,7 @@ export default function OnboardingFlow({ onComplete }) {
 
   return (
     <div className="fixed inset-0 z-[100] bg-[#ECEDEA]">
-      <div
-        className="onboarding-viewport h-screen overflow-hidden"
-        style={{
-          "--onboarding-base-scale": scales.base,
-          "--onboarding-mobile-scale": scales.mobile,
-          "--onboarding-large-scale": scales.large,
-        }}
-      >
+      <div className="onboarding-viewport h-screen overflow-hidden">
         <iframe ref={iframeRef} key={source} src={source} onLoad={bindPageControls} title={`Onboarding bước ${page}`} className="onboarding-frame border-0 bg-white" />
       </div>
       {error ? <div role="alert" className="absolute bottom-20 left-1/2 w-[min(92vw,560px)] -translate-x-1/2 rounded-lg border border-red-200 bg-white p-4 text-center text-sm font-bold text-red-700 shadow-2xl">{error}</div> : null}

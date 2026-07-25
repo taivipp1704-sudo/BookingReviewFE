@@ -24,6 +24,13 @@ test("changing to a two-day package keeps the selected return clock time", () =>
   );
 });
 
+test("two-day rate updates the return date by exactly two days", () => {
+  assert.equal(
+    returnTimeForRentalRate("2026-07-26T10:00", "2026-07-27T10:00", "TWO_DAY", 3),
+    "2026-07-28T10:00",
+  );
+});
+
 test("invalid or zero package duration falls back to one day", () => {
   assert.equal(
     returnTimeForRentalDays("2026-08-05T08:00", "2026-08-06T18:30", 0),

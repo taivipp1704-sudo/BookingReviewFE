@@ -1,17 +1,18 @@
 import { FileSearch, Handshake, LogIn, LogOut, ShieldCheck, ShoppingCart, UserRound } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { api } from './lib/api.js';
-import AdminLoginPage from './pages/AdminLoginPage.jsx';
-import AdminPage from './pages/AdminPage.jsx';
-import BookingPage from './pages/BookingPage.jsx';
-import CustomerPage from './pages/CustomerPage.jsx';
-import CustomerAccountPage from './pages/CustomerAccountPage.jsx';
-import CustomerLoginPage from './pages/CustomerLoginPage.jsx';
-import OnboardingFlow from './components/OnboardingFlow.jsx';
-import CartPage from './pages/CartPage.jsx';
-import ProductDetailsPage from './pages/ProductDetailsPage.jsx';
 import PublicFooter from './components/PublicFooter.jsx';
 import BrandMark from './components/BrandMark.jsx';
+
+const AdminLoginPage = lazy(() => import('./pages/AdminLoginPage.jsx'));
+const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
+const BookingPage = lazy(() => import('./pages/BookingPage.jsx'));
+const CustomerPage = lazy(() => import('./pages/CustomerPage.jsx'));
+const CustomerAccountPage = lazy(() => import('./pages/CustomerAccountPage.jsx'));
+const CustomerLoginPage = lazy(() => import('./pages/CustomerLoginPage.jsx'));
+const OnboardingFlow = lazy(() => import('./components/OnboardingFlow.jsx'));
+const CartPage = lazy(() => import('./pages/CartPage.jsx'));
+const ProductDetailsPage = lazy(() => import('./pages/ProductDetailsPage.jsx'));
 
 function currentPath() {
   return window.location.pathname.replace(/\/$/, '') || '/';
@@ -42,7 +43,7 @@ function takeCustomerReturn() {
   return destination;
 }
 
-export default function App() {
+function AppContent() {
   const [path, setPath] = useState(currentPath);
   const [session, setSession] = useState({ loading: true, user: null });
   const [customerAccount, setCustomerAccount] = useState(undefined);
@@ -241,6 +242,14 @@ export default function App() {
       <CustomerPage mode="landing" onBrowse={startRental} onSelect={product => navigate(`/products/${product.id}`)} />
       <PublicFooter onNavigate={navigate} />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Suspense fallback={<div className="grid min-h-screen place-items-center bg-[#EBEBE9] text-sm font-bold text-muted">Đang tải giao diện...</div>}>
+      <AppContent />
+    </Suspense>
   );
 }
 

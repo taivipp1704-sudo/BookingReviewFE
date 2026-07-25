@@ -38,10 +38,15 @@ export function returnTimeForRentalRate(
   multiDayDays,
 ) {
   if (pricingMode !== "HOURLY") {
+    const rentalDays = pricingMode === "TWO_DAY"
+      ? 2
+      : pricingMode === "MULTI_DAY"
+        ? multiDayDays
+        : 1;
     return returnTimeForRentalDays(
       pickupTime,
       currentReturnTime,
-      pricingMode === "MULTI_DAY" ? multiDayDays : 1,
+      rentalDays,
     );
   }
 

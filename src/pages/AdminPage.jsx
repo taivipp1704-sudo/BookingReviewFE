@@ -31,11 +31,11 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import writeXlsxFile from "write-excel-file";
 import Metric from "../components/Metric.jsx";
 import BrandMark from "../components/BrandMark.jsx";
 import SecureImagePreview from "../components/SecureImagePreview.jsx";
-import StatusBadge, { bookingStateLabels } from "../components/StatusBadge.jsx";
+import StatusBadge, { bookingStateLabels, bookingStateTone } from "../components/StatusBadge.jsx";
+import { bookingStateDotTone, mergeBookingSnapshot } from "../lib/bookingState.js";
 import { api } from "../lib/api.js";
 import { money, shortDate } from "../lib/format.js";
 import { invoiceHtml } from "../lib/invoiceTemplate.js";
@@ -98,6 +98,7 @@ export default function AdminPage({
     : "dashboard";
 
   const [bookings, setBookings] = useState([]);
+  const [calendarBookings, setCalendarBookings] = useState([]);
   const [products, setProducts] = useState([]);
   const [assets, setAssets] = useState([]);
   const [stock, setStock] = useState([]);
@@ -161,28 +162,35 @@ export default function AdminPage({
     setBusy(true);
     setError("");
     try {
-      const data = await Promise.all([
-        canReadBookings
-          ? api.adminBookings({
-              query: page === "orders" ? query : "",
-              state: page === "orders" ? filter : "ALL",
-            })
-          : Promise.resolve([]),
-        api.adminProducts(),
-        api.assets(),
-        api.stock(),
-        canReadFinance ? api.financeSummary() : Promise.resolve({ revenue: 0, expense: 0, cashOnHand: 0 }),
-        canReadFinance ? api.financeEntries() : Promise.resolve([]),
-        canReadSupport ? api.adminSupport() : Promise.resolve([]),
-        api.adminBundles(),
-        canReadPromotions ? api.adminPromotions() : Promise.resolve([]),
-        ["ADMIN", "MANAGER", "WAREHOUSE", "TECH"].includes(user.role)
-          ? api.inventoryLedger()
-          : Promise.resolve([]),
-        user.role === "ADMIN" ? api.adminUsers() : Promise.resolve([]),
-        ["ADMIN", "MANAGER"].includes(user.role) ? api.adminStores() : api.stores(),
+      const bookingRequest = canReadBookings
+        ? api.adminBookings({
+            query: page === "orders" ? query : "",
+            state: page === "orders" ? filter : "ALL",
+          })
+        : Promise.resolve([]);
+      const [data, nextCalendarBookings] = await Promise.all([
+        Promise.all([
+          bookingRequest,
+          api.adminProducts(),
+          api.assets(),
+          api.stock(),
+          canReadFinance ? api.financeSummary() : Promise.resolve({ revenue: 0, expense: 0, cashOnHand: 0 }),
+          canReadFinance ? api.financeEntries() : Promise.resolve([]),
+          canReadSupport ? api.adminSupport() : Promise.resolve([]),
+          api.adminBundles(),
+          canReadPromotions ? api.adminPromotions() : Promise.resolve([]),
+          ["ADMIN", "MANAGER", "WAREHOUSE", "TECH"].includes(user.role)
+            ? api.inventoryLedger()
+            : Promise.resolve([]),
+          user.role === "ADMIN" ? api.adminUsers() : Promise.resolve([]),
+          ["ADMIN", "MANAGER"].includes(user.role) ? api.adminStores() : api.stores(),
+        ]),
+        page === "orders" && canReadBookings
+          ? api.adminBookings({ query: "", state: "ALL" })
+          : bookingRequest,
       ]);
       setBookings(data[0]);
+      setCalendarBookings(nextCalendarBookings);
       setProducts(data[1]);
       setAssets(data[2]);
       setStock(data[3]);
@@ -216,6 +224,11 @@ export default function AdminPage({
     }
   }
 
+  function updateBookingSnapshots(updated) {
+    setBookings((current) => mergeBookingSnapshot(current, updated));
+    setCalendarBookings((current) => mergeBookingSnapshot(current, updated));
+  }
+
   async function changeState(event) {
     event.preventDefault();
     if (!selected || !nextState) return;
@@ -227,11 +240,7 @@ export default function AdminPage({
         nextState,
         reason,
       );
-      setBookings((current) =>
-        current.map((item) =>
-          item.id === updated.id ? { ...item, ...updated } : item,
-        ),
-      );
+      updateBookingSnapshots(updated);
       setAudit(await api.bookingAudit(selected.id));
       setBookingOperations(await api.bookingOperations(selected.id));
     } catch (nextError) {
@@ -251,11 +260,7 @@ export default function AdminPage({
         "IN_USE",
         "Đã duyệt và bàn giao thiết bị cho khách.",
       );
-      setBookings((current) =>
-        current.map((item) =>
-          item.id === updated.id ? { ...item, ...updated } : item,
-        ),
-      );
+      updateBookingSnapshots(updated);
       setAudit(await api.bookingAudit(selected.id));
       setBookingOperations(await api.bookingOperations(selected.id));
     } catch (nextError) {
@@ -275,11 +280,7 @@ export default function AdminPage({
         fee: Number(fee || 0),
         reason: reviewReason,
       });
-      setBookings((current) =>
-        current.map((item) =>
-          item.id === updated.id ? { ...item, ...updated } : item,
-        ),
-      );
+      updateBookingSnapshots(updated);
       setAudit(await api.bookingAudit(selected.id));
     } catch (nextError) {
       setError(nextError.message);
@@ -403,7 +404,7 @@ export default function AdminPage({
         ) : null}
         {page === "dashboard" ? (
           <Dashboard
-            bookings={bookings}
+            bookings={calendarBookings}
             products={products}
             assets={assets}
             stock={stock}
@@ -732,15 +733,7 @@ function sameCalendarDay(left, right) {
 }
 
 function calendarEventTone(state) {
-  if (["PENDING_REVIEW", "NEGOTIATION", "CONDITIONAL", "TEMP_HOLD"].includes(state)) {
-    return "border-amber-500 bg-amber-50 text-amber-950";
-  }
-  if (["CONFIRMED", "READY_FOR_PICKUP"].includes(state)) {
-    return "border-green-600 bg-green-50 text-green-950";
-  }
-  if (state === "IN_USE") return "border-sky-600 bg-sky-50 text-sky-950";
-  if (state === "INCIDENT") return "border-red-600 bg-red-50 text-red-950";
-  return "border-zinc-400 bg-zinc-50 text-zinc-800";
+  return bookingStateTone(state);
 }
 
 export function BookingCalendar({ bookings, productById, onOpenBooking }) {
@@ -908,7 +901,7 @@ export function BookingCalendar({ bookings, productById, onOpenBooking }) {
             {monthDays.map((day) => {
               const inWeek = day >= weekStart && day < weekEnd;
               const active = sameCalendarDay(day, anchorDate);
-              const hasBooking = scopedBookings.some(
+              const dayBookings = scopedBookings.filter(
                 (booking) =>
                   new Date(booking.pickupTime) < new Date(day.getFullYear(), day.getMonth(), day.getDate() + 1) &&
                   new Date(booking.returnTime) > new Date(day.getFullYear(), day.getMonth(), day.getDate()),
@@ -923,7 +916,16 @@ export function BookingCalendar({ bookings, productById, onOpenBooking }) {
                   } ${inWeek ? "bg-paper" : ""} ${active ? "bg-ink text-acid" : ""}`}
                 >
                   {day.getDate()}
-                  {hasBooking ? <span className={`absolute bottom-0.5 h-1 w-1 rounded-full ${active ? "bg-acid" : "bg-orange-500"}`} /> : null}
+                  {dayBookings.length ? (
+                    <span className="absolute bottom-0.5 flex gap-0.5">
+                      {dayBookings.slice(0, 3).map((booking) => (
+                        <span
+                          key={booking.id}
+                          className={`h-1 w-1 rounded-full ${active ? "bg-acid" : bookingStateDotTone(booking.state)}`}
+                        />
+                      ))}
+                    </span>
+                  ) : null}
                 </button>
               );
             })}
@@ -3339,6 +3341,7 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
         { value: item.note || "" },
       ]),
     ];
+    const { default: writeXlsxFile } = await import("write-excel-file");
     await writeXlsxFile([summary, transactions], {
       sheets: ["Tổng quan", "Giao dịch"],
       fileName: `AMY-DIGITAL-So-Quy-${new Date().toISOString().slice(0, 10)}.xlsx`,

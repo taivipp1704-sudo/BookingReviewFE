@@ -33,7 +33,7 @@ export default function CustomerLoginPage({ onLogin, onBack, loginMessage, initi
 
   return (
     <AuthShell audience="customer">
-      <section className="w-full rounded-lg border border-line bg-white p-6 shadow-[0_20px_60px_rgba(16,16,16,.09)] sm:p-9">
+      <section className="flex min-h-[650px] w-full flex-col rounded-lg border border-line bg-white p-6 shadow-[0_20px_60px_rgba(16,16,16,.09)] sm:p-9">
         <button type="button" onClick={onBack} className="flex items-center gap-2 text-xs font-bold text-muted hover:text-ink">
           <ArrowLeft className="h-4 w-4" /> Quay lại website
         </button>
@@ -41,8 +41,8 @@ export default function CustomerLoginPage({ onLogin, onBack, loginMessage, initi
           {mode === "register" ? <UserPlus className="h-5 w-5" /> : <LogIn className="h-5 w-5" />}
         </div>
         <p className="mt-6 text-[11px] font-black uppercase tracking-[0.2em] text-muted">Tài khoản khách hàng</p>
-        <h1 className="mt-2 text-3xl font-black sm:text-4xl">{mode === "register" ? "Tạo tài khoản mới" : "Đăng nhập để tiếp tục"}</h1>
-        <p className="mt-2 text-sm font-semibold text-muted">
+        <h1 className="mt-2 min-h-[44px] text-3xl font-black sm:text-4xl">{mode === "register" ? "Tạo tài khoản mới" : "Đăng nhập để tiếp tục"}</h1>
+        <p className="mt-2 min-h-[60px] text-sm font-semibold text-muted">
           {loginMessage || (mode === "register"
             ? "Đăng ký bằng họ tên và số điện thoại. Tiếp theo bạn sẽ xem hướng dẫn trước khi vào trang chủ."
             : "Đăng nhập bằng số điện thoại đã đăng ký. Tiếp theo bạn sẽ xem hướng dẫn trước khi vào trang chủ.")}
@@ -52,9 +52,9 @@ export default function CustomerLoginPage({ onLogin, onBack, loginMessage, initi
           <button type="button" onClick={() => selectMode("register")} className={`rounded-md px-3 py-2.5 text-xs font-black uppercase transition ${mode === "register" ? "bg-ink text-acid shadow-sm" : "text-muted hover:text-ink"}`}>Đăng ký</button>
         </div>
         <form onSubmit={submit} className="mt-5 space-y-4">
-          {mode === "register" ? <label className="block text-xs font-black text-muted">Họ và tên
-            <span className="mt-2 flex items-center gap-3 rounded-lg border border-line bg-paper px-4 focus-within:border-ink"><UserRound className="h-4 w-4" /><input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Nguyễn Văn A" className="min-w-0 flex-1 bg-transparent py-3.5 font-semibold outline-none" /></span>
-          </label> : null}
+          <label className={`block text-xs font-black text-muted ${mode === "register" ? "" : "invisible pointer-events-none select-none"}`}>Họ và tên
+            <span className="mt-2 flex items-center gap-3 rounded-lg border border-line bg-paper px-4 focus-within:border-ink"><UserRound className="h-4 w-4" /><input disabled={mode !== "register"} required={mode === "register"} value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Nguyễn Văn A" className="min-w-0 flex-1 bg-transparent py-3.5 font-semibold outline-none" /></span>
+          </label>
           <label className="block text-xs font-black text-muted">Số điện thoại
             <span className="mt-2 flex items-center gap-3 rounded-lg border border-line bg-paper px-4 focus-within:border-ink"><Smartphone className="h-4 w-4" /><input required inputMode="tel" value={form.phone} onChange={(event) => setForm({ ...form, phone: event.target.value })} placeholder="09xx xxx xxx" className="min-w-0 flex-1 bg-transparent py-3.5 font-semibold outline-none" /></span>
           </label>
