@@ -1,4 +1,14 @@
 /* Shared layout guardrails for the eight customer onboarding pages. */
+html,
+body {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.app {
+  width: 100%;
+}
+
 .hero,
 .content,
 .intro,

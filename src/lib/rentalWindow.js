@@ -37,6 +37,13 @@ export function returnTimeForRentalRate(
   pricingMode,
   multiDayDays,
 ) {
+  if (pricingMode === "HALF_DAY") {
+    const pickup = new Date(pickupTime);
+    if (Number.isNaN(pickup.getTime())) return currentReturnTime;
+    pickup.setTime(pickup.getTime() + 12 * 60 * 60 * 1000);
+    return localDateTime(pickup);
+  }
+
   if (pricingMode !== "HOURLY") {
     const rentalDays = pricingMode === "TWO_DAY"
       ? 2

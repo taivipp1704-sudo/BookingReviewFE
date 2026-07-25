@@ -48,7 +48,6 @@ export default function OnboardingFlow({ onComplete }) {
       const naturalHeight = Math.max(root.scrollHeight, doc.body?.scrollHeight || 0);
       const zoom = Math.max(0.68, Math.min(1, (frame.clientHeight - 4) / naturalHeight));
       root.style.zoom = String(zoom);
-      root.style.width = `${100 / zoom}%`;
     }
     const next = doc.getElementById(page === 1 || page === 8 ? "startBtn" : "nextBtn");
     const back = doc.getElementById("backBtn");
