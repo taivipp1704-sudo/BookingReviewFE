@@ -9,6 +9,7 @@ export default function OnboardingFlow({ onComplete }) {
   const [error, setError] = useState("");
   const iframeRef = useRef(null);
   const completionLock = useRef(false);
+  const fitCleanupRef = useRef(() => {});
   const source = `/onboarding/AMY_Onboarding_Trang_${String(page).padStart(2, "0")}.html`;
 
   const complete = useCallback(async () => {
@@ -38,13 +39,15 @@ export default function OnboardingFlow({ onComplete }) {
     root.style.width = "";
     root.style.overflowX = "hidden";
     body.style.overflowX = "hidden";
-    body.style.paddingBlock = desktop ? "18px" : "8px";
+    body.style.paddingBlock = desktop ? "12px" : "8px";
 
     if (!desktop) return;
 
+    const naturalWidth = Math.max(root.scrollWidth, body.scrollWidth);
     const naturalHeight = Math.max(root.scrollHeight, body.scrollHeight);
+    const availableWidth = Math.max(1, frame.clientWidth - 4);
     const availableHeight = Math.max(1, frame.clientHeight - 4);
-    const zoom = Math.max(0.68, Math.min(1, availableHeight / naturalHeight));
+    const zoom = Math.max(0.56, Math.min(1, availableWidth / naturalWidth, availableHeight / naturalHeight));
     root.style.zoom = String(zoom);
     root.style.width = `${100 / zoom}%`;
   }, []);
@@ -63,6 +66,7 @@ export default function OnboardingFlow({ onComplete }) {
     return () => {
       window.removeEventListener("message", receiveMessage);
       window.removeEventListener("resize", handleResize);
+      fitCleanupRef.current();
     };
   }, [complete, fitPageToViewport]);
 
@@ -70,8 +74,22 @@ export default function OnboardingFlow({ onComplete }) {
     const frame = iframeRef.current;
     const doc = frame?.contentDocument;
     if (!doc) return;
+    fitCleanupRef.current();
     doc.querySelector(".topbar")?.remove();
-    window.requestAnimationFrame(fitPageToViewport);
+    const scheduleFit = () => window.requestAnimationFrame(() => {
+      fitPageToViewport();
+      window.requestAnimationFrame(fitPageToViewport);
+    });
+    scheduleFit();
+
+    let cancelled = false;
+    doc.fonts?.ready.then(() => { if (!cancelled) scheduleFit(); });
+    const pendingImages = [...doc.images].filter((image) => !image.complete);
+    pendingImages.forEach((image) => image.addEventListener("load", scheduleFit, { once: true }));
+    fitCleanupRef.current = () => {
+      cancelled = true;
+      pendingImages.forEach((image) => image.removeEventListener("load", scheduleFit));
+    };
     const next = doc.getElementById(page === 1 || page === 8 ? "startBtn" : "nextBtn");
     const back = doc.getElementById("backBtn");
     const backLink = doc.querySelector("a.back");
