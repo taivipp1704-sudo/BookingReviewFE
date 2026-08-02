@@ -40,7 +40,12 @@ body {
   }
 
   .auth-shell__art {
-    overflow: hidden;
+    z-index: 1;
+    overflow: visible;
+  }
+
+  .auth-shell__artwork {
+    clip-path: inset(0 44% 0 0);
   }
 }
 
