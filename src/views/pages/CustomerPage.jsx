@@ -2,8 +2,8 @@ import { ArrowRight, ChevronDown, Handshake, Search, SlidersHorizontal, X } from
 import { useEffect, useMemo, useState } from "react";
 import ProductCard from "../components/ProductCard.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
-import { api } from "../lib/api.js";
-import { money, rentalRates, shortDate } from "../lib/format.js";
+import { api } from "../../services/api.js";
+import { money, rentalRates, shortDate } from "../../utils/format.js";
 
 const brands = [
   "SONY",
@@ -16,7 +16,7 @@ const brands = [
   "BLACKMAGIC",
 ];
 
-export default function CustomerPage({ onSelect, onBrowse, mode = "landing" }) {
+export default function CustomerPage({ onSelect, onBrowse, mode = "landing", bookingEnabled = false }) {
   const [products, setProducts] = useState([]);
   const [bundles, setBundles] = useState([]);
   const [catalogError, setCatalogError] = useState("");
@@ -32,12 +32,16 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing" }) {
   const [tracking, setTracking] = useState({
     bookingId: "",
     phone: "",
+    challengeId: "",
+    otpCode: "",
+    demoCode: "",
     result: null,
     error: "",
   });
   const [selectedBundle, setSelectedBundle] = useState(null);
 
   useEffect(() => {
+    if (mode !== "catalog") return undefined;
     let active = true;
     const loadCatalog = () =>
       Promise.all([api.products(), api.bundles(), api.availability()])
@@ -67,7 +71,7 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing" }) {
       window.clearInterval(timer);
       window.removeEventListener("focus", onFocus);
     };
-  }, []);
+  }, [mode]);
 
   const mainProducts = useMemo(
     () => products.filter((product) => product.levelCode === "L1"),
@@ -139,11 +143,28 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing" }) {
     event.preventDefault();
     setTracking((current) => ({ ...current, error: "" }));
     try {
+      if (!tracking.challengeId) {
+        const requested = await api.requestOtp({ phone: tracking.phone, purpose: "TRACK" });
+        setTracking(current => ({
+          ...current,
+          challengeId: requested.challengeId,
+          otpCode: requested.demoCode || "",
+          demoCode: requested.demoCode || "",
+        }));
+        return;
+      }
+      const verified = await api.verifyOtp({
+        challengeId: tracking.challengeId,
+        phone: tracking.phone,
+        code: tracking.otpCode,
+        purpose: "TRACK",
+      });
       const result = await api.trackBooking({
         bookingId: tracking.bookingId.trim(),
         phone: tracking.phone,
+        verificationToken: verified.verificationToken,
       });
-      setTracking((current) => ({ ...current, result }));
+      setTracking((current) => ({ ...current, result, challengeId: "", otpCode: "", demoCode: "" }));
     } catch (error) {
       setTracking((current) => ({ ...current, error: error.message }));
     }
@@ -197,8 +218,8 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing" }) {
           </div>
           <button type="button" onClick={onBrowse} className="group m-4 flex min-w-0 items-center justify-between gap-4 rounded-lg border border-line bg-white p-4 text-left shadow-soft transition hover:-translate-y-0.5 hover:bg-acid sm:m-6">
             <span>
-              <span className="block text-[10px] font-black uppercase tracking-widest text-muted">Bắt đầu đặt thuê</span>
-              <span className="mt-2 block text-base font-black">Chọn thiết bị phù hợp với lịch của bạn</span>
+              <span className="block text-[10px] font-black uppercase tracking-widest text-muted">Danh mục thiết bị</span>
+              <span className="mt-2 block text-base font-black">Xem thiết bị và lịch đang được giữ</span>
             </span>
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-ink text-acid transition group-hover:translate-x-1"><ArrowRight className="h-5 w-5" /></span>
           </button>
@@ -300,6 +321,7 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing" }) {
                 key={product.id}
                 product={product}
                 onSelect={onSelect}
+                bookingEnabled={bookingEnabled}
               />
             ))}
           </div>
@@ -372,7 +394,7 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing" }) {
           <div className="border border-line bg-paper p-5 sm:p-6">
               <form
                 onSubmit={trackBooking}
-                className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]"
+                className={`grid gap-3 ${tracking.challengeId ? "sm:grid-cols-[1fr_1fr_0.7fr_auto]" : "sm:grid-cols-[1fr_1fr_auto]"}`}
               >
                 <input
                   required
@@ -398,10 +420,22 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing" }) {
                   placeholder="Số điện thoại"
                   className="rounded-lg border border-line bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-ink"
                 />
+                {tracking.challengeId ? <input
+                  required
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="[0-9]{6}"
+                  maxLength={6}
+                  value={tracking.otpCode}
+                  onChange={(event) => setTracking((current) => ({ ...current, otpCode: event.target.value.replace(/\D/g, "") }))}
+                  placeholder="Mã OTP"
+                  className="rounded-lg border border-line bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-ink"
+                /> : null}
                 <button className="rounded-lg bg-ink px-4 py-3 text-xs font-black uppercase tracking-wider text-acid">
-                  Tra cứu
+                  {tracking.challengeId ? "Xác thực" : "Nhận OTP"}
                 </button>
               </form>
+            {tracking.demoCode ? <p className="mt-3 text-xs font-bold text-amber-700">Local dev OTP: {tracking.demoCode}</p> : null}
             {tracking.error ? (
               <p className="mt-3 text-sm font-semibold text-red-700">
                 {tracking.error}

@@ -1,7 +1,7 @@
 import { Clock3, Mail, MapPin, Phone } from 'lucide-react';
 import BrandMark from './BrandMark.jsx';
 
-export default function PublicFooter({ onNavigate }) {
+export default function PublicFooter({ onNavigate, bookingEnabled = false }) {
   return (
     <footer className="border-t border-white/10 bg-ink text-white">
       <div className="mx-auto grid max-w-7xl gap-10 px-5 py-12 sm:px-6 md:grid-cols-2 lg:grid-cols-[1.25fr_0.75fr_1fr_1fr]">
@@ -13,7 +13,7 @@ export default function PublicFooter({ onNavigate }) {
         </div>
         <div>
           <h2 className="text-xs font-black uppercase tracking-widest text-acid">Liên kết</h2>
-          <div className="mt-5 flex flex-col items-start gap-3 text-sm font-bold text-white/70"><button onClick={() => onNavigate('/gear')} className="hover:text-white">Đặt thuê thiết bị</button><button onClick={() => onNavigate('/cart')} className="hover:text-white">Giỏ hàng</button><button onClick={() => onNavigate('/account')} className="hover:text-white">Tra cứu đơn thuê</button><a href="/#cooperate" className="hover:text-white">Hợp tác</a></div>
+          <div className="mt-5 flex flex-col items-start gap-3 text-sm font-bold text-white/70"><button onClick={() => onNavigate('/gear')} className="hover:text-white">Xem thiết bị</button><button onClick={() => onNavigate('/calendar')} className="hover:text-white">Lịch thiết bị</button>{bookingEnabled ? <><button onClick={() => onNavigate('/cart')} className="hover:text-white">Giỏ hàng</button><button onClick={() => onNavigate('/account')} className="hover:text-white">Tra cứu đơn thuê</button></> : null}<a href="/#cooperate" className="hover:text-white">Hợp tác</a></div>
         </div>
         <div>
           <h2 className="text-xs font-black uppercase tracking-widest text-acid">Liên hệ</h2>

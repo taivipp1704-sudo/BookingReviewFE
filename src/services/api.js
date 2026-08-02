@@ -128,6 +128,8 @@ async function uploadPaymentProof(file) {
 
 export const api = {
   csrf: getCsrf,
+  features: () => request('/api/features'),
+  joinWaitlist: payload => request('/api/customer/waitlist', { method: 'POST', body: payload }),
   products: () => request('/api/catalog/products'),
   availability: () => request('/api/catalog/availability'),
   schedule: (productId, from, to) => request(`/api/catalog/${encodeURIComponent(productId)}/schedule?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
@@ -153,6 +155,8 @@ export const api = {
   uploadIdentity,
   uploadPaymentProof,
   trackBooking: payload => request('/api/bookings/track', { method: 'POST', body: payload }),
+  requestOtp: payload => request('/api/otp/request', { method: 'POST', body: payload }),
+  verifyOtp: payload => request('/api/otp/verify', { method: 'POST', body: payload }),
   login: payload => request('/api/auth/login', { method: 'POST', body: payload }),
   me: () => request('/api/auth/me'),
   logout: () => request('/api/auth/logout', { method: 'POST', body: {} }),

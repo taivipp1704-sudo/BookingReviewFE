@@ -19,14 +19,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import StatusBadge from "../components/StatusBadge.jsx";
 import BookingJourney from "../components/BookingJourney.jsx";
 import SecureImagePreview from "../components/SecureImagePreview.jsx";
-import { api } from "../lib/api.js";
-import { money, pricingModeLabel, rentalDurationLabel, rentalRates } from "../lib/format.js";
-import { holdSecondsUntil } from "../lib/holdTimer.js";
+import { api } from "../../services/api.js";
+import { money, pricingModeLabel, rentalDurationLabel, rentalRates } from "../../utils/format.js";
+import { holdSecondsUntil } from "../../models/holdTimer.js";
 import {
   earlyPickupTimeForPickup,
   localDateTime,
   returnTimeForRentalRate,
-} from "../lib/rentalWindow.js";
+} from "../../models/rentalWindow.js";
 
 const paymentAccount = {
   bank: import.meta.env.VITE_PAYMENT_BANK || "MB BANK",

@@ -35,10 +35,10 @@ import Metric from "../components/Metric.jsx";
 import BrandMark from "../components/BrandMark.jsx";
 import SecureImagePreview from "../components/SecureImagePreview.jsx";
 import StatusBadge, { bookingStateLabels, bookingStateTone } from "../components/StatusBadge.jsx";
-import { bookingStateDotTone, mergeBookingSnapshot } from "../lib/bookingState.js";
-import { api } from "../lib/api.js";
-import { money, shortDate } from "../lib/format.js";
-import { invoiceHtml } from "../lib/invoiceTemplate.js";
+import { bookingStateDotTone, mergeBookingSnapshot } from "../../models/bookingState.js";
+import { api } from "../../services/api.js";
+import { money, shortDate } from "../../utils/format.js";
+import { invoiceHtml } from "../../utils/invoiceTemplate.js";
 
 const pages = [
   { id: "dashboard", label: "Tổng quan & lịch", icon: LayoutDashboard },
@@ -3341,7 +3341,7 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
         { value: item.note || "" },
       ]),
     ];
-    const { default: writeXlsxFile } = await import("write-excel-file");
+    const { default: writeXlsxFile } = await import("write-excel-file/browser");
     await writeXlsxFile([summary, transactions], {
       sheets: ["Tổng quan", "Giao dịch"],
       fileName: `AMY-DIGITAL-So-Quy-${new Date().toISOString().slice(0, 10)}.xlsx`,

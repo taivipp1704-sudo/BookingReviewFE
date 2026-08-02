@@ -2,6 +2,7 @@ import {
   ArrowLeft,
   IdCard,
   LifeBuoy,
+  LockKeyhole,
   Loader2,
   LogOut,
   MapPin,
@@ -13,8 +14,8 @@ import { useEffect, useState } from "react";
 import StatusBadge from "../components/StatusBadge.jsx";
 import BookingJourney from "../components/BookingJourney.jsx";
 import SecureImagePreview from "../components/SecureImagePreview.jsx";
-import { api } from "../lib/api.js";
-import { money, shortDate } from "../lib/format.js";
+import { api } from "../../services/api.js";
+import { money, shortDate } from "../../utils/format.js";
 
 export default function CustomerAccountPage({
   account,
@@ -23,7 +24,7 @@ export default function CustomerAccountPage({
   onLogout,
   loginMessage,
 }) {
-  const [form, setForm] = useState({ name: "", phone: "" });
+  const [form, setForm] = useState({ phone: "", password: "" });
   const [bookings, setBookings] = useState([]);
   const [requests, setRequests] = useState([]);
   const [support, setSupport] = useState({
@@ -68,7 +69,7 @@ export default function CustomerAccountPage({
       onLogin(
         await api.customerLogin({
           phone: form.phone,
-          name: form.name,
+          password: form.password,
         }),
       );
     } catch (nextError) {
@@ -122,15 +123,6 @@ export default function CustomerAccountPage({
             <form onSubmit={login} className="mt-6 space-y-3">
               <input
                 required
-                value={form.name}
-                onChange={(event) =>
-                  setForm({ ...form, name: event.target.value })
-                }
-                placeholder="Họ và tên"
-                className="w-full rounded-lg border border-line bg-paper px-4 py-3 font-semibold"
-              />
-              <input
-                required
                 value={form.phone}
                 onChange={(event) =>
                   setForm({ ...form, phone: event.target.value })
@@ -138,6 +130,20 @@ export default function CustomerAccountPage({
                 placeholder="Số điện thoại"
                 className="w-full rounded-lg border border-line bg-paper px-4 py-3 font-semibold"
               />
+              <label className="flex items-center gap-3 rounded-lg border border-line bg-paper px-4">
+                <LockKeyhole className="h-4 w-4" />
+                <input
+                  required
+                  type="password"
+                  minLength={8}
+                  maxLength={72}
+                  autoComplete="current-password"
+                  value={form.password}
+                  onChange={(event) => setForm({ ...form, password: event.target.value })}
+                  placeholder="Mật khẩu"
+                  className="min-w-0 flex-1 bg-transparent py-3 font-semibold outline-none"
+                />
+              </label>
               <button
                 disabled={busy}
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-4 py-4 text-xs font-black uppercase text-acid"

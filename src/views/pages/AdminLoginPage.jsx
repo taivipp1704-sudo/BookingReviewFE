@@ -1,7 +1,7 @@
 import { ArrowLeft, ArrowRight, CircleHelp, Eye, EyeOff, Loader2, LockKeyhole, Mail } from "lucide-react";
 import { useState } from "react";
 import AuthShell from "../components/AuthShell.jsx";
-import { api } from "../lib/api.js";
+import { api } from "../../services/api.js";
 
 export default function AdminLoginPage({ onLogin, onBack }) {
   const [form, setForm] = useState({ email: "", password: "" });

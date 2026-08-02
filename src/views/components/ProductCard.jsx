@@ -1,6 +1,6 @@
 import { ArrowUpRight, Camera, ShoppingBag } from 'lucide-react';
 
-export default function ProductCard({ product, onSelect }) {
+export default function ProductCard({ product, onSelect, bookingEnabled = false }) {
   return (
     <article className="group overflow-hidden rounded-lg border border-line bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-soft">
       <button type="button" onClick={() => onSelect(product)} className="block w-full text-left" aria-label={`Xem chi tiết ${product.name}`}>
@@ -20,7 +20,7 @@ export default function ProductCard({ product, onSelect }) {
             Đã có {Number(product.bookingCount || 0).toLocaleString('vi-VN')} lượt đặt
           </p>
           <div className="mt-5 flex items-center justify-between gap-3 border-t border-line pt-4">
-            <span className="text-[11px] font-black uppercase tracking-wider">Xem chi tiết và đặt thuê</span>
+            <span className="text-[11px] font-black uppercase tracking-wider">{bookingEnabled ? 'Xem chi tiết và đặt thuê' : 'Xem chi tiết'}</span>
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-ink text-acid transition group-hover:bg-acid group-hover:text-ink"><ArrowUpRight className="h-4 w-4" /></span>
           </div>
         </div>

@@ -7,8 +7,8 @@ import {
   ShoppingCart,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { api } from "../lib/api.js";
-import { money, rentalRates } from "../lib/format.js";
+import { api } from "../../services/api.js";
+import { money, rentalRates } from "../../utils/format.js";
 
 function parseDetails(value) {
   try {
@@ -24,6 +24,7 @@ export default function ProductDetailsPage({
   onBook,
   onAddToCart,
   onViewProduct,
+  bookingEnabled = false,
 }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -190,7 +191,7 @@ export default function ProductDetailsPage({
                 </button>
               </div>
             </div>
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {bookingEnabled ? <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <button
                 onClick={() => onBook(product)}
                 disabled={!product.availableQty}
@@ -206,7 +207,7 @@ export default function ProductDetailsPage({
                 <ShoppingCart className="h-4 w-4" />
                 {added ? "Đã thêm vào giỏ" : "Thêm vào giỏ"}
               </button>
-            </div>
+            </div> : <div className="mt-5 rounded-lg border border-line bg-paper p-4 text-sm font-bold text-muted">Booking chưa mở. Bạn có thể xem thông tin, tồn kho và lịch thiết bị trong giai đoạn đăng ký sớm.</div>}
           </div>
         </section>
         {compatible.length ? (
@@ -216,7 +217,7 @@ export default function ProductDetailsPage({
               {compatible.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => onAddToCart(item, 1)}
+                  onClick={() => onViewProduct(item)}
                   disabled={!item.availableQty}
                   className="flex items-center gap-4 rounded-lg border border-line bg-white p-3 text-left disabled:opacity-50"
                 >
@@ -231,7 +232,7 @@ export default function ProductDetailsPage({
                       {money(item.dailyPrice)}/ngày · Còn {item.availableQty}
                     </p>
                     <p className="mt-2 text-[10px] font-black uppercase">
-                      Thêm vào giỏ +
+                      Xem chi tiết
                     </p>
                   </div>
                 </button>

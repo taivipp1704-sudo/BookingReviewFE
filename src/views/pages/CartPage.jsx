@@ -1,5 +1,5 @@
 import { ArrowLeft, Minus, Plus, ShoppingCart, Trash2 } from 'lucide-react';
-import { money } from '../lib/format.js';
+import { money } from '../../utils/format.js';
 
 export default function CartPage({ cart, onBack, onUpdate, onRemove, onBook }) {
   const total = cart.reduce((sum, item) => sum + Number(item.dailyPrice) * item.quantity, 0);

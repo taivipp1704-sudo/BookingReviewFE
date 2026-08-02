@@ -1,6 +1,6 @@
-import { bookingStateTone } from "../lib/bookingState.js";
+import { bookingStateTone } from "../../models/bookingState.js";
 
-export { bookingStateTone } from "../lib/bookingState.js";
+export { bookingStateTone } from "../../models/bookingState.js";
 
 export const bookingStateLabels = {
   ALL: 'Tất cả',
