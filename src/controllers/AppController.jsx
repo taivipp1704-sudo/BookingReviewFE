@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { api } from '../services/api.js';
 import PublicFooter from '../views/components/PublicFooter.jsx';
 import BrandMark from '../views/components/BrandMark.jsx';
+import { needsCustomerOnboarding } from '../models/onboarding.js';
 
 const AdminLoginPage = lazy(() => import('../views/pages/AdminLoginPage.jsx'));
 const AdminPage = lazy(() => import('../views/pages/AdminPage.jsx'));
@@ -115,7 +116,7 @@ function AppContent() {
       rememberCustomerReturn('/gear');
       return navigate('/login');
     }
-    if (features.bookingEnabled && Number(customerAccount.onboardingVersion || 0) < 1) {
+    if (needsCustomerOnboarding(customerAccount)) {
       rememberCustomerReturn('/gear');
       return navigate('/onboarding');
     }
@@ -144,7 +145,7 @@ function AppContent() {
     const destination = validCustomerReturn(requestedReturn) || readCustomerReturn();
     if (destination) rememberCustomerReturn(destination);
 
-    if (!features.bookingEnabled || Number(account.onboardingVersion || 0) >= 1) {
+    if (!needsCustomerOnboarding(account)) {
       takeCustomerReturn();
       navigate(destination || '/gear');
       return;
@@ -188,6 +189,9 @@ function AppContent() {
 
   if (isCustomerLoginRoute) {
     if (customerAccount === undefined) return <div className="grid min-h-screen place-items-center bg-[#EBEBE9] text-sm font-bold text-muted">Đang kiểm tra tài khoản khách hàng...</div>;
+    if (needsCustomerOnboarding(customerAccount)) {
+      return <OnboardingFlow onComplete={() => finishCustomerOnboarding('/gear')} />;
+    }
     if (customerAccount) {
       return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} customerAccount={customerAccount} onStartBooking={startRental} onLogout={logoutCustomer} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} bookingEnabled={features.bookingEnabled} /><CustomerPage mode="landing" onBrowse={startRental} onSelect={product => navigate(`/products/${product.id}`)} bookingEnabled={features.bookingEnabled} /><PublicFooter onNavigate={navigate} bookingEnabled={features.bookingEnabled} /></div>;
     }
@@ -201,7 +205,9 @@ function AppContent() {
   }
 
   if (isOnboardingRoute && customerAccount) {
-    if (!features.bookingEnabled) return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} customerAccount={customerAccount} onStartBooking={startRental} onLogout={logoutCustomer} cartCount={0} bookingEnabled={false} /><CustomerPage mode="catalog" onSelect={product => navigate(`/products/${product.id}`)} bookingEnabled={false} /><PublicFooter onNavigate={navigate} bookingEnabled={false} /></div>;
+    if (!needsCustomerOnboarding(customerAccount)) {
+      return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} customerAccount={customerAccount} onStartBooking={startRental} onLogout={logoutCustomer} cartCount={0} bookingEnabled={features.bookingEnabled} /><CustomerPage mode="catalog" onSelect={product => navigate(`/products/${product.id}`)} bookingEnabled={features.bookingEnabled} /><PublicFooter onNavigate={navigate} bookingEnabled={features.bookingEnabled} /></div>;
+    }
     return <OnboardingFlow onComplete={() => finishCustomerOnboarding()} />;
   }
 
@@ -214,10 +220,10 @@ function AppContent() {
     const productId = path.replace('/booking/', '');
     if (customerAccount === undefined) return <div className="grid min-h-screen place-items-center bg-[#EBEBE9] text-sm font-bold text-muted">Đang kiểm tra tài khoản khách hàng...</div>;
     if (!customerAccount) return <CustomerLoginPage onLogin={account => finishCustomerLogin(account, `/booking/${productId}`)} onBack={cancelCustomerLogin} loginMessage="Vui lòng đăng nhập hoặc đăng ký trước khi đặt thuê. Sau khi hoàn tất, bạn sẽ quay lại đơn đang thực hiện." />;
-    if (!features.bookingEnabled) return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} customerAccount={customerAccount} onStartBooking={startRental} onLogout={logoutCustomer} cartCount={0} bookingEnabled={false} /><ProductDetailsPage productId={productId} onBack={() => navigate('/gear')} onBook={startProductBooking} onAddToCart={addToCart} onViewProduct={product => navigate(`/products/${product.id}`)} bookingEnabled={false} /><PublicFooter onNavigate={navigate} bookingEnabled={false} /></div>;
-    if (Number(customerAccount.onboardingVersion || 0) < 1) {
+    if (needsCustomerOnboarding(customerAccount)) {
       return <OnboardingFlow onComplete={() => finishCustomerOnboarding(`/booking/${productId}`)} />;
     }
+    if (!features.bookingEnabled) return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} customerAccount={customerAccount} onStartBooking={startRental} onLogout={logoutCustomer} cartCount={0} bookingEnabled={false} /><ProductDetailsPage productId={productId} onBack={() => navigate('/gear')} onBook={startProductBooking} onAddToCart={addToCart} onViewProduct={product => navigate(`/products/${product.id}`)} bookingEnabled={false} /><PublicFooter onNavigate={navigate} bookingEnabled={false} /></div>;
     return (
       <div className="min-h-screen bg-[#EBEBE9]">
         <PublicHeader navigate={navigate} customerAccount={customerAccount} onStartBooking={startRental} onLogout={logoutCustomer} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} bookingEnabled={features.bookingEnabled} />
@@ -230,6 +236,7 @@ function AppContent() {
   if (isAccountRoute) {
     if (customerAccount === undefined) return <div className="grid min-h-screen place-items-center bg-[#EBEBE9] text-sm font-bold text-muted">Đang kiểm tra tài khoản khách hàng...</div>;
     if (!customerAccount) return <CustomerLoginPage onLogin={account => finishCustomerLogin(account, '/account')} onBack={cancelCustomerLogin} />;
+    if (needsCustomerOnboarding(customerAccount)) return <OnboardingFlow onComplete={() => finishCustomerOnboarding('/account')} />;
     return <div className="min-h-screen bg-[#EBEBE9]"><CustomerAccountPage account={customerAccount} onLogin={setCustomerAccount} onBack={() => navigate('/gear')} onLogout={logoutCustomer} /><PublicFooter onNavigate={navigate} /></div>;
   }
 
@@ -237,6 +244,7 @@ function AppContent() {
     const productId = decodeURIComponent(path.replace('/products/', ''));
     if (customerAccount === undefined) return <div className="grid min-h-screen place-items-center bg-[#EBEBE9] text-sm font-bold text-muted">Đang kiểm tra tài khoản khách hàng...</div>;
     if (!customerAccount) return <CustomerLoginPage onLogin={account => finishCustomerLogin(account, `/products/${productId}`)} onBack={cancelCustomerLogin} loginMessage="Vui lòng đăng nhập hoặc đăng ký để xem chi tiết sản phẩm." />;
+    if (needsCustomerOnboarding(customerAccount)) return <OnboardingFlow onComplete={() => finishCustomerOnboarding(`/products/${productId}`)} />;
     return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} customerAccount={customerAccount} onStartBooking={startRental} onLogout={logoutCustomer} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} bookingEnabled={features.bookingEnabled} /><ProductDetailsPage productId={productId} onBack={() => navigate('/gear')} onBook={startProductBooking} onAddToCart={addToCart} onViewProduct={product => navigate(`/products/${product.id}`)} bookingEnabled={features.bookingEnabled} /><PublicFooter onNavigate={navigate} bookingEnabled={features.bookingEnabled} /></div>;
   }
 
@@ -248,12 +256,14 @@ function AppContent() {
   if (isGearRoute) {
     if (customerAccount === undefined) return <div className="grid min-h-screen place-items-center bg-[#EBEBE9] text-sm font-bold text-muted">Đang kiểm tra tài khoản khách hàng...</div>;
     if (!customerAccount) return <CustomerLoginPage onLogin={account => finishCustomerLogin(account, '/gear')} onBack={cancelCustomerLogin} loginMessage="Vui lòng đăng nhập hoặc đăng ký để xem danh sách thiết bị." />;
+    if (needsCustomerOnboarding(customerAccount)) return <OnboardingFlow onComplete={() => finishCustomerOnboarding('/gear')} />;
     return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} customerAccount={customerAccount} onStartBooking={startRental} onLogout={logoutCustomer} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} bookingEnabled={features.bookingEnabled} /><CustomerPage mode="catalog" onSelect={product => navigate(`/products/${product.id}`)} bookingEnabled={features.bookingEnabled} /><PublicFooter onNavigate={navigate} bookingEnabled={features.bookingEnabled} /></div>;
   }
 
   if (isCalendarRoute) {
     if (customerAccount === undefined) return <div className="grid min-h-screen place-items-center bg-[#EBEBE9] text-sm font-bold text-muted">Đang kiểm tra tài khoản khách hàng...</div>;
     if (!customerAccount) return <CustomerLoginPage onLogin={account => finishCustomerLogin(account, '/calendar')} onBack={cancelCustomerLogin} loginMessage="Vui lòng đăng nhập hoặc đăng ký để xem lịch thiết bị." />;
+    if (needsCustomerOnboarding(customerAccount)) return <OnboardingFlow onComplete={() => finishCustomerOnboarding('/calendar')} />;
     return <div className="min-h-screen bg-[#EBEBE9]"><PublicHeader navigate={navigate} customerAccount={customerAccount} onStartBooking={startRental} onLogout={logoutCustomer} cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)} bookingEnabled={features.bookingEnabled} /><CustomerCalendarPage /><PublicFooter onNavigate={navigate} bookingEnabled={features.bookingEnabled} /></div>;
   }
 

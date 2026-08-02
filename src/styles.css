@@ -26,12 +26,22 @@ body {
 }
 
 .auth-shell__artwork {
-  width: max(200%, 177.7778dvh);
+  width: 100vw;
 }
 
 .auth-shell__panel {
   min-height: 0;
   scrollbar-gutter: stable;
+}
+
+@media (min-width: 1024px) {
+  .auth-shell__layout {
+    grid-template-columns: minmax(0, 53.75fr) minmax(0, 46.25fr);
+  }
+
+  .auth-shell__art {
+    overflow: hidden;
+  }
 }
 
 @media (min-width: 1024px) and (max-height: 720px) {
