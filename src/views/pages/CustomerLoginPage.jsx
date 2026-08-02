@@ -5,6 +5,7 @@ import {
   Loader2,
   LockKeyhole,
   LogIn,
+  Mail,
   Smartphone,
   UserRound,
 } from "lucide-react";
@@ -16,6 +17,7 @@ export default function CustomerLoginPage({ onBack, onLogin, loginMessage }) {
   const [mode, setMode] = useState("login");
   const [form, setForm] = useState({
     name: "",
+    email: "",
     phone: "",
     password: "",
     confirmPassword: "",
@@ -38,6 +40,7 @@ export default function CustomerLoginPage({ onBack, onLogin, loginMessage }) {
         }
         const account = await api.customerRegister({
           name: form.name.trim(),
+          email: form.email.trim(),
           phone: form.phone.trim(),
           password: form.password,
           consentAccepted: true,
@@ -88,9 +91,14 @@ export default function CustomerLoginPage({ onBack, onLogin, loginMessage }) {
 
         <form onSubmit={submit} className="mt-6 space-y-4">
           {mode === "register" ? (
-            <Field label="Họ và tên" icon={<UserRound className="h-4 w-4" />}>
-              <input required autoComplete="name" maxLength={180} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="Nguyễn Văn A" className="min-w-0 flex-1 bg-transparent py-3.5 font-semibold outline-none" />
-            </Field>
+            <>
+              <Field label="Họ và tên" icon={<UserRound className="h-4 w-4" />}>
+                <input required autoComplete="name" maxLength={180} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} placeholder="Nguyễn Văn A" className="min-w-0 flex-1 bg-transparent py-3.5 font-semibold outline-none" />
+              </Field>
+              <Field label="Email" icon={<Mail className="h-4 w-4" />}>
+                <input required type="email" autoComplete="email" maxLength={255} value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} placeholder="ban@email.com" className="min-w-0 flex-1 bg-transparent py-3.5 font-semibold outline-none" />
+              </Field>
+            </>
           ) : null}
 
           <Field label="Số điện thoại" icon={<Smartphone className="h-4 w-4" />}>
@@ -108,7 +116,7 @@ export default function CustomerLoginPage({ onBack, onLogin, loginMessage }) {
               </Field>
               <label className="flex cursor-pointer items-start gap-3 border-y border-line py-4 text-xs font-semibold leading-5 text-muted">
                 <input required type="checkbox" checked={form.consentAccepted} onChange={event => setForm({ ...form, consentAccepted: event.target.checked })} className="mt-0.5 h-4 w-4 accent-black" />
-                <span>Đồng ý để AMY Digital lưu họ tên và số điện thoại nhằm quản lý tài khoản và thông báo khi mở booking.</span>
+                <span>Đồng ý để AMY Digital lưu họ tên, email và số điện thoại nhằm quản lý tài khoản và thông báo khi mở booking.</span>
               </label>
             </>
           ) : null}

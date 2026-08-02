@@ -202,6 +202,7 @@ export const api = {
   customerMe: () => request('/api/customer/account/me'),
   customerLogin: payload => request('/api/customer/account/login', { method: 'POST', body: payload }),
   customerRegister: payload => request('/api/customer/account/register', { method: 'POST', body: payload }),
+  changeCustomerPassword: payload => request('/api/customer/account/password/change', { method: 'POST', body: payload }),
   completeCustomerOnboarding: () => request('/api/customer/account/onboarding/complete', { method: 'POST', body: {} }),
   customerLogout: () => request('/api/customer/account/logout', { method: 'POST', body: {} }),
   customerBookings: () => request('/api/customer/account/bookings'),
@@ -215,4 +216,8 @@ export const api = {
   ,adminUsers: () => request('/api/admin/users'),
   createAdminUser: payload => request('/api/admin/users', { method: 'POST', body: payload }),
   updateAdminUser: (id, payload) => request(`/api/admin/users/${encodeURIComponent(id)}`, { method: 'PATCH', body: payload })
+  ,adminCustomerAccounts: ({ query = '', page = 0, size = 50 } = {}) => request(`/api/admin/customer-accounts?query=${encodeURIComponent(query)}&page=${page}&size=${size}`),
+  updateAdminCustomerAccount: (id, payload) => request(`/api/admin/customer-accounts/${encodeURIComponent(id)}`, { method: 'PATCH', body: payload }),
+  resetAdminCustomerPassword: (id, payload) => request(`/api/admin/customer-accounts/${encodeURIComponent(id)}/password-reset`, { method: 'POST', body: payload }),
+  resetAdminCustomerOnboarding: id => request(`/api/admin/customer-accounts/${encodeURIComponent(id)}/onboarding-reset`, { method: 'POST', body: {} })
 };

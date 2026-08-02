@@ -11,6 +11,7 @@ const BookingPage = lazy(() => import('../views/pages/BookingPage.jsx'));
 const CustomerPage = lazy(() => import('../views/pages/CustomerPage.jsx'));
 const CustomerAccountPage = lazy(() => import('../views/pages/CustomerAccountPage.jsx'));
 const CustomerLoginPage = lazy(() => import('../views/pages/CustomerLoginPage.jsx'));
+const CustomerPasswordChangePage = lazy(() => import('../views/pages/CustomerPasswordChangePage.jsx'));
 const OnboardingFlow = lazy(() => import('../views/components/OnboardingFlow.jsx'));
 const CartPage = lazy(() => import('../views/pages/CartPage.jsx'));
 const ProductDetailsPage = lazy(() => import('../views/pages/ProductDetailsPage.jsx'));
@@ -90,6 +91,7 @@ function AppContent() {
   const isAdminRoute = path.startsWith('/admin');
   const isCustomerLoginRoute = path === '/login';
   const isOnboardingRoute = path === '/onboarding';
+  const isPasswordChangeRoute = path === '/account/password';
   const isBookingRoute = path.startsWith('/booking/');
   const isAccountRoute = path === '/account';
   const isProductRoute = path.startsWith('/products/');
@@ -145,6 +147,11 @@ function AppContent() {
     const destination = validCustomerReturn(requestedReturn) || readCustomerReturn();
     if (destination) rememberCustomerReturn(destination);
 
+    if (account.mustChangePassword) {
+      navigate('/account/password');
+      return;
+    }
+
     if (!needsCustomerOnboarding(account)) {
       takeCustomerReturn();
       navigate(destination || '/gear');
@@ -175,6 +182,15 @@ function AppContent() {
     navigate('/');
   }
 
+  function finishCustomerPasswordChange(updatedAccount) {
+    setCustomerAccount(updatedAccount);
+    if (needsCustomerOnboarding(updatedAccount)) {
+      navigate('/onboarding');
+      return;
+    }
+    navigate(takeCustomerReturn() || '/gear');
+  }
+
   if (isAdminRoute) {
     if (session.loading) {
       return <div className="grid min-h-screen place-items-center bg-paper text-sm font-bold text-muted">Đang kiểm tra phiên làm việc...</div>;
@@ -202,6 +218,19 @@ function AppContent() {
         ? "Vui lòng đăng nhập hoặc đăng ký để tiếp tục đặt thuê. Sau khi xác thực, hệ thống sẽ đưa bạn quay lại đúng trang đang thực hiện."
         : undefined}
     />;
+  }
+
+  if (customerAccount?.mustChangePassword && !isPasswordChangeRoute) {
+    return <CustomerPasswordChangePage account={customerAccount} onComplete={finishCustomerPasswordChange} onLogout={logoutCustomer} />;
+  }
+
+  if (isPasswordChangeRoute) {
+    if (customerAccount === undefined) return <div className="grid min-h-screen place-items-center bg-[#EBEBE9] text-sm font-bold text-muted">Đang kiểm tra tài khoản khách hàng...</div>;
+    if (!customerAccount) return <CustomerLoginPage onLogin={account => finishCustomerLogin(account, '/gear')} onBack={cancelCustomerLogin} />;
+    if (!customerAccount.mustChangePassword) {
+      return <div className="min-h-screen bg-[#EBEBE9]"><CustomerPage mode="catalog" onSelect={product => navigate(`/products/${product.id}`)} bookingEnabled={features.bookingEnabled} /><PublicFooter onNavigate={navigate} bookingEnabled={features.bookingEnabled} /></div>;
+    }
+    return <CustomerPasswordChangePage account={customerAccount} onComplete={finishCustomerPasswordChange} onLogout={logoutCustomer} />;
   }
 
   if (isOnboardingRoute && customerAccount) {

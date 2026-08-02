@@ -27,6 +27,8 @@ import {
   IdCard,
   Trash2,
   UserCog,
+  UsersRound,
+  KeyRound,
   Wallet,
   X,
 } from "lucide-react";
@@ -50,6 +52,7 @@ const pages = [
   { id: "inventory", label: "Kho máy", icon: Boxes, roles: ["ADMIN", "MANAGER", "WAREHOUSE", "TECH"] },
   { id: "finance", label: "Sổ quỹ", icon: Wallet, roles: ["ADMIN", "MANAGER"] },
   { id: "support", label: "Hỗ trợ", icon: LifeBuoy, roles: ["ADMIN", "MANAGER", "OPS", "SALES"] },
+  { id: "customers", label: "Khách hàng", icon: UsersRound, roles: ["ADMIN"] },
   { id: "staff", label: "Nhân sự", icon: UserCog, roles: ["ADMIN"] },
 ];
 const states = [
@@ -488,6 +491,7 @@ export default function AdminPage({
         {page === "support" ? (
           <Support requests={supportRequests} refresh={refresh} />
         ) : null}
+        {page === "customers" ? <CustomerAccounts /> : null}
         {page === "staff" ? (
           <Staff users={staffUsers} refresh={refresh} />
         ) : null}
@@ -3081,6 +3085,149 @@ function CatalogImageUpload({ label, value, onChange, required = false }) {
       <input required={required && !value} disabled={uploading} type="file" accept="image/jpeg,image/png" onChange={upload} className="sr-only" />
       {uploadError ? <span className="text-[11px] font-bold text-red-700">{uploadError}</span> : null}
     </label>
+  );
+}
+
+function CustomerAccounts() {
+  const [result, setResult] = useState({ items: [], total: 0, page: 0, totalPages: 0 });
+  const [query, setQuery] = useState("");
+  const [selectedId, setSelectedId] = useState(null);
+  const [form, setForm] = useState({ name: "", email: "", active: true });
+  const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const selected = result.items.find(item => item.id === selectedId) || result.items[0] || null;
+
+  async function load(page = 0, nextQuery = query) {
+    setLoading(true);
+    setError("");
+    try {
+      const next = await api.adminCustomerAccounts({ query: nextQuery.trim(), page, size: 40 });
+      setResult(next);
+      setSelectedId(current => next.items.some(item => item.id === current) ? current : next.items[0]?.id || null);
+    } catch (nextError) {
+      setError(nextError.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(0, ""); }, []);
+  useEffect(() => {
+    if (!selected) return;
+    setForm({ name: selected.name || "", email: selected.email || "", active: selected.active });
+    setTemporaryPassword("");
+    setMessage("");
+  }, [selected?.id]);
+
+  async function run(action, successMessage) {
+    setSaving(true);
+    setError("");
+    setMessage("");
+    try {
+      const updated = await action();
+      setResult(current => ({ ...current, items: current.items.map(item => item.id === updated.id ? updated : item) }));
+      setMessage(successMessage);
+      return updated;
+    } catch (nextError) {
+      setError(nextError.message);
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function save(event) {
+    event.preventDefault();
+    if (!selected) return;
+    await run(() => api.updateAdminCustomerAccount(selected.id, form), "Đã cập nhật tài khoản khách hàng.");
+  }
+
+  async function toggleActive() {
+    if (!selected) return;
+    const nextActive = !selected.active;
+    if (!nextActive && !window.confirm("Khóa tài khoản này? Khách sẽ bị đăng xuất và không thể đăng nhập.")) return;
+    const updated = await run(() => api.updateAdminCustomerAccount(selected.id, {
+      name: selected.name,
+      email: selected.email || "",
+      active: nextActive,
+    }), nextActive ? "Đã mở khóa tài khoản." : "Đã khóa tài khoản.");
+    if (updated) setForm(current => ({ ...current, active: updated.active }));
+  }
+
+  async function resetPassword() {
+    if (!selected || !temporaryPassword) return;
+    const updated = await run(() => api.resetAdminCustomerPassword(selected.id, { temporaryPassword }),
+      "Đã cấp mật khẩu tạm. Khách sẽ phải đổi mật khẩu sau khi đăng nhập.");
+    if (updated) setTemporaryPassword("");
+  }
+
+  async function resetOnboarding() {
+    if (!selected || !window.confirm("Yêu cầu khách xem lại toàn bộ hướng dẫn khi đăng nhập lần tới?")) return;
+    await run(() => api.resetAdminCustomerOnboarding(selected.id), "Đã đặt lại trạng thái hướng dẫn.");
+  }
+
+  return (
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
+      <section className="min-w-0">
+        <form onSubmit={event => { event.preventDefault(); load(0, query); }} className="mb-4 flex gap-2">
+          <label className="flex min-w-0 flex-1 items-center gap-3 rounded-lg border border-line bg-white px-4">
+            <Search className="h-4 w-4 text-muted" />
+            <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Tìm tên, email hoặc số điện thoại" className="min-w-0 flex-1 bg-transparent py-3 text-sm font-semibold outline-none" />
+          </label>
+          <button className="rounded-lg bg-ink px-5 text-xs font-black uppercase text-acid">Tìm</button>
+        </form>
+        <div className="overflow-hidden rounded-lg border border-line bg-white">
+          <div className="flex items-center justify-between border-b border-line px-4 py-3">
+            <p className="text-sm font-black">{result.total} tài khoản khách</p>
+            {loading ? <RefreshCw className="h-4 w-4 animate-spin text-muted" /> : null}
+          </div>
+          <div className="max-h-[660px] divide-y divide-line overflow-y-auto">
+            {result.items.map(account => (
+              <button key={account.id} type="button" onClick={() => setSelectedId(account.id)} className={`grid w-full gap-2 px-4 py-4 text-left md:grid-cols-[1fr_170px_110px] md:items-center ${selected?.id === account.id ? "bg-acid/10" : "hover:bg-paper"}`}>
+                <span className="min-w-0"><strong className="block truncate text-sm">{account.name}</strong><span className="mt-1 block truncate text-xs font-semibold text-muted">{account.email || "Chưa bổ sung email"}</span></span>
+                <span className="text-xs font-black">{account.phone}</span>
+                <span className={`w-fit rounded px-2 py-1 text-[10px] font-black uppercase ${account.active ? "bg-green-50 text-green-700" : "bg-red-50 text-red-700"}`}>{account.active ? "Hoạt động" : "Đã khóa"}</span>
+              </button>
+            ))}
+            {!loading && result.items.length === 0 ? <p className="p-8 text-center text-sm font-semibold text-muted">Không tìm thấy tài khoản phù hợp.</p> : null}
+          </div>
+          {result.totalPages > 1 ? <div className="flex items-center justify-between border-t border-line p-3"><button disabled={result.page <= 0 || loading} onClick={() => load(result.page - 1)} className="rounded border border-line px-3 py-2 text-xs font-black disabled:opacity-30">Trang trước</button><span className="text-xs font-bold text-muted">{result.page + 1}/{result.totalPages}</span><button disabled={result.page + 1 >= result.totalPages || loading} onClick={() => load(result.page + 1)} className="rounded border border-line px-3 py-2 text-xs font-black disabled:opacity-30">Trang sau</button></div> : null}
+        </div>
+      </section>
+
+      <aside className="min-w-0">
+        {selected ? <div className="rounded-lg border border-line bg-white p-5">
+          <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase text-muted">Hồ sơ khách hàng</p><h2 className="mt-1 break-words text-xl font-black">{selected.name}</h2><p className="mt-1 text-xs font-bold text-muted">{selected.id}</p></div><UsersRound className="h-6 w-6" /></div>
+          <div className="mt-5 grid grid-cols-2 gap-2">
+            <Detail label="Ngày đăng ký" value={selected.createdAt ? shortDate(selected.createdAt) : "-"} />
+            <Detail label="Đăng nhập gần nhất" value={selected.lastLoginAt ? shortDate(selected.lastLoginAt) : "Chưa đăng nhập"} />
+            <Detail label="Số booking" value={selected.bookingCount} />
+            <Detail label="Hướng dẫn" value={selected.onboardingVersion > 0 ? "Đã hoàn thành" : "Chưa hoàn thành"} />
+          </div>
+          <form onSubmit={save} className="mt-5 space-y-3 border-t border-line pt-5">
+            <label className="grid gap-2 text-xs font-black text-muted">Họ và tên<input required maxLength={180} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} className="rounded-lg border border-line bg-paper px-3 py-3 text-sm font-semibold text-ink" /></label>
+            <label className="grid gap-2 text-xs font-black text-muted">Email<input type="email" maxLength={255} value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} placeholder="Chưa bổ sung" className="rounded-lg border border-line bg-paper px-3 py-3 text-sm font-semibold text-ink" /></label>
+            <label className="grid gap-2 text-xs font-black text-muted">Số điện thoại<input readOnly value={selected.phone} className="rounded-lg border border-line bg-paper px-3 py-3 text-sm font-semibold text-muted" /></label>
+            <button disabled={saving} className="w-full rounded-lg bg-ink px-4 py-3 text-xs font-black uppercase text-acid disabled:opacity-40">Lưu thông tin</button>
+          </form>
+
+          <div className="mt-5 border-t border-line pt-5">
+            <div className="flex items-center gap-2"><KeyRound className="h-4 w-4" /><p className="text-xs font-black uppercase">Bảo mật mật khẩu</p></div>
+            <p className="mt-2 text-xs font-semibold leading-5 text-muted">Mật khẩu gốc đã được mã hóa một chiều và không thể xem lại. Admin chỉ có thể cấp mật khẩu tạm.</p>
+            <p className="mt-2 text-xs font-black">{selected.passwordConfigured ? (selected.mustChangePassword ? "Đang chờ khách đổi mật khẩu tạm" : "Mật khẩu đã thiết lập") : "Chưa có mật khẩu"}</p>
+            <div className="mt-3 flex gap-2"><input type="password" value={temporaryPassword} onChange={event => setTemporaryPassword(event.target.value)} placeholder="Mật khẩu tạm đủ mạnh" className="min-w-0 flex-1 rounded-lg border border-line bg-paper px-3 py-2 text-xs font-semibold" /><button type="button" onClick={resetPassword} disabled={saving || !temporaryPassword} className="rounded-lg border border-line px-3 text-[10px] font-black uppercase disabled:opacity-30">Cấp lại</button></div>
+            <p className="mt-2 text-[10px] font-semibold text-muted">Ít nhất 12 ký tự, có chữ hoa, chữ thường, số và ký tự đặc biệt.</p>
+          </div>
+
+          <div className="mt-5 grid grid-cols-2 gap-2 border-t border-line pt-5"><button type="button" disabled={saving} onClick={resetOnboarding} className="rounded-lg border border-line px-3 py-3 text-[10px] font-black uppercase">Xem lại hướng dẫn</button><button type="button" disabled={saving} onClick={toggleActive} className={`rounded-lg px-3 py-3 text-[10px] font-black uppercase ${selected.active ? "border border-red-200 text-red-700" : "bg-ink text-acid"}`}>{selected.active ? "Khóa tài khoản" : "Mở khóa"}</button></div>
+          {message ? <p className="mt-4 rounded-lg bg-green-50 p-3 text-xs font-bold text-green-700">{message}</p> : null}
+          {error ? <p className="mt-4 rounded-lg bg-red-50 p-3 text-xs font-bold text-red-700">{error}</p> : null}
+        </div> : <div className="rounded-lg border border-line bg-white p-8 text-center text-sm font-semibold text-muted">Chọn một tài khoản để xem chi tiết.</div>}
+      </aside>
+    </div>
   );
 }
 
