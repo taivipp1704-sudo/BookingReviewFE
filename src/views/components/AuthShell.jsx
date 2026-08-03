@@ -14,13 +14,13 @@ export default function AuthShell({ children }) {
           />
         </div>
         <section className="auth-shell__panel relative z-0 flex h-full min-w-0 items-center justify-center overflow-y-auto bg-white px-5 py-6 sm:px-10 lg:px-[clamp(40px,5vw,96px)]">
-          <div className="auth-shell__companion pointer-events-none absolute right-5 top-4 hidden items-start text-[#A3A39E] sm:flex lg:right-8 lg:top-5" aria-hidden="true">
-            <div className="relative -rotate-6 rounded-[50%] border-2 border-[#B9B9B4] px-5 py-2 text-center text-sm font-black leading-5">
+          <div className="auth-shell__companion pointer-events-none absolute right-6 top-3 z-10 hidden items-start text-[#A3A39E] sm:flex lg:right-10 lg:top-4" aria-hidden="true">
+            <div className="relative min-w-[150px] -rotate-6 rounded-[50%] border-2 border-[#B9B9B4] px-6 py-2.5 text-center text-[15px] font-black leading-5">
               AMY luôn<br />đồng hành!
-              <Undo2 className="absolute -bottom-8 right-0 h-9 w-9 rotate-[205deg] stroke-[1.7]" />
+              <Undo2 className="absolute -bottom-9 right-1 h-10 w-10 -rotate-45 stroke-[1.7]" />
             </div>
-            <Sparkles className="ml-1 mt-1 h-6 w-6 text-acid" />
-            <Camera className="ml-1 mt-6 h-10 w-10 rotate-12 stroke-[1.8]" />
+            <Sparkles className="-ml-1 mt-0 h-6 w-6 text-acid" />
+            <Camera className="-ml-1 mt-7 h-12 w-12 rotate-[14deg] stroke-[1.8]" />
           </div>
           <div className="auth-shell__content w-full max-w-[525px]">{children}</div>
         </section>
