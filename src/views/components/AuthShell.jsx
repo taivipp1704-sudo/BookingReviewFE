@@ -6,8 +6,10 @@ export default function AuthShell({ children }) {
       <div className="auth-shell__layout relative grid h-full w-full">
         <div className="auth-shell__art relative hidden overflow-hidden bg-[#101010] lg:block" aria-hidden="true">
           <img
-            src="/assets/amy-login-reference@2x.png"
+            src="/assets/amy-login-optimized.jpg"
             alt=""
+            decoding="async"
+            fetchPriority="high"
             className="auth-shell__artwork pointer-events-none absolute left-0 top-1/2 h-auto max-w-none -translate-y-1/2 select-none"
           />
         </div>
