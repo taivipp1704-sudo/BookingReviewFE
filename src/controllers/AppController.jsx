@@ -62,13 +62,12 @@ function AppContent() {
       setPath(currentPath());
     }
     window.addEventListener('popstate', onPopState);
-    api.csrf()
-      .catch(() => null)
-      .finally(() => Promise.allSettled([api.me(), api.customerMe(), api.features()]).then(([adminResult, customerResult, featureResult]) => {
+    Promise.allSettled([api.csrf(), api.me(), api.customerMe(), api.features()])
+      .then(([, adminResult, customerResult, featureResult]) => {
         setSession({ loading: false, user: adminResult.status === 'fulfilled' ? adminResult.value : null });
         setCustomerAccount(customerResult.status === 'fulfilled' ? customerResult.value : null);
         if (featureResult.status === 'fulfilled') setFeatures(featureResult.value);
-      }));
+      });
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
@@ -204,7 +203,6 @@ function AppContent() {
   }
 
   if (isCustomerLoginRoute) {
-    if (customerAccount === undefined) return <div className="grid min-h-screen place-items-center bg-[#EBEBE9] text-sm font-bold text-muted">Đang kiểm tra tài khoản khách hàng...</div>;
     if (needsCustomerOnboarding(customerAccount)) {
       return <OnboardingFlow onComplete={() => finishCustomerOnboarding('/gear')} />;
     }
