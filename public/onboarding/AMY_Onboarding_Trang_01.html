@@ -414,7 +414,7 @@
     </main>
 
     <footer class="footer">
-      <a href="#" class="policy" onclick="event.preventDefault()">Chính sách đặt và thuê thiết bị</a>
+      <a href="#" class="policy">Chính sách đặt và thuê thiết bị</a>
       <div class="actions">
         <button class="btn btn-secondary" id="seenBtn" type="button">Tôi đã hoàn thành trước đây</button>
         <button class="btn btn-primary" id="startBtn" type="button">BẮT ĐẦU HƯỚNG DẪN →</button>
@@ -424,22 +424,6 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script>
-    const toast = document.getElementById('toast');
-    function showToast(message) {
-      toast.textContent = message;
-      toast.classList.add('show');
-      clearTimeout(window.__toastTimer);
-      window.__toastTimer = setTimeout(() => toast.classList.remove('show'), 2300);
-    }
-
-    document.getElementById('startBtn').addEventListener('click', () => {
-      showToast('Trang 1 hoàn tất. Chờ liên kết sang Trang 2.');
-    });
-
-    document.getElementById('seenBtn').addEventListener('click', () => {
-      showToast('Chỉ tài khoản đã hoàn thành phiên bản hiện hành mới được bỏ qua.');
-    });
-  </script>
+  <script src="/onboarding/AMY_Onboarding_Trang_01.js"></script>
 </body>
 </html>

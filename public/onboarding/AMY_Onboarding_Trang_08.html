@@ -358,13 +358,13 @@
 
         <div class="legal">
           Việc xác nhận hướng dẫn không thay thế chính sách thuê và điều khoản cụ thể của từng đơn.
-          <a href="#" onclick="event.preventDefault()">Xem chính sách đầy đủ</a>
+          <a href="#">Xem chính sách đầy đủ</a>
         </div>
       </section>
     </main>
 
     <footer class="footer">
-      <a href="#" class="back" onclick="event.preventDefault()">← Quay lại Trang 7</a>
+      <a href="#" class="back">← Quay lại Trang 7</a>
       <div class="actions">
         <button class="btn btn-secondary" type="button" id="backBtn">Quay lại</button>
         <button class="btn btn-primary" type="button" id="startBtn" disabled>BẮT ĐẦU ĐẶT THIẾT BỊ →</button>
@@ -374,48 +374,6 @@
 
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script>
-    const rows = [...document.querySelectorAll(".check-row")];
-    const checks = rows.map(row => row.querySelector("input"));
-    const score = document.getElementById("score");
-    const scoreText = document.getElementById("scoreText");
-    const scoreNote = document.getElementById("scoreNote");
-    const startBtn = document.getElementById("startBtn");
-    const toast = document.getElementById("toast");
-
-    function updateCompletion() {
-      const count = checks.filter(c => c.checked).length;
-      const degrees = count / checks.length * 360;
-
-      rows.forEach(row => {
-        const input = row.querySelector("input");
-        row.classList.toggle("checked", input.checked);
-      });
-
-      score.style.background = `conic-gradient(var(--lime) ${degrees}deg,#e5e5df ${degrees}deg)`;
-      scoreText.textContent = `${count}/5`;
-      scoreNote.textContent = count === 5 ? "Đã xác nhận" : `Còn ${5-count} nội dung`;
-      startBtn.disabled = count !== 5;
-    }
-
-    checks.forEach(check => check.addEventListener("change", updateCompletion));
-    updateCompletion();
-
-    function showToast(message) {
-      toast.textContent = message;
-      toast.classList.add("show");
-      clearTimeout(window.__toastTimer);
-      window.__toastTimer = setTimeout(() => toast.classList.remove("show"),2200);
-    }
-
-    startBtn.addEventListener("click", () => {
-      showToast("Hoàn tất hướng dẫn. Sẵn sàng chuyển sang trang đặt thiết bị.");
-      window.parent.postMessage({ type: "amy-onboarding-complete" }, window.location.origin);
-    });
-
-    document.getElementById("backBtn").addEventListener("click", () => {
-      showToast("Liên kết quay lại Trang 7 sẽ được nối trong bản tích hợp.");
-    });
-  </script>
+  <script src="/onboarding/AMY_Onboarding_Trang_08.js"></script>
 </body>
 </html>

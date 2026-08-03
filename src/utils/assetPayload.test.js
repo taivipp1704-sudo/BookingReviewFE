@@ -27,3 +27,21 @@ test('onboarding pages reuse the shared mascot instead of embedding it', async (
     assert.ok(Buffer.byteLength(contents) < 50_000);
   }
 });
+
+test('onboarding interactions comply with the production content security policy', async () => {
+  const onboardingDirectory = new URL('../../public/onboarding/', import.meta.url);
+  const pages = (await readdir(onboardingDirectory))
+    .filter(name => /^AMY_Onboarding_Trang_\d{2}\.html$/.test(name));
+
+  assert.equal(pages.length, 8);
+  for (const page of pages) {
+    const contents = await readFile(new URL(page, onboardingDirectory), 'utf8');
+    const scriptName = page.replace(/\.html$/, '.js');
+    const script = await readFile(new URL(scriptName, onboardingDirectory), 'utf8');
+
+    assert.match(contents, new RegExp(`<script src="/onboarding/${scriptName}"></script>`));
+    assert.doesNotMatch(contents, /<script>(?:.|\n|\r)*?<\/script>/);
+    assert.doesNotMatch(contents, /\son[a-z]+\s*=/i);
+    assert.ok(script.trim().length > 0);
+  }
+});
