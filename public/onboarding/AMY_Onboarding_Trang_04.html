@@ -449,9 +449,15 @@
     slider.addEventListener("input", updateDelay);
     updateDelay();
 
-    commitCheck.addEventListener("change", () => {
+    function syncCommitmentState() {
       nextBtn.disabled = !commitCheck.checked;
-    });
+      nextBtn.setAttribute("aria-disabled", String(nextBtn.disabled));
+    }
+
+    commitCheck.addEventListener("input", syncCommitmentState);
+    commitCheck.addEventListener("change", syncCommitmentState);
+    window.addEventListener("pageshow", () => requestAnimationFrame(syncCommitmentState));
+    syncCommitmentState();
 
     function showToast(message) {
       toast.textContent = message;
