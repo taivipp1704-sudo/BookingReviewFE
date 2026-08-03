@@ -18,6 +18,7 @@ async function request(path, { method = 'GET', body, retryCsrf = true } = {}) {
     method,
     headers,
     credentials: 'include',
+    cache: 'no-store',
     body: body === undefined ? undefined : JSON.stringify(body)
   });
 
@@ -40,6 +41,22 @@ async function getCsrf() {
   if (csrf) return csrf;
   csrf = await request('/api/auth/csrf');
   return csrf;
+}
+
+async function refreshCsrf() {
+  csrf = null;
+  return getCsrf();
+}
+
+async function customerRegister(payload) {
+  await refreshCsrf();
+  try {
+    return await request('/api/customer/account/register', { method: 'POST', body: payload });
+  } catch (error) {
+    if (error.status !== 401) throw error;
+    await refreshCsrf();
+    return request('/api/customer/account/register', { method: 'POST', body: payload });
+  }
 }
 
 async function uploadIdentity(front, back) {
@@ -201,7 +218,7 @@ export const api = {
   reconcileBookingFinance: id => request(`/api/admin/finance/bookings/${encodeURIComponent(id)}/reconcile`, { method: 'POST', body: {} }),
   customerMe: () => request('/api/customer/account/me'),
   customerLogin: payload => request('/api/customer/account/login', { method: 'POST', body: payload }),
-  customerRegister: payload => request('/api/customer/account/register', { method: 'POST', body: payload }),
+  customerRegister,
   changeCustomerPassword: payload => request('/api/customer/account/password/change', { method: 'POST', body: payload }),
   completeCustomerOnboarding: () => request('/api/customer/account/onboarding/complete', { method: 'POST', body: {} }),
   customerLogout: () => request('/api/customer/account/logout', { method: 'POST', body: {} }),
