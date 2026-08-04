@@ -3,6 +3,10 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    // Keep production bundles minified without publishing the original React source.
+    sourcemap: false
+  },
   server: {
     proxy: {
       '/api': {
