@@ -81,7 +81,7 @@ export default function CustomerLoginPage({ onBack, onLogin, loginMessage }) {
           {mode === "login" ? "Đăng nhập để tiếp tục" : "Tạo tài khoản AMY"}
         </h1>
         <p className="mt-3 text-sm font-semibold leading-6 text-muted">
-          {loginMessage || "Đăng nhập để xem thiết bị và lịch đã được giữ. Tính năng tạo booking hiện chưa mở."}
+          {loginMessage || "Đăng nhập để chọn thiết bị, giữ lịch và theo dõi toàn bộ đơn thuê của bạn."}
         </p>
 
         <div className="mt-6 grid grid-cols-2 rounded-lg border border-line bg-paper p-1" role="tablist" aria-label="Chọn đăng nhập hoặc đăng ký">
