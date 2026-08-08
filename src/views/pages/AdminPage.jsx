@@ -32,7 +32,7 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Metric from "../components/Metric.jsx";
 import BrandMark from "../components/BrandMark.jsx";
 import SecureImagePreview from "../components/SecureImagePreview.jsx";
@@ -127,6 +127,8 @@ export default function AdminPage({
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const lastScrollY = useRef(0);
 
   const selected =
     bookings.find((booking) => booking.id === selectedId) ||
@@ -140,6 +142,33 @@ export default function AdminPage({
   useEffect(() => {
     refresh();
   }, [filter, page]);
+  useEffect(() => {
+    lastScrollY.current = window.scrollY;
+    let animationFrame = 0;
+
+    const handleScroll = () => {
+      if (animationFrame) return;
+      animationFrame = window.requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY;
+        const distance = currentScrollY - lastScrollY.current;
+
+        if (currentScrollY <= 16) {
+          setHeaderVisible(true);
+        } else if (Math.abs(distance) >= 6) {
+          setHeaderVisible(distance < 0);
+        }
+
+        lastScrollY.current = currentScrollY;
+        animationFrame = 0;
+      });
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (animationFrame) window.cancelAnimationFrame(animationFrame);
+    };
+  }, []);
   useEffect(() => {
     if (page === "orders" && detailId) setSelectedId(detailId);
   }, [detailId, page]);
@@ -334,7 +363,11 @@ export default function AdminPage({
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#EBEBE9]">
-      <header className="fixed left-0 right-0 top-0 z-40 flex h-20 items-center justify-between border-b border-line bg-white px-4 sm:px-6 lg:left-[88px] lg:px-8">
+      <header
+        className={`fixed left-0 right-0 top-0 z-40 flex h-20 items-center justify-between border-b border-line bg-white px-4 shadow-sm transition-transform duration-300 ease-out will-change-transform motion-reduce:transition-none sm:px-6 lg:left-[88px] lg:px-8 ${
+          headerVisible ? "translate-y-0" : "pointer-events-none -translate-y-full"
+        }`}
+      >
         <BrandMark compact />
         <div className="flex items-center gap-3">
           <div className="hidden text-right sm:block">
@@ -353,7 +386,11 @@ export default function AdminPage({
         </div>
       </header>
 
-      <div className="fixed left-0 right-0 top-20 z-30 flex overflow-x-auto border-b border-line bg-ink px-3 text-white lg:hidden">
+      <div
+        className={`fixed left-0 right-0 z-30 flex overflow-x-auto border-b border-line bg-ink px-3 text-white transition-[top] duration-300 ease-out motion-reduce:transition-none lg:hidden ${
+          headerVisible ? "top-20" : "top-0"
+        }`}
+      >
         {visiblePages.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
