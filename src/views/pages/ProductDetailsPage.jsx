@@ -122,7 +122,7 @@ export default function ProductDetailsPage({
             <img
               src={details.detailImageUrl || product.imageUrl}
               alt={product.name}
-              className="aspect-[4/3] h-full w-full object-cover"
+              className="aspect-[4/3] h-full w-full object-contain p-4"
             />
           </div>
           <div className="flex flex-col">

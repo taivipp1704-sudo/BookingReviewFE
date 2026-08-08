@@ -341,15 +341,15 @@ function PublicHeader({ navigate, customerAccount, onStartBooking, onLogout, car
     if (!landing) navigate('/');
     window.setTimeout(() => document.querySelector(`#${id}`)?.scrollIntoView({ behavior: 'smooth' }), landing ? 0 : 120);
   }
-  return <header className={`fixed inset-x-0 top-0 z-40 border-b border-line bg-white/95 shadow-[0_10px_35px_rgba(16,16,16,.08)] backdrop-blur-xl transition-[transform,opacity] duration-300 ease-out will-change-transform ${headerVisible ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-full opacity-0'}`}>
-    <div className="mx-auto flex min-h-[76px] max-w-[1600px] items-center gap-2 px-3 sm:gap-4 sm:px-7 md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:px-10">
+  return <header className={`public-header fixed inset-x-0 top-0 z-40 border-b border-line bg-white/95 shadow-[0_10px_35px_rgba(16,16,16,.08)] backdrop-blur-xl transition-[transform,opacity] duration-300 ease-out will-change-transform ${headerVisible ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-full opacity-0'}`}>
+    <div className="public-header__inner mx-auto flex min-h-[76px] max-w-[1600px] items-center gap-2 px-3 sm:gap-4 sm:px-7 md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:px-10">
       <button onClick={() => navigate('/')} className="shrink-0 md:justify-self-start" aria-label="Về trang chủ AMY Digital"><BrandMark compact bare showSubtitle={false} className="[&>span:last-child]:hidden sm:[&>span:last-child]:flex" /></button>
-      <nav className="hide-scrollbar mx-auto flex min-w-0 flex-1 items-center justify-center gap-2 overflow-x-auto py-2 sm:gap-3 md:justify-self-center">
+      <nav className="public-header__nav hide-scrollbar mx-auto flex min-w-0 flex-1 items-center justify-center gap-2 overflow-x-auto py-2 sm:gap-3 md:justify-self-center">
         <button onClick={() => openHomeSection('cooperate')} className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-line px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:text-ink sm:px-4 sm:text-[11px]"><Handshake className="h-4 w-4" />Hợp tác</button>
         <button onClick={() => openHomeSection('track')} className="flex h-11 items-center gap-2 rounded-lg border border-line px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:text-ink sm:px-4 sm:text-[11px]"><FileSearch className="h-4 w-4" />Tra cứu đơn</button>
         {customerAccount ? <button onClick={() => navigate('/calendar')} className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-line px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:text-ink sm:px-4 sm:text-[11px]"><CalendarDays className="h-4 w-4" />Lịch thiết bị</button> : null}
       </nav>
-      <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-3 md:ml-0 md:justify-self-end">
+      <div className="public-header__actions hide-scrollbar ml-auto flex shrink-0 items-center gap-2 overflow-x-auto sm:gap-3 md:ml-0 md:justify-self-end">
         <button onClick={() => {
           if (customerAccount) navigate('/account');
           else {

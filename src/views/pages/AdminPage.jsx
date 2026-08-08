@@ -1877,7 +1877,7 @@ function Catalog({ products, assets, stock, bundles, stores, detailId, onNavigat
           <img
             src={selected.imageUrl}
             alt={selected.name}
-            className="aspect-[4/3] w-full rounded-lg bg-white object-cover grayscale shadow-soft"
+            className="aspect-[4/3] w-full rounded-lg bg-white object-contain p-4 shadow-soft"
           />
           <div className="rounded-lg border border-line bg-white p-6">
             <p className="text-[10px] font-black uppercase text-muted">
@@ -2010,7 +2010,7 @@ function CatalogTable({ title, subtitle, items, inventoryByProduct, storeById, o
               const inventory = inventoryByProduct[item.id] || { totalQty: 0, availableQty: 0 };
               return (
                 <tr key={item.id} onClick={() => onOpen(item.id)} className="cursor-pointer transition hover:bg-paper">
-                  <td className="px-4 py-3"><div className="flex items-center gap-3"><img src={item.imageUrl} alt="" className="h-12 w-14 rounded object-cover grayscale" /><div className="min-w-0"><p className="text-[9px] font-black text-muted">{item.id} · {item.levelCode}</p><p className="mt-1 max-w-[220px] truncate text-sm font-black">{item.name}</p><p className="mt-1 text-[9px] font-bold text-muted">{item.brand} · {item.category}</p></div></div></td>
+                  <td className="px-4 py-3"><div className="flex items-center gap-3"><img src={item.imageUrl} alt={item.name} className="h-12 w-14 rounded bg-paper object-contain p-1" /><div className="min-w-0"><p className="text-[9px] font-black text-muted">{item.id} · {item.levelCode}</p><p className="mt-1 max-w-[220px] truncate text-sm font-black">{item.name}</p><p className="mt-1 text-[9px] font-bold text-muted">{item.brand} · {item.category}</p></div></div></td>
                   <td className="max-w-[150px] px-3 py-3 text-xs font-bold">
                     <span className={item.storeBranchId ? "text-ink" : "text-orange-700"}>
                       {storeById[item.storeBranchId]?.name || "Chưa phân"}
@@ -2817,8 +2817,8 @@ function Inventory({
         <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
           <img
             src={product?.imageUrl}
-            alt=""
-            className="aspect-[4/3] w-full rounded-lg bg-white object-cover grayscale shadow-soft"
+            alt={product?.name || "Thiết bị trong kho"}
+            className="aspect-[4/3] w-full rounded-lg bg-white object-contain p-4 shadow-soft"
           />
           <div className="rounded-lg border border-line bg-white p-6">
             <p className="text-[10px] font-black uppercase text-muted">

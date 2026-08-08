@@ -1405,7 +1405,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                 <img
                   src={product.imageUrl}
                   alt={product.name}
-                  className="aspect-[4/3] w-full rounded-lg object-cover grayscale"
+                  className="aspect-[4/3] w-full rounded-lg bg-white object-contain p-3"
                 />
                 <p className="mt-4 text-[11px] font-bold uppercase tracking-widest text-muted">
                   {product.specs}

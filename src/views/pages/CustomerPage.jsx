@@ -174,8 +174,8 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing", boo
     <main className="pt-24">
       {mode === "landing" ? (
       <section className="mx-auto grid max-w-7xl gap-6 px-4 pb-10 lg:grid-cols-2 lg:items-stretch">
-        <div className="grid min-h-[440px] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] rounded-lg bg-ink p-7 text-white shadow-soft sm:min-h-[500px] sm:p-8">
-          <div className="flex items-center justify-between gap-4">
+        <div className="grid min-h-[440px] min-w-0 grid-rows-[auto_minmax(0,1fr)_auto] rounded-lg bg-ink p-5 text-white shadow-soft sm:min-h-[500px] sm:p-8">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-[11px] font-black uppercase tracking-[0.35em] text-acid">
               AMY Digital
             </p>
@@ -184,7 +184,7 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing", boo
             </span>
           </div>
           <div className="flex min-w-0 flex-col justify-center py-7 sm:py-8 lg:py-6">
-            <h1 className="max-w-[13ch] text-4xl font-black leading-[1.02] sm:text-5xl lg:text-6xl">
+            <h1 className="max-w-full text-[40px] font-black leading-[1.06] sm:max-w-[13ch] sm:text-5xl sm:leading-[1.02] lg:text-6xl">
               <span className="block">Có đồ xịn</span>
               <span className="block">Không lo thiếu</span>
               <span className="block">Hình đẹp</span>

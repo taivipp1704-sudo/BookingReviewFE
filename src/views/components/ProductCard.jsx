@@ -5,7 +5,7 @@ export default function ProductCard({ product, onSelect, bookingEnabled = false 
     <article className="group overflow-hidden rounded-lg border border-line bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-soft">
       <button type="button" onClick={() => onSelect(product)} className="block w-full text-left" aria-label={`Xem chi tiết ${product.name}`}>
         <div className="relative aspect-[4/3] overflow-hidden bg-paper">
-          <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover grayscale transition duration-500 group-hover:grayscale-0" />
+          <img src={product.imageUrl} alt={product.name} className="h-full w-full object-contain p-3 transition duration-500 group-hover:scale-[1.02]" />
           <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-[10px] font-black uppercase tracking-wider">{product.category}</span>
         </div>
         <div className="p-4">

@@ -17,3 +17,15 @@ test("invalid or expired holds return zero", () => {
   assert.equal(holdSecondsUntil("invalid", now), 0);
   assert.equal(holdSecondsUntil("2026-07-21T17:48:00Z", now), 0);
 });
+
+test("empty holds and explicit numeric timezone offsets are handled", () => {
+  const now = Date.parse("2026-07-21T17:49:00Z");
+  assert.equal(holdSecondsUntil(null, now), 0);
+  assert.equal(holdSecondsUntil(" 2026-07-22T00:54:00+07:00 ", now), 300);
+  assert.equal(holdSecondsUntil("2026-07-22T00:54:00+0700", now), 300);
+});
+
+test("remaining partial seconds round up", () => {
+  const now = Date.parse("2026-07-21T17:49:00.250Z");
+  assert.equal(holdSecondsUntil("2026-07-21T17:49:01Z", now), 1);
+});
