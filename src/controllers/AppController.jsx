@@ -51,6 +51,7 @@ function AppContent() {
   const [session, setSession] = useState({ loading: true, user: null });
   const [customerAccount, setCustomerAccount] = useState(undefined);
   const [features, setFeatures] = useState({ bookingEnabled: false, customerRegistrationMode: 'ACCOUNT_PREVIEW' });
+  const [sessionCheckAttempt, setSessionCheckAttempt] = useState(0);
   const [cart, setCart] = useState(() => {
     try { return JSON.parse(localStorage.getItem('claritycam-cart') || '[]'); } catch { return []; }
   });
@@ -61,15 +62,31 @@ function AppContent() {
     function onPopState() {
       setPath(currentPath());
     }
+    let active = true;
+    const fallbackTimer = window.setTimeout(() => {
+      if (!active) return;
+      setSession({ loading: false, user: null });
+      setCustomerAccount(null);
+    }, 8_000);
+
     window.addEventListener('popstate', onPopState);
-    Promise.allSettled([api.csrf(), api.me(), api.customerMe(), api.features()])
-      .then(([, adminResult, customerResult, featureResult]) => {
+    setSession({ loading: true, user: null });
+    setCustomerAccount(undefined);
+    // CSRF is only needed for writes, so it must not block opening the website.
+    Promise.allSettled([api.me(), api.customerMe(), api.features()])
+      .then(([adminResult, customerResult, featureResult]) => {
+        if (!active) return;
+        window.clearTimeout(fallbackTimer);
         setSession({ loading: false, user: adminResult.status === 'fulfilled' ? adminResult.value : null });
         setCustomerAccount(customerResult.status === 'fulfilled' ? customerResult.value : null);
         if (featureResult.status === 'fulfilled') setFeatures(featureResult.value);
       });
-    return () => window.removeEventListener('popstate', onPopState);
-  }, []);
+    return () => {
+      active = false;
+      window.clearTimeout(fallbackTimer);
+      window.removeEventListener('popstate', onPopState);
+    };
+  }, [sessionCheckAttempt]);
 
   function navigate(to) {
     window.history.pushState({}, '', to);
@@ -85,6 +102,10 @@ function AppContent() {
     }
     setSession({ loading: false, user: null });
     navigate('/admin/login');
+  }
+
+  function retrySessionCheck() {
+    setSessionCheckAttempt(current => current + 1);
   }
 
   const isAdminRoute = path.startsWith('/admin');
@@ -192,7 +213,14 @@ function AppContent() {
 
   if (isAdminRoute) {
     if (session.loading) {
-      return <div className="grid min-h-screen place-items-center bg-paper text-sm font-bold text-muted">Đang kiểm tra phiên làm việc...</div>;
+      return (
+        <div className="grid min-h-screen place-items-center bg-paper p-6 text-center">
+          <div>
+            <p className="text-sm font-bold text-muted">Đang kết nối hệ thống...</p>
+            <button type="button" onClick={retrySessionCheck} className="mt-4 rounded-lg border border-line bg-white px-4 py-2 text-xs font-black text-ink">Thử lại</button>
+          </div>
+        </div>
+      );
     }
     if (!session.user) {
       return <AdminLoginPage onLogin={user => { setSession({ loading: false, user }); navigate('/admin'); }} onBack={() => navigate('/')} />;

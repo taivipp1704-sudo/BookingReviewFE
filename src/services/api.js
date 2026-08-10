@@ -5,6 +5,11 @@ const API_BASE = import.meta.env.DEV
   : '';
 
 let csrf = null;
+const REQUEST_TIMEOUT_MS = 10_000;
+
+function requestTimeoutError() {
+  return new Error('Máy chủ đang phản hồi chậm. Vui lòng thử lại sau ít phút.');
+}
 
 async function request(path, { method = 'GET', body, retryCsrf = true } = {}) {
   const headers = { Accept: 'application/json' };
@@ -14,13 +19,25 @@ async function request(path, { method = 'GET', body, retryCsrf = true } = {}) {
     headers[token.headerName] = token.token;
   }
 
-  const response = await fetch(`${API_BASE}${path}`, {
-    method,
-    headers,
-    credentials: 'include',
-    cache: 'no-store',
-    body: body === undefined ? undefined : JSON.stringify(body)
-  });
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let response;
+
+  try {
+    response = await fetch(`${API_BASE}${path}`, {
+      method,
+      headers,
+      credentials: 'include',
+      cache: 'no-store',
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: controller.signal
+    });
+  } catch (error) {
+    if (error?.name === 'AbortError') throw requestTimeoutError();
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 
   if (response.status === 403 && body !== undefined && retryCsrf) {
     csrf = null;
