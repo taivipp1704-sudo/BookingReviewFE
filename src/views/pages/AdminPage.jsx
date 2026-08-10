@@ -9,6 +9,7 @@ import {
   CircleAlert,
   ClipboardList,
   Download,
+  Eye,
   FileClock,
   LayoutDashboard,
   LifeBuoy,
@@ -2493,10 +2494,32 @@ function Bundles({ bundles, products, assets, stock, refresh, canManage }) {
       setBusy(false);
     }
   }
-  async function archive(bundle) {
-    if (!window.confirm(`Ẩn combo "${bundle.name}"?`)) return;
-    await api.deleteBundle(bundle.id);
-    await refresh();
+  async function toggleVisibility(bundle) {
+    const action = bundle.active ? "Ẩn" : "Hiện lại";
+    if (!window.confirm(`${action} combo "${bundle.name}"?`)) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api.updateBundleVisibility(bundle.id, !bundle.active);
+      await refresh();
+    } catch (nextError) {
+      setError(nextError.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function removeBundle(bundle) {
+    if (!window.confirm(`Xóa vĩnh viễn combo "${bundle.name}"? Thao tác này không thể khôi phục.`)) return;
+    setBusy(true);
+    setError("");
+    try {
+      await api.deleteBundle(bundle.id);
+      await refresh();
+    } catch (nextError) {
+      setError(nextError.message);
+    } finally {
+      setBusy(false);
+    }
   }
   async function loadVersionHistory(bundle) {
     setBusy(true);
@@ -2625,7 +2648,7 @@ function Bundles({ bundles, products, assets, stock, refresh, canManage }) {
               <div className="mt-4 flex min-h-12 flex-wrap content-start gap-1.5">{extras.slice(0, 4).map((line) => <span key={line.productId} className="rounded bg-paper px-2 py-1 text-[9px] font-bold">{line.product.name} ×{line.quantity}</span>)}{extras.length > 4 ? <span className="rounded bg-paper px-2 py-1 text-[9px] font-black">+{extras.length - 4}</span> : null}</div>
               <div className="mt-4 grid grid-cols-3 gap-2 border-y border-line py-3"><div><p className="text-[9px] font-black uppercase text-muted">Giờ</p><p className="mt-1 text-xs font-black">{money(bundle.hourlyPrice)}</p></div><div><p className="text-[9px] font-black uppercase text-muted">Ngày</p><p className="mt-1 text-xs font-black">{money(bundle.dailyPrice)}</p></div><div><p className="text-[9px] font-black uppercase text-muted">{bundle.multiDayDays || 3} ngày</p><p className="mt-1 text-xs font-black">{money(bundle.multiDayPrice)}</p></div></div>
               {bundle.note ? <p className="mt-3 line-clamp-2 text-xs font-semibold leading-5 text-muted"><strong className="text-ink">Ghi chú:</strong> {bundle.note}</p> : null}
-              <div className="mt-4 flex items-center gap-2">{canManage ? <button type="button" onClick={() => { setComponentQuery(""); setForm({ ...bundle, pricingEditorMode: "DAILY", note: bundle.note || "", items: bundle.items.map(({ productId, quantity }) => ({ productId, quantity })) }); }} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-ink px-3 text-[10px] font-black uppercase text-acid"><Settings2 className="h-4 w-4" /> Cấu hình</button> : null}<button type="button" onClick={() => loadVersionHistory(bundle)} title="Lịch sử phiên bản" className="flex h-10 w-10 items-center justify-center rounded-lg border border-line"><FileClock className="h-4 w-4" /></button>{canManage ? <button type="button" onClick={() => archive(bundle)} title="Ẩn combo" className="flex h-10 w-10 items-center justify-center rounded-lg border border-red-200 text-red-700"><Trash2 className="h-4 w-4" /></button> : null}</div>
+              <div className="mt-4 flex items-center gap-2">{canManage ? <button type="button" onClick={() => { setComponentQuery(""); setForm({ ...bundle, pricingEditorMode: "DAILY", note: bundle.note || "", items: bundle.items.map(({ productId, quantity }) => ({ productId, quantity })) }); }} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-lg bg-ink px-3 text-[10px] font-black uppercase text-acid"><Settings2 className="h-4 w-4" /> Cấu hình</button> : null}<button type="button" onClick={() => loadVersionHistory(bundle)} title="Lịch sử phiên bản" className="flex h-10 w-10 items-center justify-center rounded-lg border border-line"><FileClock className="h-4 w-4" /></button>{canManage ? <button type="button" disabled={busy} onClick={() => toggleVisibility(bundle)} title={bundle.active ? "Ẩn tạm thời" : "Hiện lại"} className="flex h-10 w-10 items-center justify-center rounded-lg border border-line text-muted disabled:opacity-40"><Eye className="h-4 w-4" /></button> : null}{canManage ? <button type="button" disabled={busy} onClick={() => removeBundle(bundle)} title="Xóa vĩnh viễn" className="flex h-10 w-10 items-center justify-center rounded-lg border border-red-200 text-red-700 disabled:opacity-40"><Trash2 className="h-4 w-4" /></button> : null}</div>
             </div>
           </article>;
         })}
@@ -3054,6 +3077,7 @@ function Inventory({
                 </p>
               </button>
             ))}
+            {bulkStock.length === 0 ? <div className="rounded-lg border border-dashed border-line bg-white p-6 text-center text-sm font-bold text-muted">Chưa có linh kiện quản lý theo số lượng.</div> : null}
           </div>
         </section>
       </div>

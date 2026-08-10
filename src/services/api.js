@@ -177,6 +177,7 @@ export const api = {
   bundleVersions: id => request(`/api/admin/catalog/bundles/${encodeURIComponent(id)}/versions`),
   createBundle: payload => request('/api/admin/catalog/bundles', { method: 'POST', body: payload }),
   updateBundle: (id, payload) => request(`/api/admin/catalog/bundles/${encodeURIComponent(id)}`, { method: 'PATCH', body: payload }),
+  updateBundleVisibility: (id, active) => request(`/api/admin/catalog/bundles/${encodeURIComponent(id)}/visibility?active=${active}`, { method: 'PATCH', body: {} }),
   deleteBundle: id => request(`/api/admin/catalog/bundles/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   adminPromotions: () => request('/api/admin/promotions'),
   createPromotion: payload => request('/api/admin/promotions', { method: 'POST', body: payload }),
