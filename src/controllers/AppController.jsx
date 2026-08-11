@@ -181,9 +181,21 @@ function AppContent() {
   }
 
   async function finishCustomerOnboarding(fallback = '/') {
-    const updatedAccount = await api.completeCustomerOnboarding();
-    setCustomerAccount(updatedAccount);
-    navigate(takeCustomerReturn() || validCustomerReturn(fallback) || '/');
+    try {
+      const updatedAccount = await api.completeCustomerOnboarding();
+      setCustomerAccount(updatedAccount);
+      navigate(takeCustomerReturn() || validCustomerReturn(fallback) || '/');
+    } catch (error) {
+      // The onboarding pages can remain open longer than the customer session.
+      // Return to the public home page instead of trapping the visitor here.
+      if (error?.status === 401) {
+        takeCustomerReturn();
+        setCustomerAccount(null);
+        navigate('/');
+        return;
+      }
+      throw error;
+    }
   }
 
   function cancelCustomerLogin() {
