@@ -195,60 +195,65 @@ export default function AdminPage({
     setBusy(true);
     setError("");
     try {
-      const bookingRequest = canReadBookings
+      const requiresBookings = canReadBookings && ["dashboard", "orders", "finance"].includes(page);
+      const requiresCatalog = ["dashboard", "orders", "catalog", "bundles", "inventory", "finance"].includes(page);
+      const requiresAssets = ["dashboard", "orders", "catalog", "bundles", "inventory", "finance"].includes(page);
+      const requiresFinance = canReadFinance && ["dashboard", "orders", "finance"].includes(page);
+      const bookingRequest = requiresBookings
         ? api.adminBookings({
             query: page === "orders" ? query : "",
             state: page === "orders" ? filter : "ALL",
           })
-        : Promise.resolve([]);
-      const [data, nextCalendarBookings] = await Promise.all([
-        Promise.all([
-          bookingRequest,
-          api.adminProducts(),
-          api.assets(),
-          api.stock(),
-          canReadFinance ? api.financeSummary() : Promise.resolve({ revenue: 0, expense: 0, cashOnHand: 0 }),
-          canReadFinance ? api.financeEntries() : Promise.resolve([]),
-          canReadSupport ? api.adminSupport() : Promise.resolve([]),
-          api.adminBundles(),
-          canReadPromotions ? api.adminPromotions() : Promise.resolve([]),
-          ["ADMIN", "MANAGER", "WAREHOUSE", "TECH"].includes(user.role)
-            ? api.inventoryLedger()
-            : Promise.resolve([]),
-          user.role === "ADMIN" ? api.adminUsers() : Promise.resolve([]),
-          ["ADMIN", "MANAGER"].includes(user.role) ? api.adminStores() : api.stores(),
-        ]),
-        page === "orders" && canReadBookings
-          ? api.adminBookings({ query: "", state: "ALL" })
-          : bookingRequest,
+        : Promise.resolve(null);
+      const requests = await Promise.all([
+        bookingRequest,
+        requiresCatalog ? api.adminProducts() : Promise.resolve(null),
+        requiresAssets ? api.assets() : Promise.resolve(null),
+        requiresAssets ? api.stock() : Promise.resolve(null),
+        requiresFinance ? api.financeSummary() : Promise.resolve(null),
+        requiresFinance ? api.financeEntries() : Promise.resolve(null),
+        canReadSupport && page === "support" ? api.adminSupport() : Promise.resolve(null),
+        ["catalog", "bundles"].includes(page) ? api.adminBundles() : Promise.resolve(null),
+        canReadPromotions && page === "promotions" ? api.adminPromotions() : Promise.resolve(null),
+        ["ADMIN", "MANAGER", "WAREHOUSE", "TECH"].includes(user.role) && page === "inventory"
+          ? api.inventoryLedger()
+          : Promise.resolve(null),
+        user.role === "ADMIN" && page === "staff" ? api.adminUsers() : Promise.resolve(null),
+        ["catalog", "stores"].includes(page)
+          ? (["ADMIN", "MANAGER"].includes(user.role) ? api.adminStores() : api.stores())
+          : Promise.resolve(null),
       ]);
-      setBookings(data[0]);
-      setCalendarBookings(nextCalendarBookings);
-      setProducts(data[1]);
-      setAssets(data[2]);
-      setStock(data[3]);
-      setFinance({
-        ...data[4],
-        revenue: data[4].recognizedRevenue || 0,
-        expense: data[4].committedOutflows || 0,
-        cashOnHand: data[4].availableCash || 0,
+      const [nextBookings, nextProducts, nextAssets, nextStock, nextFinance, nextEntries,
+        nextSupport, nextBundles, nextPromotions, nextLedger, nextStaff, nextStores] = requests;
+      if (nextBookings) {
+        setBookings(nextBookings);
+        setCalendarBookings(nextBookings);
+        setSelectedId((current) =>
+          nextBookings.some((item) => item.id === current)
+            ? current
+            : nextBookings[0]?.id || null,
+        );
+      }
+      if (nextProducts) setProducts(nextProducts);
+      if (nextAssets) setAssets(nextAssets);
+      if (nextStock) setStock(nextStock);
+      if (nextFinance) setFinance({
+        ...nextFinance,
+        revenue: nextFinance.recognizedRevenue || 0,
+        expense: nextFinance.committedOutflows || 0,
+        cashOnHand: nextFinance.availableCash || 0,
       });
-      setEntries(data[5].map((item) => ({
+      if (nextEntries) setEntries(nextEntries.map((item) => ({
         ...item,
         type: `${item.direction} · ${item.accountCode}`,
         method: "LEDGER",
       })));
-      setSupportRequests(data[6]);
-      setBundles(data[7]);
-      setPromotions(data[8]);
-      setLedgerEntries(data[9]);
-      setStaffUsers(data[10]);
-      setStores(data[11]);
-      setSelectedId((current) =>
-        data[0].some((item) => item.id === current)
-          ? current
-          : data[0][0]?.id || null,
-      );
+      if (nextSupport) setSupportRequests(nextSupport);
+      if (nextBundles) setBundles(nextBundles);
+      if (nextPromotions) setPromotions(nextPromotions);
+      if (nextLedger) setLedgerEntries(nextLedger);
+      if (nextStaff) setStaffUsers(nextStaff);
+      if (nextStores) setStores(nextStores);
     } catch (nextError) {
       setError(nextError.message);
       if (nextError.status === 401) onLogout();

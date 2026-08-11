@@ -5,13 +5,15 @@ const API_BASE = import.meta.env.DEV
   : '';
 
 let csrf = null;
-const REQUEST_TIMEOUT_MS = 10_000;
+// Render may need a little time to wake up after inactivity. Mutating
+// requests never retry automatically; only read requests get one retry.
+const REQUEST_TIMEOUT_MS = 30_000;
 
 function requestTimeoutError() {
   return new Error('Máy chủ đang phản hồi chậm. Vui lòng thử lại sau ít phút.');
 }
 
-async function request(path, { method = 'GET', body, retryCsrf = true } = {}) {
+async function request(path, { method = 'GET', body, retryCsrf = true, retryTimeout = true } = {}) {
   const headers = { Accept: 'application/json' };
   if (body !== undefined) {
     const token = await getCsrf();
@@ -33,7 +35,12 @@ async function request(path, { method = 'GET', body, retryCsrf = true } = {}) {
       signal: controller.signal
     });
   } catch (error) {
-    if (error?.name === 'AbortError') throw requestTimeoutError();
+    if (error?.name === 'AbortError') {
+      if (method === 'GET' && retryTimeout) {
+        return request(path, { method, body, retryCsrf, retryTimeout: false });
+      }
+      throw requestTimeoutError();
+    }
     throw error;
   } finally {
     window.clearTimeout(timeoutId);
