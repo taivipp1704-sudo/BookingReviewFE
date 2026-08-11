@@ -20,7 +20,7 @@ import StatusBadge from "../components/StatusBadge.jsx";
 import BookingJourney from "../components/BookingJourney.jsx";
 import SecureImagePreview from "../components/SecureImagePreview.jsx";
 import { api } from "../../services/api.js";
-import { money, pricingModeLabel, rentalDurationLabel, rentalRates } from "../../utils/format.js";
+import { catalogImageUrl, money, pricingModeLabel, rentalDurationLabel, rentalRates } from "../../utils/format.js";
 import { holdSecondsUntil } from "../../models/holdTimer.js";
 import {
   earlyPickupTimeForPickup,
@@ -1403,7 +1403,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
             <div className="space-y-4">
               <div className="rounded-lg bg-paper p-4">
                 <img
-                  src={product.imageUrl}
+                  src={catalogImageUrl(product)}
                   alt={product.name}
                   className="aspect-[4/3] w-full rounded-lg bg-white object-contain p-3"
                 />
@@ -1553,7 +1553,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                         className={`flex items-center gap-3 rounded-lg border p-3 ${quantity > 0 ? "border-ink bg-paper" : "border-line"}`}
                       >
                         <img
-                          src={accessory.imageUrl}
+                          src={catalogImageUrl(accessory)}
                           alt=""
                           className="h-12 w-12 rounded-lg object-cover grayscale"
                         />

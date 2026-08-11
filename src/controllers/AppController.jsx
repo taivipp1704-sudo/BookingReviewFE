@@ -123,7 +123,7 @@ function AppContent() {
     setCart(current => {
       const existing = current.find(item => item.id === product.id);
       const nextQuantity = Math.min(product.availableQty, 10, (existing?.quantity || 0) + quantity);
-      const item = { id: product.id, name: product.name, brand: product.brand, imageUrl: product.imageUrl, dailyPrice: product.dailyPrice, availableQty: product.availableQty, quantity: nextQuantity };
+      const item = { id: product.id, name: product.name, brand: product.brand, imageUrl: product.imageUrl, mediaRevision: product.mediaRevision, dailyPrice: product.dailyPrice, availableQty: product.availableQty, quantity: nextQuantity };
       return existing ? current.map(entry => entry.id === product.id ? item : entry) : [...current, item];
     });
   }

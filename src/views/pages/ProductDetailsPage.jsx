@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../services/api.js";
-import { money, rentalRates } from "../../utils/format.js";
+import { catalogImageUrl, money, rentalRates } from "../../utils/format.js";
 
 function parseDetails(value) {
   try {
@@ -120,7 +120,7 @@ export default function ProductDetailsPage({
         <section className="grid gap-8 rounded-lg border border-line bg-white p-5 shadow-soft lg:grid-cols-[1.1fr_0.9fr] lg:p-8">
           <div className="overflow-hidden rounded-lg bg-paper">
             <img
-              src={details.detailImageUrl || product.imageUrl}
+              src={catalogImageUrl(details.detailImageUrl ? { ...product, imageUrl: details.detailImageUrl } : product)}
               alt={product.name}
               className="aspect-[4/3] h-full w-full object-contain p-4"
             />
@@ -222,7 +222,7 @@ export default function ProductDetailsPage({
                   className="flex items-center gap-4 rounded-lg border border-line bg-white p-3 text-left disabled:opacity-50"
                 >
                   <img
-                    src={item.imageUrl}
+                    src={catalogImageUrl(item)}
                     alt=""
                     className="h-16 w-16 rounded-lg object-cover"
                   />
@@ -255,7 +255,7 @@ export default function ProductDetailsPage({
                   className="rounded-lg border border-line bg-white p-3 text-left hover:border-ink"
                 >
                   <img
-                    src={item.imageUrl}
+                    src={catalogImageUrl(item)}
                     alt=""
                     className="aspect-[4/3] w-full rounded-lg object-cover"
                   />

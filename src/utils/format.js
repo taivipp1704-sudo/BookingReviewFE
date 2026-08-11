@@ -6,6 +6,13 @@ export function money(value) {
   }).format(Number(value || 0));
 }
 
+export function catalogImageUrl(item, field = 'imageUrl') {
+  const source = String(item?.[field] || '').trim();
+  if (!source || source.startsWith('data:') || source.startsWith('blob:')) return source;
+  const revision = Math.max(1, Number(item?.mediaRevision || item?.currentVersion) || 1);
+  return `${source}${source.includes('?') ? '&' : '?'}v=${revision}`;
+}
+
 export function shortDate(value) {
   if (!value) return '-';
   return new Intl.DateTimeFormat('vi-VN', {
@@ -22,14 +29,20 @@ export function rentalRates(item) {
   if (Number(item?.hourlyPrice) > 0) {
     rates.push({ key: 'HOURLY', label: 'Theo giờ', value: item.hourlyPrice, suffix: '/giờ' });
   }
-  if (Number(item?.halfDayPrice) > 0) rates.push({ key: 'HALF_DAY', label: 'Nửa ngày', value: item.halfDayPrice, suffix: '/12 giờ' });
+  if (Number(item?.halfDayPrice) > 0) {
+    rates.push({ key: 'HALF_DAY', label: 'Nửa ngày', value: item.halfDayPrice, suffix: '/12 giờ' });
+  }
   rates.push({ key: 'DAILY', label: '1 ngày', value: item?.dailyPrice, suffix: '/ngày' });
-  if (Number(item?.twoDayPrice) > 0) rates.push({ key: 'TWO_DAY', label: 'Gói 2 ngày', value: item.twoDayPrice, suffix: '/2 ngày' });
+  if (Number(item?.twoDayPrice) > 0) {
+    rates.push({ key: 'TWO_DAY', label: 'Gói 2 ngày', value: item.twoDayPrice, suffix: '/2 ngày' });
+  }
   if (Number(item?.multiDayPrice) > 0) {
     const days = Math.max(2, Number(item?.multiDayDays) || 3);
     rates.push({ key: 'MULTI_DAY', label: `Gói ${days} ngày`, value: item.multiDayPrice, suffix: `/${days} ngày` });
   }
-  if (Number(item?.extraDayPrice) > 0) rates.push({ key: 'EXTRA_DAY', label: 'Ngày phát sinh', value: item.extraDayPrice, suffix: '/ngày từ ngày 4' });
+  if (Number(item?.extraDayPrice) > 0) {
+    rates.push({ key: 'EXTRA_DAY', label: 'Ngày phát sinh', value: item.extraDayPrice, suffix: '/ngày từ ngày 4' });
+  }
   return rates;
 }
 

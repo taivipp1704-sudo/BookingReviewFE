@@ -40,7 +40,7 @@ import SecureImagePreview from "../components/SecureImagePreview.jsx";
 import StatusBadge, { bookingStateLabels, bookingStateTone } from "../components/StatusBadge.jsx";
 import { bookingStateDotTone, mergeBookingSnapshot } from "../../models/bookingState.js";
 import { api } from "../../services/api.js";
-import { money, shortDate } from "../../utils/format.js";
+import { catalogImageUrl, money, shortDate } from "../../utils/format.js";
 import { invoiceHtml } from "../../utils/invoiceTemplate.js";
 
 const pages = [
@@ -1918,7 +1918,7 @@ function Catalog({ products, assets, stock, bundles, stores, detailId, onNavigat
         </div>
         <div className="grid gap-6 lg:grid-cols-[420px_1fr]">
           <img
-            src={selected.imageUrl}
+            src={catalogImageUrl(selected)}
             alt={selected.name}
             className="aspect-[4/3] w-full rounded-lg bg-white object-contain p-4 shadow-soft"
           />
@@ -2053,7 +2053,7 @@ function CatalogTable({ title, subtitle, items, inventoryByProduct, storeById, o
               const inventory = inventoryByProduct[item.id] || { totalQty: 0, availableQty: 0 };
               return (
                 <tr key={item.id} onClick={() => onOpen(item.id)} className="cursor-pointer transition hover:bg-paper">
-                  <td className="px-4 py-3"><div className="flex items-center gap-3"><img src={item.imageUrl} alt={item.name} className="h-12 w-14 rounded bg-paper object-contain p-1" /><div className="min-w-0"><p className="text-[9px] font-black text-muted">{item.id} · {item.levelCode}</p><p className="mt-1 max-w-[220px] truncate text-sm font-black">{item.name}</p><p className="mt-1 text-[9px] font-bold text-muted">{item.brand} · {item.category}</p></div></div></td>
+                  <td className="px-4 py-3"><div className="flex items-center gap-3"><img src={catalogImageUrl(item)} alt={item.name} className="h-12 w-14 rounded bg-paper object-contain p-1" /><div className="min-w-0"><p className="text-[9px] font-black text-muted">{item.id} · {item.levelCode}</p><p className="mt-1 max-w-[220px] truncate text-sm font-black">{item.name}</p><p className="mt-1 text-[9px] font-bold text-muted">{item.brand} · {item.category}</p></div></div></td>
                   <td className="max-w-[150px] px-3 py-3 text-xs font-bold">
                     <span className={item.storeBranchId ? "text-ink" : "text-orange-700"}>
                       {storeById[item.storeBranchId]?.name || "Chưa phân"}
@@ -2555,7 +2555,7 @@ function Bundles({ bundles, products, assets, stock, refresh, canManage }) {
         </div>
         <form onSubmit={save} className="grid items-start gap-5 xl:grid-cols-[360px_minmax(0,1fr)]">
           <aside className="overflow-hidden rounded-lg border border-line bg-white xl:sticky xl:top-28">
-             <img src={mainProduct?.imageUrl || form.detailImageUrl} alt="" className="aspect-[4/3] w-full bg-paper object-contain" />
+             <img src={mainProduct ? catalogImageUrl(mainProduct) : catalogImageUrl({ imageUrl: form.detailImageUrl })} alt="" className="aspect-[4/3] w-full bg-paper object-contain" />
             <div className="p-5">
               <p className="text-[10px] font-black uppercase text-muted">{form.id || "Gói mới"}</p>
               <h3 className="mt-2 text-2xl font-black">{form.name || "Tên gói thuê"}</h3>
@@ -2579,7 +2579,7 @@ function Bundles({ bundles, products, assets, stock, refresh, canManage }) {
                 <label className="grid gap-1 text-xs font-black text-muted md:col-span-2">Tên gói thuê<input required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} placeholder="Ví dụ: Gói thuê Canon R100" className="rounded-lg border border-line bg-paper px-3 py-3 text-base font-semibold text-ink" /></label>
                  <div className="grid gap-2 text-xs font-black text-muted">
                    Ảnh 1 · Máy chính tự động
-                   <div className="aspect-[4/3] overflow-hidden rounded-lg border border-line bg-paper">{mainProduct ? <img src={mainProduct.imageUrl} alt={mainProduct.name} className="h-full w-full object-contain" /> : <p className="grid h-full place-items-center px-4 text-center text-[11px] font-bold">Chọn máy chính trong thành phần để hệ thống lấy ảnh.</p>}</div>
+                   <div className="aspect-[4/3] overflow-hidden rounded-lg border border-line bg-paper">{mainProduct ? <img src={catalogImageUrl(mainProduct)} alt={mainProduct.name} className="h-full w-full object-contain" /> : <p className="grid h-full place-items-center px-4 text-center text-[11px] font-bold">Chọn máy chính trong thành phần để hệ thống lấy ảnh.</p>}</div>
                  </div>
                  <CatalogImageUpload label="Ảnh 2 · Toàn bộ combo" value={form.detailImageUrl || ""} onChange={(value) => setForm({ ...form, detailImageUrl: value })} required />
                 <label className="grid gap-1 text-xs font-black text-muted md:col-span-2">Ghi chú<textarea value={form.note || ""} onChange={(event) => setForm({ ...form, note: event.target.value })} maxLength="1000" placeholder="Ghi chú cấu hình, điều kiện bàn giao hoặc lưu ý vận hành..." className="min-h-20 rounded-lg border border-line bg-paper p-3 text-sm font-semibold text-ink" /></label>
@@ -2603,7 +2603,7 @@ function Bundles({ bundles, products, assets, stock, refresh, canManage }) {
                   const currentQuantity = quantity(item.id);
                   const inventory = inventoryByProduct[item.id] || { totalQty: 0, availableQty: 0 };
                   return <div key={item.id} className={`grid grid-cols-[48px_minmax(0,1fr)_auto] items-center gap-3 py-3 ${currentQuantity ? "bg-[#F5F8EB]" : ""}`}>
-                    <img src={item.imageUrl} alt="" className="h-10 w-12 rounded object-cover grayscale" />
+                    <img src={catalogImageUrl(item)} alt="" className="h-10 w-12 rounded object-cover grayscale" />
                     <div className="min-w-0"><p className="truncate text-sm font-black">{item.name}</p><p className="mt-1 text-[9px] font-bold text-muted">{item.id} · Còn {inventory.availableQty}/{inventory.totalQty}</p></div>
                     <div className="flex items-center gap-2"><button type="button" onClick={() => setQuantity(item.id, currentQuantity - 1)} disabled={!currentQuantity} className="flex h-8 w-8 items-center justify-center rounded-full border border-line disabled:opacity-30" title="Giảm"><Minus className="h-3.5 w-3.5" /></button><strong className="w-5 text-center text-sm">{currentQuantity}</strong><button type="button" onClick={() => setQuantity(item.id, currentQuantity + 1)} className="flex h-8 w-8 items-center justify-center rounded-full bg-ink text-acid" title="Thêm"><Plus className="h-3.5 w-3.5" /></button></div>
                   </div>;
@@ -2646,7 +2646,7 @@ function Bundles({ bundles, products, assets, stock, refresh, canManage }) {
           const extras = bundleProducts.filter((line) => line.product.levelCode !== "L1");
           const availableSets = bundleProducts.length ? Math.min(...bundleProducts.map((line) => Math.floor((inventoryByProduct[line.productId]?.availableQty || 0) / line.quantity))) : 0;
           return <article key={bundle.id} className={`overflow-hidden rounded-lg border bg-white ${bundle.active ? "border-line" : "border-dashed border-red-200 opacity-65"}`}>
-            <div className="relative"><img src={bundle.imageUrl || main?.product.imageUrl} alt={bundle.name} className="aspect-[16/9] w-full bg-paper object-cover" /><span className="absolute left-3 top-3 rounded bg-ink px-2 py-1 text-[9px] font-black uppercase text-acid">{bundle.id}</span></div>
+            <div className="relative"><img src={catalogImageUrl(bundle.imageUrl ? bundle : main?.product)} alt={bundle.name} className="aspect-[16/9] w-full bg-paper object-cover" /><span className="absolute left-3 top-3 rounded bg-ink px-2 py-1 text-[9px] font-black uppercase text-acid">{bundle.id}</span></div>
             <div className="p-5">
               <div className="flex items-start justify-between gap-3"><div><p className="text-[9px] font-black uppercase text-muted">Version {bundle.currentVersion || 1}</p><h2 className="mt-1 text-xl font-black">{bundle.name}</h2></div><span className={`shrink-0 rounded px-2 py-1 text-[9px] font-black uppercase ${availableSets > 0 ? "bg-green-50 text-green-800" : "bg-red-50 text-red-700"}`}>{availableSets > 0 ? `Cấp được ${availableSets} bộ` : "Thiếu hàng"}</span></div>
               {main ? <div className="mt-4 border-l-4 border-ink pl-3"><p className="text-[9px] font-black uppercase text-muted">Máy chính</p><p className="mt-1 text-sm font-black">{main.product.id} · {main.product.name}</p></div> : null}
@@ -2881,7 +2881,7 @@ function Inventory({
         </button>
         <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
           <img
-            src={product?.imageUrl}
+            src={catalogImageUrl(product)}
             alt={product?.name || "Thiết bị trong kho"}
             className="aspect-[4/3] w-full rounded-lg bg-white object-contain p-4 shadow-soft"
           />

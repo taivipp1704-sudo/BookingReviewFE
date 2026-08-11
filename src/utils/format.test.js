@@ -1,21 +1,33 @@
-import assert from "node:assert/strict";
-import test from "node:test";
+import assert from 'node:assert/strict';
+import test from 'node:test';
 import {
+  catalogImageUrl,
   money,
   pricingModeLabel,
   rentalDurationLabel,
   rentalRates,
   shortDate,
-} from "./format.js";
+} from './format.js';
 
-test("money and date values are formatted for Vietnamese users", () => {
+test('money and date values are formatted for Vietnamese users', () => {
   assert.match(money(1800000), /1\.800\.000/);
   assert.match(money(null), /0/);
-  assert.equal(shortDate(null), "-");
-  assert.match(shortDate("2026-08-05T08:00:00"), /05\/08\/2026/);
+  assert.equal(shortDate(null), '-');
+  assert.match(shortDate('2026-08-05T08:00:00'), /05\/08\/2026/);
 });
 
-test("rental rates include every configured positive price", () => {
+test('catalog images use a stable URL version and bypass a stale browser cache', () => {
+  assert.equal(catalogImageUrl({ imageUrl: '/api/media/catalog/a.jpg', mediaRevision: 4 }), '/api/media/catalog/a.jpg?v=4');
+  assert.equal(catalogImageUrl({ imageUrl: '/api/media/catalog/a.jpg?fit=cover', currentVersion: 2 }), '/api/media/catalog/a.jpg?fit=cover&v=2');
+  assert.equal(catalogImageUrl({ imageUrl: 'data:image/png;base64,test', mediaRevision: 99 }), 'data:image/png;base64,test');
+  assert.equal(catalogImageUrl({ imageUrl: 'blob:https://app.local/preview', mediaRevision: 99 }), 'blob:https://app.local/preview');
+  assert.equal(catalogImageUrl({ imageUrl: '' }), '');
+  assert.equal(catalogImageUrl({}), '');
+  assert.equal(catalogImageUrl({ imageUrl: '/api/media/catalog/fallback.jpg', mediaRevision: 0, currentVersion: 0 }), '/api/media/catalog/fallback.jpg?v=1');
+  assert.equal(catalogImageUrl(null), '');
+});
+
+test('rental rates include every configured positive price', () => {
   const rates = rentalRates({
     hourlyPrice: 100,
     halfDayPrice: 500,
@@ -26,37 +38,37 @@ test("rental rates include every configured positive price", () => {
     extraDayPrice: 700,
   });
   assert.deepEqual(rates.map((rate) => rate.key), [
-    "HOURLY", "HALF_DAY", "DAILY", "TWO_DAY", "MULTI_DAY", "EXTRA_DAY",
+    'HOURLY', 'HALF_DAY', 'DAILY', 'TWO_DAY', 'MULTI_DAY', 'EXTRA_DAY',
   ]);
-  assert.equal(rates.find((rate) => rate.key === "MULTI_DAY").label, "Gói 4 ngày");
+  assert.equal(rates.find((rate) => rate.key === 'MULTI_DAY').label, 'Gói 4 ngày');
 });
 
-test("rental rates omit disabled options and keep a daily fallback", () => {
+test('rental rates omit disabled options and keep a daily fallback', () => {
   assert.deepEqual(rentalRates({ dailyPrice: 1000 }), [
-    { key: "DAILY", label: "1 ngày", value: 1000, suffix: "/ngày" },
+    { key: 'DAILY', label: '1 ngày', value: 1000, suffix: '/ngày' },
   ]);
   assert.equal(
     rentalRates({ dailyPrice: 1000, multiDayPrice: 2000, multiDayDays: 1 })[1].label,
-    "Gói 2 ngày",
+    'Gói 2 ngày',
   );
   assert.equal(
-    rentalRates({ dailyPrice: 1000, multiDayPrice: 2000, multiDayDays: "invalid" })[1].label,
-    "Gói 3 ngày",
+    rentalRates({ dailyPrice: 1000, multiDayPrice: 2000, multiDayDays: 'invalid' })[1].label,
+    'Gói 3 ngày',
   );
 });
 
-test("rental duration labels distinguish hourly and daily quotes", () => {
-  assert.equal(rentalDurationLabel(null), "");
-  assert.equal(rentalDurationLabel({ rentalMinutes: 720, rentalHours: 12 }), "12 giờ thuê");
-  assert.equal(rentalDurationLabel({ rentalMinutes: 1440, rentalDays: 1 }), "1 ngày thuê");
+test('rental duration labels distinguish hourly and daily quotes', () => {
+  assert.equal(rentalDurationLabel(null), '');
+  assert.equal(rentalDurationLabel({ rentalMinutes: 720, rentalHours: 12 }), '12 giờ thuê');
+  assert.equal(rentalDurationLabel({ rentalMinutes: 1440, rentalDays: 1 }), '1 ngày thuê');
 });
 
-test("pricing mode labels cover all billing modes", () => {
-  assert.equal(pricingModeLabel(null), "");
-  assert.equal(pricingModeLabel({ pricingMode: "HOURLY", billableUnits: 3 }), "3 giờ");
-  assert.equal(pricingModeLabel({ pricingMode: "HALF_DAY" }), "Nửa ngày");
-  assert.equal(pricingModeLabel({ pricingMode: "TWO_DAY" }), "Gói 2 ngày");
-  assert.equal(pricingModeLabel({ pricingMode: "MULTI_DAY", extraDays: 0 }), "Gói 3 ngày");
-  assert.equal(pricingModeLabel({ pricingMode: "MULTI_DAY", extraDays: 2 }), "Gói 3 ngày + 2 ngày");
-  assert.equal(pricingModeLabel({ pricingMode: "DAILY", billableUnits: 4 }), "4 ngày");
+test('pricing mode labels cover all billing modes', () => {
+  assert.equal(pricingModeLabel(null), '');
+  assert.equal(pricingModeLabel({ pricingMode: 'HOURLY', billableUnits: 3 }), '3 giờ');
+  assert.equal(pricingModeLabel({ pricingMode: 'HALF_DAY' }), 'Nửa ngày');
+  assert.equal(pricingModeLabel({ pricingMode: 'TWO_DAY' }), 'Gói 2 ngày');
+  assert.equal(pricingModeLabel({ pricingMode: 'MULTI_DAY', extraDays: 0 }), 'Gói 3 ngày');
+  assert.equal(pricingModeLabel({ pricingMode: 'MULTI_DAY', extraDays: 2 }), 'Gói 3 ngày + 2 ngày');
+  assert.equal(pricingModeLabel({ pricingMode: 'DAILY', billableUnits: 4 }), '4 ngày');
 });
