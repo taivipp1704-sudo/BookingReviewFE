@@ -21,7 +21,7 @@ export default function PublicFooter({ onNavigate, bookingEnabled = false }) {
         </div>
         <div>
           <h2 className="text-xs font-black uppercase tracking-widest text-acid">Giờ làm việc</h2>
-          <div className="mt-5 flex items-start gap-3 text-sm font-semibold leading-6 text-white/70"><Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-acid" /><p>Thứ Hai - Thứ Bảy<br />08:00 - 20:00<br /><span className="text-white/45">Chủ Nhật: 09:00 - 17:00</span></p></div>
+          <div className="mt-5 flex items-start gap-3 text-sm font-semibold leading-6 text-white/70"><Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-acid" /><p>Thứ Hai - Thứ Bảy<br />06:00 - 22:00</p></div>
         </div>
       </div>
       <div className="border-t border-white/10"><div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-5 text-[11px] font-semibold text-white/45 sm:flex-row sm:items-center sm:justify-between sm:px-6"><p>© {new Date().getFullYear()} AMY DIGITAL. All rights reserved.</p><p>Điều khoản thuê · Chính sách bảo mật · Quy định đặt cọc</p></div></div>

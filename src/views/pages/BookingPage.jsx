@@ -27,6 +27,7 @@ import {
   localDateTime,
   returnTimeForRentalRate,
 } from "../../models/rentalWindow.js";
+import { compatibleAccessoryIds } from "../../models/productCompatibility.js";
 
 const paymentAccount = {
   bank: import.meta.env.VITE_PAYMENT_BANK || "MB BANK",
@@ -57,6 +58,7 @@ function commitmentFingerprint(quote) {
     quote.equipmentDeposit,
     quote.bookingDeposit,
     quote.amountDueNow,
+    quote.amountDueBeforeHandover,
     quote.identityViolationFee,
     quote.unauthorizedTransferFee,
     quote.lateFeePerHour,
@@ -966,7 +968,10 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
         } catch {
           productDetails = {};
         }
-        const compatibleIds = productDetails.compatibleAccessories || [];
+        const compatibleIds = [
+          ...(productDetails.compatibleAccessories || []),
+          ...compatibleAccessoryIds(selected),
+        ];
         const bundleProductIds = nextBundles
           .filter((bundle) =>
             bundle.items.some((line) => line.productId === productId),
@@ -975,8 +980,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
         const nextAccessories = nextProducts.filter(
           (item) =>
             item.levelCode !== "L1" &&
-            (compatibleIds.length === 0 ||
-              compatibleIds.includes(item.id) ||
+            ((compatibleIds.length > 0 && compatibleIds.includes(item.id)) ||
               bundleProductIds.includes(item.id)),
         );
         if (!ignore) {
@@ -992,11 +996,13 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
             ...current,
             storeBranchId: nextStores.some((store) => store.id === current.storeBranchId)
               ? current.storeBranchId
-              : nextStores[0]?.id || "",
+              : nextStores.find((store) => store.id === "BRANCH-HOME")?.id
+                || nextStores[0]?.id
+                || "",
           }));
           const initialQuantities = Object.fromEntries(
               nextAccessories
-                .filter((item) => item.included && item.availableQty > 0)
+                .filter((item) => compatibleIds.includes(item.id) && item.availableQty > 0)
                 .map((item) => [item.id, 1]),
             );
           const preferredId = sessionStorage.getItem("claritycam-preferred-bundle");
@@ -1498,9 +1504,10 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                   </div>
                   {liveQuote ? (
                     <div className="mt-3 space-y-2 border-t border-line pt-3 text-xs font-bold">
-                      <div className="flex justify-between gap-3 text-muted"><span>Cọc thiết bị</span><span className="text-ink">{money(liveQuote.equipmentDeposit)}</span></div>
-                      <div className="flex justify-between gap-3 text-muted"><span>Tiền giữ lịch</span><span className="text-ink">{money(liveQuote.bookingDeposit)}</span></div>
-                      <div className="flex justify-between gap-3 text-sm font-black"><span>Cần thanh toán ban đầu</span><span>{money(liveQuote.amountDueNow)}</span></div>
+                      <div className="flex justify-between gap-3 text-muted"><span>Cọc máy khi nhận</span><span className="text-ink">{money(liveQuote.equipmentDeposit)}</span></div>
+                      <div className="flex justify-between gap-3 text-muted"><span>Giữ lịch bắt buộc</span><span className="text-ink">{money(liveQuote.bookingDeposit)}</span></div>
+                      <div className="flex justify-between gap-3 text-sm font-black"><span>Chuyển ngay để giữ lịch</span><span>{money(liveQuote.amountDueNow)}</span></div>
+                      <p className="rounded bg-acid/10 p-2 text-[10px] font-bold leading-4 text-ink">Tiền thuê và cọc máy thanh toán khi nhận thiết bị.</p>
                     </div>
                   ) : null}
                   {liveQuote?.discountAmount > 0 ? (
@@ -1667,7 +1674,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                     />
                     <label className="min-w-0 space-y-1 sm:col-span-2">
                       <span className="text-[10px] font-black uppercase tracking-widest text-muted">
-                        Chi nhánh nhận và trả máy
+                        Hình thức nhận và trả máy
                       </span>
                       <span className="relative block">
                         <Building2 className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
@@ -1677,7 +1684,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                           onChange={(event) => setForm({ ...form, storeBranchId: event.target.value })}
                           className="min-w-0 w-full appearance-none rounded-lg border border-line bg-paper py-3 pl-11 pr-4 text-sm font-semibold outline-none focus:border-ink"
                         >
-                          <option value="" disabled>Chọn chi nhánh</option>
+                          <option value="" disabled>Chọn hình thức nhận máy</option>
                           {stores.map((store) => (
                             <option key={store.id} value={store.id}>
                               {store.name}
@@ -1691,6 +1698,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                           <span>
                             <strong className="block text-ink">{selectedStore.address}</strong>
                             {selectedStore.phone ? <span className="block">{selectedStore.phone}</span> : null}
+                            {selectedStore.note ? <span className="block">{selectedStore.note}</span> : null}
                           </span>
                         </span>
                       ) : null}
@@ -1766,7 +1774,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                     onChange={(event) =>
                       setForm({ ...form, note: event.target.value })
                     }
-                    placeholder="Ghi chú cho đội ngũ (không bắt buộc)"
+                    placeholder="Ghi chú cho shop (không bắt buộc)"
                     className="min-h-20 w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm font-semibold outline-none focus:border-ink"
                   />
                   <section className="rounded-lg border border-line bg-paper p-4">
@@ -1929,7 +1937,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                     <div className="overflow-hidden rounded-lg bg-white text-ink">
                       <div className="flex items-center justify-between border-b border-line px-4 py-3"><strong className="text-xs uppercase tracking-wider">Các khoản trách nhiệm</strong><span className="text-[10px] font-bold text-muted">Theo quote hiện tại</span></div>
                       {[
-                        ["Tự ý giao máy cho người khác", "Người sử dụng chưa được khai báo", money(quote.unauthorizedTransferFee)],
+                        ["Tự ý giao thiết bị cho người khác", "Chỉ áp dụng khi người nhận không đúng người đã đăng ký", money(quote.unauthorizedTransferFee)],
                         ["Trả trễ", "Tính theo mỗi giờ vượt quá thời gian trả", `${money(quote.lateFeePerHour)} / giờ`],
                         ["Ảnh hưởng booking tiếp theo", "Chỉ áp dụng khi đơn sau thực tế bị ảnh hưởng", Number(quote.impactPenaltyPercent || 0) > 0 ? `${Number(quote.impactPenaltyPercent)}% giá trị đơn bị ảnh hưởng` : "Admin xác nhận theo sự cố"],
                       ].map(([title, copy, value]) => (
@@ -1955,7 +1963,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                             <div><span className="block text-[9px] font-black uppercase text-muted">Số tài khoản</span><strong className="mt-1 block font-mono text-sm">{paymentAccount.accountNumber}</strong></div>
                             <div><span className="block text-[9px] font-black uppercase text-muted">Chủ tài khoản</span><strong className="mt-1 block">{paymentAccount.accountName}</strong></div>
                           </div>
-                          <p className="mt-3 rounded bg-paper px-3 py-2 text-[11px] font-bold">Nội dung: {form.phone} {product.id} · Số cần thanh toán ban đầu: {money(quote.amountDueNow)}</p>
+                          <p className="mt-3 rounded bg-paper px-3 py-2 text-[11px] font-bold">Nội dung: {form.phone} {product.id} · Tiền giữ lịch bắt buộc: {money(quote.amountDueNow)}</p>
                         </div>
                       </div>
                       <label className={`mt-4 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed p-3 ${paymentProof ? "border-green-500 bg-green-50" : "border-line bg-paper"}`}>

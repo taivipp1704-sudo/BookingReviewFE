@@ -6,14 +6,10 @@ import { api } from "../../services/api.js";
 import { catalogImageUrl, money, rentalRates, shortDate } from "../../utils/format.js";
 
 const brands = [
-  "SONY",
   "CANON",
-  "DJI",
-  "SIGMA",
-  "RODE",
-  "APUTURE",
-  "PELICAN",
-  "BLACKMAGIC",
+  "FUJI",
+  "SONY",
+  "POCKET",
 ];
 
 export default function CustomerPage({ onSelect, onBrowse, mode = "landing", bookingEnabled = false }) {
@@ -26,7 +22,6 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing", boo
   const [filters, setFilters] = useState({
     brands: [],
     categories: [],
-    trackingModes: [],
     availableOnly: false,
   });
   const [tracking, setTracking] = useState({
@@ -100,11 +95,6 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing", boo
           (product) =>
             filters.categories.length === 0 ||
             filters.categories.includes(product.category),
-        )
-        .filter(
-          (product) =>
-            filters.trackingModes.length === 0 ||
-            filters.trackingModes.includes(product.trackingMode),
         )
         .filter((product) => !filters.availableOnly || product.availableQty > 0)
         .filter(
@@ -274,12 +264,6 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing", boo
               onToggle={(value) => toggleFilter("brands", value)}
             />
             <PriceFilter value={priceRange} onChange={setPriceRange} />
-            <FilterSection
-              title="Quản lý kho"
-              options={["SERIALIZED", "BATCH_TRACKED", "QUANTITY", "CONSUMABLE"]}
-              selected={filters.trackingModes}
-              onToggle={(value) => toggleFilter("trackingModes", value)}
-            />
             <label className="flex items-center gap-3 border-t border-line pt-4 text-sm font-semibold">
               <input
                 type="checkbox"

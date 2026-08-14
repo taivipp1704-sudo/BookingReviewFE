@@ -78,7 +78,7 @@ export default function ProductDetailsPage({
         ["Phân loại", product.category],
         ["Mã sản phẩm", product.id],
         ["Cấp thiết bị", product.levelCode],
-        ["Quản lý kho", product.trackingMode],
+        ["Cách theo dõi tồn kho", product.trackingMode],
         ["Thông số chính", product.specs],
       ]
     : [];

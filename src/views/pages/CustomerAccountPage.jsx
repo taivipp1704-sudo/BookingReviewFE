@@ -240,7 +240,8 @@ export default function CustomerAccountPage({
                 <span>Tiền thuê: {money(item.totalAmount)}</span>
                 <span className="text-muted">Cọc máy: {money(item.equipmentDeposit)} · Giữ lịch: {money(item.bookingDeposit)}</span>
               </div>
-              <p className="mt-2 text-sm font-black">Thanh toán ban đầu: {money(item.amountDueNow)}</p>
+              <p className="mt-2 text-sm font-black">Đã yêu cầu giữ lịch: {money(item.amountDueNow)}</p>
+              <p className="mt-1 text-xs font-bold text-muted">Cần thanh toán trước giao: {money(item.amountDueBeforeHandover || item.amountDueNow)}</p>
               {item.discountAmount > 0 ? <p className="mt-2 text-xs font-bold text-green-700">Đã giảm {money(item.discountAmount)} với mã {item.promotionCode}</p> : null}
               {item.identityDocumentsAvailable || item.paymentProofAvailable ? (
                 <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-4">

@@ -1301,7 +1301,7 @@ function Orders({
               <p className="mt-1 font-black">{money(selected.bookingDeposit)}</p>
             </div>
             <div className="rounded-lg bg-ink p-4 text-white">
-              <p className="text-[10px] font-black uppercase text-white/55">Thu ban đầu</p>
+              <p className="text-[10px] font-black uppercase text-white/55">Giữ lịch ban đầu</p>
               <p className="mt-1 font-black text-acid">{money(selected.amountDueNow)}</p>
             </div>
           </div>
@@ -1498,7 +1498,7 @@ function Orders({
 
 function FinanceLifecycle({ booking, data, productById, onChanged }) {
   const allocated = (data.paymentAllocations || []).reduce((sum, item) => sum + Number(item.amount || 0), 0);
-  const missing = Math.max(0, Number(booking.amountDueNow || 0) - allocated);
+  const missing = Math.max(0, Number(booking.amountDueBeforeHandover || booking.amountDueNow || 0) - allocated);
   const reviewStates = ["PENDING_REVIEW", "NEGOTIATION", "CONDITIONAL", "TEMP_HOLD"];
   const preDeliveryStates = [...reviewStates, "CONFIRMED", "READY_FOR_PICKUP"];
   const [paymentAmount, setPaymentAmount] = useState(missing);
@@ -1573,7 +1573,7 @@ function FinanceLifecycle({ booking, data, productById, onChanged }) {
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
         <Detail label="Tiền thuê sau giảm" value={money(booking.totalAmount || 0)} />
         <Detail label="Tiền cọc" value={money(booking.depositRequired || 0)} />
-        <Detail label="Cần thu trước giao" value={money(booking.amountDueNow || 0)} />
+        <Detail label="Cần thu trước giao" value={money(booking.amountDueBeforeHandover || booking.amountDueNow || 0)} />
         <Detail label="Đã thực nhận" value={money(allocated)} />
         <Detail label="Còn phải thu" value={money(missing)} />
       </div>
@@ -1816,7 +1816,7 @@ function Catalog({ products, assets, stock, bundles, stores, detailId, onNavigat
       multiDayDays: 3,
       extraDayPrice: Math.max(0, Number(form.extraDayPrice) || 0),
       equipmentDeposit: Math.max(0, Number(form.equipmentDeposit) || 0),
-      bookingDeposit: Math.max(0, Number(form.bookingDeposit) || 0),
+      bookingDeposit: form.levelCode === "L1" ? 50_000 : 0,
       lateFeePerHour: Math.max(0, Number(form.lateFeePerHour) || 0),
       identityViolationFee: Math.max(0, Number(form.identityViolationFee) || 0),
       unauthorizedTransferFee: Math.max(0, Number(form.unauthorizedTransferFee) || 0),
@@ -1938,16 +1938,16 @@ function Catalog({ products, assets, stock, bundles, stores, detailId, onNavigat
               <Detail label="Giá 3 ngày" value={money(selected.multiDayPrice)} />
               <Detail label="Phụ thu mỗi ngày" value={money(selected.extraDayPrice)} />
               <Detail label="Cọc thiết bị" value={money(selected.equipmentDeposit)} />
-              <Detail label="Tiền giữ lịch" value={money(selected.bookingDeposit)} />
+              <Detail label="Giữ lịch bắt buộc mỗi đơn" value={money(50_000)} />
               <Detail label="Phí trả trễ/giờ" value={money(selected.lateFeePerHour)} />
               <Detail label="Phí sai người/CCCD" value={money(selected.identityViolationFee)} />
-              <Detail label="Phí tự ý chuyển giao" value={money(selected.unauthorizedTransferFee)} />
+              <Detail label="Phí giao sai người nhận" value={money(selected.unauthorizedTransferFee)} />
               <Detail label="Bồi hoàn khi ảnh hưởng đơn sau" value={`${Number(selected.impactPenaltyPercent || 0)}%`} />
               <Detail label="Giới hạn trách nhiệm hư hỏng" value={money(selected.damageLiabilityLimit)} />
             </div>
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               <Detail label="Thông số" value={selected.specs} />
-              <Detail label="Quản lý kho" value={selected.trackingMode} />
+              <Detail label="Cách theo dõi tồn kho" value={selected.trackingMode} />
               <Detail
                 label="Chi nhánh"
                 value={storeById[selected.storeBranchId]?.name || "Chưa phân chi nhánh"}
@@ -2231,11 +2231,10 @@ function AccessoryForm({ form, setForm, onSubmit, onClose, saving, error, stores
           </div>
           <div className="mt-4 grid gap-3 border-t border-line pt-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              ["equipmentDeposit", "Cọc thiết bị"],
-              ["bookingDeposit", "Tiền giữ lịch"],
+              ["equipmentDeposit", "Cọc thiết bị khi nhận máy"],
               ["lateFeePerHour", "Phí trả trễ mỗi giờ"],
               ["identityViolationFee", "Phí sai người / sai CCCD"],
-              ["unauthorizedTransferFee", "Phí tự ý chuyển giao thiết bị"],
+              ["unauthorizedTransferFee", "Phí giao sai người nhận"],
               ["impactPenaltyPercent", "Bồi hoàn khi ảnh hưởng đơn sau (%)"],
               ["damageLiabilityLimit", "Giới hạn trách nhiệm hư hỏng"],
             ].map(([key, label]) => (
@@ -2244,7 +2243,7 @@ function AccessoryForm({ form, setForm, onSubmit, onClose, saving, error, stores
               </label>
             ))}
           </div>
-          <p className="mt-3 text-[10px] font-bold leading-relaxed text-muted">Các trường cam kết để 0 sẽ tự tính theo hệ thống: sai danh tính = tiền giữ lịch, chuyển giao = 30% giá ngày, ảnh hưởng đơn sau = 100%, hư hỏng = tối thiểu 10 lần giá ngày.</p>
+          <p className="mt-3 text-[10px] font-bold leading-relaxed text-muted">Hệ thống thu cố định 50.000đ để giữ lịch cho mỗi đơn. Tiền thuê và cọc thiết bị được thu khi khách nhận máy. Các trường cam kết để 0 sẽ tự tính theo chính sách hiện hành.</p>
         </section>
         <div className="grid gap-3 border-t border-line pt-4 md:col-span-2 sm:grid-cols-2">
           <div className="sm:col-span-2">
