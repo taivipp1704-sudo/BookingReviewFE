@@ -16,6 +16,7 @@ import BookingJourney from "../components/BookingJourney.jsx";
 import SecureImagePreview from "../components/SecureImagePreview.jsx";
 import { api } from "../../services/api.js";
 import { money, shortDate } from "../../utils/format.js";
+import { groupBookingItems } from "../../models/bookingItems.js";
 
 export default function CustomerAccountPage({
   account,
@@ -205,8 +206,9 @@ export default function CustomerAccountPage({
         </p>
       ) : (
         <div className="space-y-3">
-          {bookings.map((item) => (
-            <article
+          {bookings.map((item) => {
+            const groupedItems = groupBookingItems(item.items, products);
+            return <article
               key={item.id}
               className="rounded-lg border border-line bg-white p-5"
             >
@@ -229,12 +231,28 @@ export default function CustomerAccountPage({
                     </div>
                   </div>
                 ) : null}
-                {(item.items || []).map((line) => (
-                  <div key={line.id || line.productId} className="flex items-center justify-between gap-3 text-sm">
-                    <span className="font-bold">{products[line.productId]?.name || line.productId}</span>
-                    <span className="shrink-0 font-black">× {line.quantity}</span>
+                {groupedItems.equipment.length ? (
+                  <div className="rounded-lg bg-ink p-4 text-white">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-acid">Máy thuê</p>
+                    {groupedItems.equipment.map((line) => (
+                      <div key={line.productId} className="mt-1 flex items-center justify-between gap-3">
+                        <span className="text-base font-black">{line.productName}</span>
+                        <span className="shrink-0 font-black">× {line.quantity}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                ) : null}
+                {groupedItems.accessories.length ? (
+                  <div className="pt-2">
+                    <p className="mb-2 text-[10px] font-black uppercase tracking-wider text-muted">Phụ kiện đi kèm</p>
+                    {groupedItems.accessories.map((line) => (
+                      <div key={line.productId} className="flex items-center justify-between gap-3 py-1 text-sm">
+                        <span className="font-bold">{line.productName}</span>
+                        <span className="shrink-0 font-black">× {line.quantity}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
               <div className="mt-3 flex flex-wrap justify-between gap-2 text-sm font-bold">
                 <span>Tiền thuê: {money(item.totalAmount)}</span>
@@ -295,8 +313,8 @@ export default function CustomerAccountPage({
                     : "Đang chờ admin duyệt"}
                 </p>
               ) : null}
-            </article>
-          ))}
+            </article>;
+          })}
         </div>
       )}
       <section className="mt-8 border-t border-line pt-7">

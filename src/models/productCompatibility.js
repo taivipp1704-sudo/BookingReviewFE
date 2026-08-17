@@ -5,7 +5,7 @@ const CAMERA_KITS = [
   { match: /canon\s+(m50|m100|m200|m10)\b/i, ids: ["ACC-BAT-LPE12", "ACC-CHG-LCE12"] },
   { match: /canon\s+g7x/i, ids: ["ACC-BAT-NB13L", "ACC-CHG-NB13L"] },
   { match: /fuji\s+x-?a5/i, ids: ["ACC-BAT-NPW126S", "ACC-CHG-NPW126S"] },
-  { match: /fuji\s+x-?m5/i, ids: ["ACC-BAT-NPW126S", "ACC-CHG-NPW126S", "ACC-CARD-SD128"] },
+  { match: /fuji\s+x-?m5/i, ids: ["ACC-BAT-NPW126S", "ACC-CHG-NPW126S", "ACC-CARD-SD128", "ACC-FLASH-MEDALIGHT-F1"] },
   { match: /ixy\s*600f/i, ids: ["ACC-BAT-NB4L", "ACC-CHG-NB4L"] },
   { match: /ixy\s*650f?/i, ids: ["ACC-BAT-NB11LH", "ACC-CHG-CB2LFE"] },
   { match: /pocket\s*3/i, ids: ["ACC-POWER-POCKET3", "ACC-CHG-USBC", "ACC-CARD-MICROSD128", "ACC-READER-MICROSD"] },

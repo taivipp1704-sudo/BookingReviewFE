@@ -383,13 +383,9 @@ function PublicHeader({ navigate, customerAccount, onStartBooking, onLogout, car
   }
   return <header className={`public-header fixed inset-x-0 top-0 z-40 border-b border-line bg-white/95 shadow-[0_10px_35px_rgba(16,16,16,.08)] backdrop-blur-xl transition-[transform,opacity] duration-300 ease-out will-change-transform ${headerVisible ? 'translate-y-0 opacity-100' : 'pointer-events-none -translate-y-full opacity-0'}`}>
     <div className="public-header__inner mx-auto flex min-h-[76px] max-w-[1600px] items-center gap-2 px-3 sm:gap-4 sm:px-7 md:grid md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] lg:px-10">
-      <button onClick={() => navigate('/')} className="shrink-0 md:justify-self-start" aria-label="Về trang chủ AMY Digital"><BrandMark compact bare showSubtitle={false} className="[&>span:last-child]:hidden sm:[&>span:last-child]:flex" /></button>
+      <button onClick={() => navigate('/')} className="shrink-0 md:justify-self-start" aria-label="Về trang chủ AMY Digital"><BrandMark compact bare showSubtitle={false} /></button>
       <nav className="public-header__nav hide-scrollbar mx-auto flex min-w-0 flex-1 items-center justify-center gap-2 overflow-x-auto py-2 sm:gap-3 md:justify-self-center">
-        <button onClick={() => openHomeSection('cooperate')} className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-line px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:text-ink sm:px-4 sm:text-[11px]"><Handshake className="h-4 w-4" />Hợp tác</button>
-        <button onClick={() => openHomeSection('track')} className="flex h-11 items-center gap-2 rounded-lg border border-line px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:text-ink sm:px-4 sm:text-[11px]"><FileSearch className="h-4 w-4" />Tra cứu đơn</button>
-        {customerAccount ? <button onClick={() => navigate('/calendar')} className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-line px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:text-ink sm:px-4 sm:text-[11px]"><CalendarDays className="h-4 w-4" />Lịch thiết bị</button> : null}
-      </nav>
-      <div className="public-header__actions hide-scrollbar ml-auto flex shrink-0 items-center gap-2 overflow-x-auto sm:gap-3 md:ml-0 md:justify-self-end">
+        <button onClick={onStartBooking} className="flex h-11 shrink-0 items-center gap-2 rounded-lg bg-ink px-4 text-[10px] font-black uppercase tracking-wider text-acid shadow-sm transition hover:bg-acid hover:text-ink sm:px-6 sm:text-[11px]"><ShieldCheck className="h-4 w-4" />Xem thiết bị</button>
         <button onClick={() => {
           if (customerAccount) navigate('/account');
           else {
@@ -400,11 +396,12 @@ function PublicHeader({ navigate, customerAccount, onStartBooking, onLogout, car
           {customerAccount ? <UserRound className="h-4 w-4" /> : <LogIn className="h-4 w-4" />}
           <span>{customerAccount ? "Tài khoản" : "Đăng ký sớm"}</span>
         </button>
-        {customerAccount ? <button type="button" onClick={onLogout} title="Đăng xuất" aria-label="Đăng xuất" className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-lg border border-line bg-white px-3 text-muted transition hover:border-ink hover:bg-ink hover:text-acid xl:px-4">
-          <LogOut className="h-4 w-4" />
-          <span className="hidden text-[11px] font-black uppercase xl:inline">Đăng xuất</span>
-        </button> : null}
-        <button onClick={onStartBooking} className="flex h-11 items-center gap-2 rounded-lg bg-ink px-4 text-[10px] font-black uppercase tracking-wider text-acid shadow-sm transition hover:bg-acid hover:text-ink sm:px-6 sm:text-[11px]"><ShieldCheck className="h-4 w-4" />Xem thiết bị</button>
+        {customerAccount ? <button onClick={() => navigate('/calendar')} className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-line px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:text-ink sm:px-4 sm:text-[11px]"><CalendarDays className="h-4 w-4" />Lịch thiết bị</button> : null}
+        <button onClick={() => openHomeSection('track')} className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-line px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:text-ink sm:px-4 sm:text-[11px]"><FileSearch className="h-4 w-4" />Tra cứu đơn</button>
+        <button onClick={() => openHomeSection('cooperate')} className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-line px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:text-ink sm:px-4 sm:text-[11px]"><Handshake className="h-4 w-4" />Hợp tác</button>
+        {customerAccount ? <button type="button" onClick={onLogout} title="Đăng xuất" className="flex h-11 shrink-0 items-center gap-2 rounded-lg border border-line bg-white px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:bg-ink hover:text-acid sm:px-4 sm:text-[11px]"><LogOut className="h-4 w-4" /><span>Đăng xuất</span></button> : null}
+      </nav>
+      <div className="public-header__actions hide-scrollbar ml-auto flex shrink-0 items-center gap-2 overflow-x-auto sm:gap-3 md:ml-0 md:justify-self-end">
         {!landing && bookingEnabled ? <button onClick={() => navigate('/cart')} className="relative hidden h-11 w-11 items-center justify-center rounded-lg border border-line bg-white text-ink sm:flex" aria-label="Mở giỏ hàng"><ShoppingCart className="h-4 w-4" />{cartCount > 0 ? <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-acid px-1 text-[10px] font-black text-ink">{cartCount}</span> : null}</button> : null}
       </div>
     </div>

@@ -4,6 +4,7 @@ import ProductCard from "../components/ProductCard.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import { api } from "../../services/api.js";
 import { catalogImageUrl, money, rentalRates, shortDate } from "../../utils/format.js";
+import { groupBookingItems } from "../../models/bookingItems.js";
 
 const brands = [
   "CANON",
@@ -407,6 +408,17 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing", boo
                   </div>
                   <StatusBadge state={tracking.result.state} />
                 </div>
+                {groupBookingItems(tracking.result.items).equipment.length ? (
+                  <div className="mt-3 rounded-lg bg-ink px-4 py-3 text-white">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-acid">Máy đã đặt</p>
+                    {groupBookingItems(tracking.result.items).equipment.map((line) => (
+                      <div key={line.productId} className="mt-1 flex items-center justify-between gap-3">
+                        <span className="font-black">{line.productName}</span>
+                        <span className="shrink-0 text-sm font-black">× {line.quantity}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 <p className="mt-3 text-sm font-bold">
                   Tổng dự kiến: {tracking.result.totalAmount} · Cọc:{" "}
                   {tracking.result.depositRequired}
@@ -426,7 +438,7 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing", boo
               <h2 className="mt-2 text-3xl font-black">Đối tác thiết bị và sản xuất nội dung</h2>
               <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-muted">Liên hệ để nhận hồ sơ hợp tác, mẫu hợp đồng và chính sách dành cho đối tác. Nội dung chi tiết có thể được cập nhật từ trang quản trị ở giai đoạn tiếp theo.</p>
             </div>
-            <a href="tel:+84901234567" className="flex h-12 items-center justify-center gap-2 rounded-lg bg-ink px-6 text-xs font-black uppercase text-acid"><Handshake className="h-4 w-4" />Liên hệ hợp tác</a>
+            <a href="tel:+84937538157" className="flex h-12 items-center justify-center gap-2 rounded-lg bg-ink px-6 text-xs font-black uppercase text-acid"><Handshake className="h-4 w-4" />Liên hệ hợp tác</a>
           </div>
         </section>
       ) : null}

@@ -17,11 +17,11 @@ export default function PublicFooter({ onNavigate, bookingEnabled = false }) {
         </div>
         <div>
           <h2 className="text-xs font-black uppercase tracking-widest text-acid">Liên hệ</h2>
-          <div className="mt-5 space-y-4 text-sm font-semibold text-white/70"><a href="tel:+84901234567" className="flex items-start gap-3 hover:text-white"><Phone className="mt-0.5 h-4 w-4 shrink-0 text-acid" />090 123 4567</a><a href="mailto:contact@amydigital.vn" className="flex items-start gap-3 break-all hover:text-white"><Mail className="mt-0.5 h-4 w-4 shrink-0 text-acid" />contact@amydigital.vn</a><p className="flex items-start gap-3"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-acid" />TP. Hồ Chí Minh, Việt Nam</p></div>
+          <div className="mt-5 space-y-4 text-sm font-semibold text-white/70"><a href="tel:+84937538157" className="flex items-start gap-3 hover:text-white"><Phone className="mt-0.5 h-4 w-4 shrink-0 text-acid" />0937538157</a><a href="mailto:amydigital@gmail.com" className="flex items-start gap-3 break-all hover:text-white"><Mail className="mt-0.5 h-4 w-4 shrink-0 text-acid" />amydigital@gmail.com</a><p className="flex items-start gap-3"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-acid" />Số 6 đường N3, Khu dân cư Phú Hoà 1, TDM, BD</p></div>
         </div>
         <div>
           <h2 className="text-xs font-black uppercase tracking-widest text-acid">Giờ làm việc</h2>
-          <div className="mt-5 flex items-start gap-3 text-sm font-semibold leading-6 text-white/70"><Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-acid" /><p>Thứ Hai - Thứ Bảy<br />06:00 - 22:00</p></div>
+          <div className="mt-5 flex items-start gap-3 text-sm font-semibold leading-6 text-white/70"><Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-acid" /><p>06:00 - 22:00<br />Thứ Hai - Chủ Nhật</p></div>
         </div>
       </div>
       <div className="border-t border-white/10"><div className="mx-auto flex max-w-7xl flex-col gap-2 px-5 py-5 text-[11px] font-semibold text-white/45 sm:flex-row sm:items-center sm:justify-between sm:px-6"><p>© {new Date().getFullYear()} AMY DIGITAL. All rights reserved.</p><p>Điều khoản thuê · Chính sách bảo mật · Quy định đặt cọc</p></div></div>

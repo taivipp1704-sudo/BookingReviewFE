@@ -4,7 +4,7 @@ const SELLER = {
   name: "AMY DIGITAL",
   taxCode: "Chưa cấu hình",
   address: "Cập nhật địa chỉ đơn vị trong cấu hình triển khai",
-  email: "contact@amydigital.local",
+  email: "amydigital@gmail.com",
   phone: "Chưa cấu hình",
   bankAccount: "Chưa cấu hình",
 };

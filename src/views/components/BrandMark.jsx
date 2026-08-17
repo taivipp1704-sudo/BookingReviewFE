@@ -9,16 +9,16 @@ export default function BrandMark({
   className = "",
 }) {
   return (
-    <span className={`inline-flex min-w-0 items-center gap-3 ${className}`}>
-      <span className={`relative grid shrink-0 place-items-center overflow-hidden ${bare ? "rounded-full bg-transparent" : "rounded-lg"} ${compact ? "h-10 w-10" : "h-11 w-11"} ${bare ? "" : inverted ? "bg-white/10" : "bg-ink"}`}>
+    <span className={`inline-flex min-w-0 items-center gap-2.5 ${className}`}>
+      <span className={`relative grid shrink-0 place-items-center ${bare ? "bg-transparent" : "overflow-hidden rounded-lg"} ${compact ? "h-11 w-11" : "h-12 w-12"} ${bare ? "" : inverted ? "bg-white/10" : "bg-ink"}`}>
         <img
           src={bare ? AMY_MASCOT_CUTOUT_URL : AMY_LOGO_URL}
           alt="Logo AMY Digital"
-          className={`h-full w-full object-cover object-top ${bare ? "rounded-full" : ""}`}
+          className={`h-full w-full ${bare ? "object-contain" : "object-cover object-top"}`}
         />
       </span>
       <span className="min-w-0 text-left">
-        <span className={`block truncate font-black leading-none ${compact ? "text-sm" : "text-base"}`}>
+        <span className={`block truncate font-black leading-tight ${compact ? "text-sm" : "text-base"}`}>
           AMY DIGITAL
         </span>
         {showSubtitle ? (

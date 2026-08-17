@@ -128,7 +128,7 @@ export default function CustomerLoginPage({ onBack, onLogin, loginMessage }) {
         </form>
 
         {error ? <p className="mt-4 rounded-lg border border-red-100 bg-red-50 p-3 text-sm font-semibold text-red-700">{error}</p> : null}
-        <a href="mailto:contact@amydigital.local" className="mt-5 flex items-center justify-center gap-2 text-[11px] font-semibold text-muted underline underline-offset-2 hover:text-ink">
+        <a href="mailto:amydigital@gmail.com" className="mt-5 flex items-center justify-center gap-2 text-[11px] font-semibold text-muted underline underline-offset-2 hover:text-ink">
           <CircleHelp className="h-4 w-4" /> Cần hỗ trợ? Liên hệ AMY Digital
         </a>
       </section>

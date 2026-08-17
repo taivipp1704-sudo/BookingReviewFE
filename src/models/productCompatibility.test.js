@@ -11,6 +11,7 @@ describe("compatibleAccessoryIds", () => {
   it("uses the higher capacity card for Fuji XM5", () => {
     const ids = compatibleAccessoryIds({ name: "Fuji XM5" });
     assert.ok(ids.includes("ACC-CARD-SD128"));
+    assert.ok(ids.includes("ACC-FLASH-MEDALIGHT-F1"));
     assert.ok(!ids.includes("ACC-CARD-SD64"));
   });
 

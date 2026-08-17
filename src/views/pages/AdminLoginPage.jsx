@@ -53,7 +53,7 @@ export default function AdminLoginPage({ onLogin, onBack }) {
         <button disabled={busy} className="mt-6 flex h-[54px] w-full items-center justify-center gap-3 rounded-lg bg-ink px-4 text-xs font-black uppercase tracking-wider text-acid disabled:opacity-50">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <LockKeyhole className="h-4 w-4" />} Đăng nhập <ArrowRight className="h-4 w-4" />
         </button>
-        <a href="mailto:contact@amydigital.local" className="mt-7 flex items-center justify-center gap-2 text-[11px] font-semibold text-muted underline underline-offset-2 hover:text-ink"><CircleHelp className="h-4 w-4" />Không thể đăng nhập? Liên hệ quản trị hệ thống.</a>
+        <a href="mailto:amydigital@gmail.com" className="mt-7 flex items-center justify-center gap-2 text-[11px] font-semibold text-muted underline underline-offset-2 hover:text-ink"><CircleHelp className="h-4 w-4" />Không thể đăng nhập? Liên hệ quản trị hệ thống.</a>
       </form>
     </AuthShell>
   );
