@@ -13,9 +13,57 @@ const brands = [
   "POCKET",
 ];
 
+const CATALOG_SESSION_KEY = "amy-catalog-session-v1";
+
+function readCatalogSession() {
+  try {
+    return JSON.parse(window.sessionStorage.getItem(CATALOG_SESSION_KEY) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function writeCatalogSession(cache) {
+  try {
+    window.sessionStorage.setItem(CATALOG_SESSION_KEY, JSON.stringify(cache));
+  } catch {
+    // The live API remains the source of truth when storage is unavailable.
+  }
+}
+
+const storedCatalog = readCatalogSession();
+const catalogCache = {
+  products: storedCatalog?.products || null,
+  bundles: storedCatalog?.bundles || null,
+  availability: storedCatalog?.availability || null,
+};
+
+function persistCatalogCache() {
+  writeCatalogSession(catalogCache);
+}
+
+function mergeAvailability(products, availability) {
+  if (!availability) return products;
+  const availabilityById = Object.fromEntries(
+    availability.map((item) => [item.productId, item]),
+  );
+  return products.map((product) => ({
+    ...product,
+    ...(availabilityById[product.id] || {
+      totalQty: product.totalQty ?? 0,
+      availableQty: product.availableQty ?? 0,
+    }),
+  }));
+}
+
 export default function CustomerPage({ onSelect, onBrowse, mode = "landing", bookingEnabled = false }) {
-  const [products, setProducts] = useState([]);
-  const [bundles, setBundles] = useState([]);
+  const [products, setProducts] = useState(() =>
+    mergeAvailability(catalogCache.products || [], catalogCache.availability),
+  );
+  const [bundles, setBundles] = useState(() => catalogCache.bundles || []);
+  const [catalogLoading, setCatalogLoading] = useState(
+    () => mode === "catalog" && !catalogCache.products,
+  );
   const [catalogError, setCatalogError] = useState("");
   const [query, setQuery] = useState("");
   const [priceSort, setPriceSort] = useState("DEFAULT");
@@ -36,31 +84,57 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing", boo
   useEffect(() => {
     if (mode !== "catalog") return undefined;
     let active = true;
-    const loadCatalog = () =>
-      Promise.all([api.products(), api.bundles(), api.availability()])
-        .then(([nextProducts, nextBundles, availability]) => {
+    let retryTimer;
+    let retryCount = 0;
+
+    const loadCatalog = ({ allowRetry = false } = {}) => {
+      if (!catalogCache.products) setCatalogLoading(true);
+      setCatalogError("");
+
+      api.products()
+        .then((nextProducts) => {
+          catalogCache.products = nextProducts;
+          persistCatalogCache();
           if (!active) return;
-          const availabilityById = Object.fromEntries(
-            availability.map((item) => [item.productId, item]),
-          );
-          setProducts(
-            nextProducts.map((product) => ({
-              ...product,
-              ...(availabilityById[product.id] || {
-                totalQty: 0,
-                availableQty: 0,
-              }),
-            })),
-          );
-          setBundles(nextBundles);
+          setProducts(mergeAvailability(nextProducts, catalogCache.availability));
+          setCatalogLoading(false);
+          retryCount = 0;
         })
-        .catch((error) => setCatalogError(error.message));
-    loadCatalog();
+        .catch((error) => {
+          if (!active) return;
+          setCatalogLoading(false);
+          if (!catalogCache.products) setCatalogError(error.message);
+          if (allowRetry && retryCount === 0 && (!error.status || error.status >= 500)) {
+            retryCount += 1;
+            retryTimer = window.setTimeout(() => loadCatalog(), 1200);
+          }
+        });
+
+      api.availability()
+        .then((availability) => {
+          catalogCache.availability = availability;
+          persistCatalogCache();
+          if (!active || !catalogCache.products) return;
+          setProducts(mergeAvailability(catalogCache.products, availability));
+        })
+        .catch(() => {});
+
+      api.bundles()
+        .then((nextBundles) => {
+          catalogCache.bundles = nextBundles;
+          persistCatalogCache();
+          if (active) setBundles(nextBundles);
+        })
+        .catch(() => {});
+    };
+
+    loadCatalog({ allowRetry: true });
     const timer = window.setInterval(loadCatalog, 15000);
     const onFocus = () => loadCatalog();
     window.addEventListener("focus", onFocus);
     return () => {
       active = false;
+      window.clearTimeout(retryTimer);
       window.clearInterval(timer);
       window.removeEventListener("focus", onFocus);
     };
@@ -236,16 +310,6 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing", boo
             </select>
           </div>
         </div>
-        {catalogError ? (
-          <div className="border border-red-100 bg-red-50 p-4 text-sm font-semibold text-red-700">
-            Không thể tải catalog: {catalogError}
-          </div>
-        ) : null}
-        {!catalogError && visibleProducts.length === 0 ? (
-          <div className="py-10 text-sm font-semibold text-muted">
-            Không tìm thấy thiết bị phù hợp.
-          </div>
-        ) : null}
         <div className="grid gap-7 lg:grid-cols-[240px_1fr]">
           <aside className="space-y-3">
             <div className="flex items-center gap-2 border-b border-line pb-3">
@@ -280,15 +344,42 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing", boo
               Chỉ hiện sản phẩm còn hàng
             </label>
           </aside>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {visibleProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onSelect={onSelect}
-                bookingEnabled={bookingEnabled}
-              />
-            ))}
+          <div>
+            {catalogLoading ? (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" aria-live="polite" aria-busy="true">
+                {[0, 1, 2].map((item) => (
+                  <div key={item} className="min-h-[360px] animate-pulse rounded-lg border border-line bg-white p-4">
+                    <div className="aspect-[4/3] rounded-lg bg-paper" />
+                    <div className="mt-5 h-3 w-20 rounded bg-paper" />
+                    <div className="mt-3 h-6 w-3/4 rounded bg-paper" />
+                    <div className="mt-6 h-12 rounded bg-paper" />
+                  </div>
+                ))}
+                <span className="sr-only">Đang tải danh sách thiết bị</span>
+              </div>
+            ) : null}
+            {!catalogLoading && catalogError ? (
+              <div className="border border-red-100 bg-red-50 p-4 text-sm font-semibold text-red-700">
+                Không thể tải danh mục: {catalogError}
+              </div>
+            ) : null}
+            {!catalogLoading && !catalogError && visibleProducts.length === 0 ? (
+              <div className="py-10 text-sm font-semibold text-muted">
+                Không tìm thấy thiết bị phù hợp.
+              </div>
+            ) : null}
+            {!catalogLoading && !catalogError ? (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {visibleProducts.map((product) => (
+                  <ProductCard
+                    key={product.id}
+                    product={product}
+                    onSelect={onSelect}
+                    bookingEnabled={bookingEnabled}
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
       </section>

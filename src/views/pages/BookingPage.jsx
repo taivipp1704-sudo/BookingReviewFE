@@ -60,7 +60,6 @@ function commitmentFingerprint(quote) {
     quote.amountDueNow,
     quote.amountDueBeforeHandover,
     quote.identityViolationFee,
-    quote.unauthorizedTransferFee,
     quote.lateFeePerHour,
     quote.impactPenaltyPercent,
     quote.damageLiabilityLimit,
@@ -880,7 +879,7 @@ function bookingDefaults() {
   };
 }
 
-export default function BookingPage({ productId, customerAccount, onBack, onViewOrders }) {
+export default function BookingPage({ productId, resumeToken = "", customerAccount, onBack, onViewOrders }) {
   const [product, setProduct] = useState(null);
   const [accessories, setAccessories] = useState([]);
   const [bundles, setBundles] = useState([]);
@@ -921,6 +920,8 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
   const [busy, setBusy] = useState(false);
   const [identity, setIdentity] = useState({ front: null, back: null });
   const [paymentProof, setPaymentProof] = useState(null);
+  const [paymentProofUploadToken, setPaymentProofUploadToken] = useState("");
+  const [paymentProofUploading, setPaymentProofUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState(null);
   const [holdSeconds, setHoldSeconds] = useState(0);
   const [holdToken, setHoldToken] = useState("");
@@ -947,11 +948,12 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
 
     async function loadProduct() {
       try {
-        const [catalog, availability, nextBundles, nextStores] = await Promise.all([
+        const [catalog, availability, nextBundles, nextStores, resumeHold] = await Promise.all([
           api.products(),
           api.availability(),
           api.bundles(),
           api.stores(),
+          resumeToken ? api.customerCheckoutHold(resumeToken) : Promise.resolve(null),
         ]);
         const availabilityById = Object.fromEntries(
           availability.map((item) => [item.productId, item]),
@@ -971,6 +973,9 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
         const compatibleIds = [
           ...(productDetails.compatibleAccessories || []),
           ...compatibleAccessoryIds(selected),
+          ...(resumeHold?.items || [])
+            .filter((item) => item.productId !== productId)
+            .map((item) => item.productId),
         ];
         const bundleProductIds = nextBundles
           .filter((bundle) =>
@@ -1005,16 +1010,44 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                 .filter((item) => compatibleIds.includes(item.id) && item.availableQty > 0)
                 .map((item) => [item.id, 1]),
             );
-          const preferredId = sessionStorage.getItem("claritycam-preferred-bundle");
+          const preferredId = resumeHold ? "" : sessionStorage.getItem("claritycam-preferred-bundle");
           const preferred = nextBundles.find((bundle) => bundle.id === preferredId && bundle.items.some((line) => line.productId === productId));
-          if (preferred) {
+          if (resumeHold) {
+            if (!resumeHold.identityUploadToken) {
+              throw new Error("Phiên thanh toán cũ thiếu dữ liệu xác thực. Vui lòng hủy phiên và tạo lại yêu cầu.");
+            }
+            const mainLine = resumeHold.items.find((line) => line.productId === productId);
+            setMainQuantity(mainLine?.quantity || 1);
+            setAccessoryQuantities(Object.fromEntries(
+              resumeHold.items
+                .filter((line) => line.productId !== productId)
+                .map((line) => [line.productId, line.quantity]),
+            ));
+            setSelectedBundleId(resumeHold.bundleId || "");
+            setSelectedRentalRate(resumeHold.rentalRate || "DAILY");
+            setForm((current) => ({
+              ...current,
+              pickupTime: resumeHold.pickupTime,
+              returnTime: resumeHold.returnTime,
+              promotionCode: resumeHold.promotionCode || "",
+            }));
+            setQuote(resumeHold.quote);
+            holdTokenRef.current = resumeHold.holdToken;
+            setHoldToken(resumeHold.holdToken);
+            setHoldSeconds(holdSecondsUntil(resumeHold.expiresAt));
+            setVerifiedBooking({ identityUploadToken: resumeHold.identityUploadToken });
+            setPaymentProof(null);
+            setPaymentProofUploadToken(resumeHold.paymentProofUploadToken || "");
+            setCommitmentChecks({ identity: false, fees: false });
+            setBookingStep("commitment");
+          } else if (preferred) {
             preferred.items.filter((line) => line.productId !== productId).forEach((line) => { initialQuantities[line.productId] = line.quantity; });
             const mainLine = preferred.items.find((line) => line.productId === productId);
             if (mainLine) setMainQuantity(mainLine.quantity);
             setSelectedBundleId(preferred.id);
             sessionStorage.removeItem("claritycam-preferred-bundle");
           }
-          setAccessoryQuantities(initialQuantities);
+          if (!resumeHold) setAccessoryQuantities(initialQuantities);
           if (!selected) {
             setLoadingError("Không tìm thấy thiết bị được chọn.");
           }
@@ -1034,7 +1067,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
     return () => {
       ignore = true;
     };
-  }, [productId]);
+  }, [productId, resumeToken]);
 
   const quoteSummary = useMemo(
     () =>
@@ -1182,6 +1215,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
         holdToken: holdSeconds > 0 ? holdTokenRef.current || null : null,
         promotionCode: form.promotionCode.trim() || null,
         rentalRate: selectedRentalRate,
+        identityUploadToken: identityUpload.uploadToken,
       });
       const nextQuote = hold.quote;
       if (!nextQuote.available) {
@@ -1221,7 +1255,9 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
     setBusy(true);
     setBookingError("");
     try {
-      if (!paymentProof) throw new Error("Vui lòng gửi ảnh chụp giao dịch chuyển khoản để admin đối soát.");
+      if (!paymentProofUploadToken && !paymentProof) {
+        throw new Error("Vui lòng gửi ảnh chụp giao dịch chuyển khoản để admin đối soát.");
+      }
       const refreshedQuote = await api.quote({
         pickupTime: form.pickupTime,
         returnTime: form.returnTime,
@@ -1237,7 +1273,16 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
         setCommitmentChecks({ identity: false, fees: false });
         throw new Error("Giá hoặc chính sách vừa được admin cập nhật. Vui lòng xem lại và xác nhận lại cam kết.");
       }
-      const paymentProofUpload = await api.uploadPaymentProof(paymentProof);
+      let effectivePaymentProofToken = paymentProofUploadToken;
+      if (!effectivePaymentProofToken && paymentProof) {
+        const paymentProofUpload = await api.uploadPaymentProof(paymentProof);
+        const updatedHold = await api.attachBookingHoldPaymentProof({
+          holdToken,
+          paymentProofUploadToken: paymentProofUpload.uploadToken,
+        });
+        effectivePaymentProofToken = updatedHold.paymentProofUploadToken || paymentProofUpload.uploadToken;
+        setPaymentProofUploadToken(effectivePaymentProofToken);
+      }
       const nextBooking = await api.createBooking({
         customerName: form.customerName,
         phone: form.phone,
@@ -1248,7 +1293,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
         bundleId: selectedBundleId || null,
         items: bookingItems,
         identityUploadToken: verifiedBooking.identityUploadToken,
-        paymentProofUploadToken: paymentProofUpload.uploadToken,
+        paymentProofUploadToken: effectivePaymentProofToken,
         holdToken,
         promotionCode: form.promotionCode.trim() || null,
         storeBranchId: form.storeBranchId,
@@ -1266,7 +1311,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
   }
 
   function beginCommitmentHold() {
-    if (busy || holdSeconds <= 0 || !paymentProof || !commitmentChecks.identity || !commitmentChecks.fees) return;
+    if (busy || paymentProofUploading || holdSeconds <= 0 || (!paymentProofUploadToken && !paymentProof) || !commitmentChecks.identity || !commitmentChecks.fees) return;
     setCommitmentHolding(true);
     window.clearTimeout(commitmentTimerRef.current);
     commitmentTimerRef.current = window.setTimeout(() => {
@@ -1367,9 +1412,38 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
     setBookingStep("form");
     setIdentity({ front: null, back: null });
     setPaymentProof(null);
+    setPaymentProofUploadToken("");
+    setPaymentProofUploading(false);
     setConsent(false);
     setBookingError("");
     setForm((current) => ({ ...current, ...bookingDefaults(), note: "", promotionCode: "", earlyPickup: false, earlyPickupTime: "" }));
+  }
+
+  async function selectPaymentProof(file) {
+    setPaymentProof(file || null);
+    setPaymentProofUploadToken("");
+    setBookingError("");
+    if (!file) return;
+
+    const activeHoldToken = holdTokenRef.current;
+    if (!activeHoldToken || holdSeconds <= 0) {
+      setBookingError("Phiên giữ máy đã hết hạn. Vui lòng bắt đầu lại trước khi gửi ảnh chuyển khoản.");
+      return;
+    }
+
+    setPaymentProofUploading(true);
+    try {
+      const upload = await api.uploadPaymentProof(file);
+      const updatedHold = await api.attachBookingHoldPaymentProof({
+        holdToken: activeHoldToken,
+        paymentProofUploadToken: upload.uploadToken,
+      });
+      setPaymentProofUploadToken(updatedHold.paymentProofUploadToken || upload.uploadToken);
+    } catch (error) {
+      setBookingError(error.message);
+    } finally {
+      setPaymentProofUploading(false);
+    }
   }
 
   if (loading) {
@@ -1937,7 +2011,6 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                     <div className="overflow-hidden rounded-lg bg-white text-ink">
                       <div className="flex items-center justify-between border-b border-line px-4 py-3"><strong className="text-xs uppercase tracking-wider">Các khoản trách nhiệm</strong><span className="text-[10px] font-bold text-muted">Theo quote hiện tại</span></div>
                       {[
-                        ["Tự ý giao thiết bị cho người khác", "Chỉ áp dụng khi người nhận không đúng người đã đăng ký", money(quote.unauthorizedTransferFee)],
                         ["Trả trễ", "Tính theo mỗi giờ vượt quá thời gian trả", `${money(quote.lateFeePerHour)} / giờ`],
                         ["Ảnh hưởng booking tiếp theo", "Chỉ áp dụng khi đơn sau thực tế bị ảnh hưởng", Number(quote.impactPenaltyPercent || 0) > 0 ? `${Number(quote.impactPenaltyPercent)}% giá trị đơn bị ảnh hưởng` : "Admin xác nhận theo sự cố"],
                       ].map(([title, copy, value]) => (
@@ -1966,10 +2039,17 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                           <p className="mt-3 rounded bg-paper px-3 py-2 text-[11px] font-bold">Nội dung: {form.phone} {product.id} · Tiền giữ lịch bắt buộc: {money(quote.amountDueNow)}</p>
                         </div>
                       </div>
-                      <label className={`mt-4 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed p-3 ${paymentProof ? "border-green-500 bg-green-50" : "border-line bg-paper"}`}>
-                        <Upload className="h-5 w-5 shrink-0" />
-                        <span className="min-w-0 flex-1"><strong className="block text-xs">Ảnh chụp giao dịch chuyển khoản</strong><span className="mt-1 block truncate text-[10px] font-semibold text-muted">{paymentProof?.name || "JPG hoặc PNG, tối đa 5 MB"}</span></span>
-                        <input required type="file" accept="image/jpeg,image/png" className="sr-only" onChange={(event) => setPaymentProof(event.target.files?.[0] || null)} />
+                      <label className={`mt-4 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed p-3 ${paymentProofUploadToken ? "border-green-500 bg-green-50" : "border-line bg-paper"}`}>
+                        {paymentProofUploading ? <Loader2 className="h-5 w-5 shrink-0 animate-spin" /> : <Upload className="h-5 w-5 shrink-0" />}
+                        <span className="min-w-0 flex-1">
+                          <strong className="block text-xs">Ảnh chụp giao dịch chuyển khoản</strong>
+                          <span className="mt-1 block truncate text-[10px] font-semibold text-muted">
+                            {paymentProofUploading
+                              ? "Đang lưu ảnh vào phiên thanh toán..."
+                              : paymentProof?.name || (paymentProofUploadToken ? "Ảnh đã được lưu · Có thể thoát và tiếp tục sau" : "JPG hoặc PNG, tối đa 5 MB")}
+                          </span>
+                        </span>
+                        <input required type="file" accept="image/jpeg,image/png" className="sr-only" disabled={paymentProofUploading} onChange={(event) => selectPaymentProof(event.target.files?.[0] || null)} />
                         {paymentProof ? (
                           <button
                             type="button"
@@ -2001,7 +2081,7 @@ export default function BookingPage({ productId, customerAccount, onBack, onView
                     {holdSeconds <= 0 ? <button type="button" onClick={restartReservation} className="w-full rounded-lg border border-white/30 px-4 py-3 text-xs font-black uppercase">Phiên đã hết hạn · Bắt đầu lại</button> : null}
                     <button
                       type="button"
-                      disabled={busy || holdSeconds <= 0 || !paymentProof || !commitmentChecks.identity || !commitmentChecks.fees}
+                      disabled={busy || paymentProofUploading || holdSeconds <= 0 || (!paymentProofUploadToken && !paymentProof) || !commitmentChecks.identity || !commitmentChecks.fees}
                       onPointerDown={beginCommitmentHold}
                       onPointerUp={cancelCommitmentHold}
                       onPointerLeave={cancelCommitmentHold}

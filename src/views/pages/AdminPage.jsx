@@ -1819,7 +1819,7 @@ function Catalog({ products, assets, stock, bundles, stores, detailId, onNavigat
       bookingDeposit: form.levelCode === "L1" ? 50_000 : 0,
       lateFeePerHour: Math.max(0, Number(form.lateFeePerHour) || 0),
       identityViolationFee: Math.max(0, Number(form.identityViolationFee) || 0),
-      unauthorizedTransferFee: Math.max(0, Number(form.unauthorizedTransferFee) || 0),
+      unauthorizedTransferFee: 0,
       impactPenaltyPercent: Math.min(100, Math.max(0, Number(form.impactPenaltyPercent) || 0)),
       damageLiabilityLimit: Math.max(0, Number(form.damageLiabilityLimit) || 0),
       bookingCountBase: Math.max(0, Number(form.bookingCountBase) || 0),
@@ -1941,7 +1941,6 @@ function Catalog({ products, assets, stock, bundles, stores, detailId, onNavigat
               <Detail label="Giữ lịch bắt buộc mỗi đơn" value={money(50_000)} />
               <Detail label="Phí trả trễ/giờ" value={money(selected.lateFeePerHour)} />
               <Detail label="Phí sai người/CCCD" value={money(selected.identityViolationFee)} />
-              <Detail label="Phí giao sai người nhận" value={money(selected.unauthorizedTransferFee)} />
               <Detail label="Bồi hoàn khi ảnh hưởng đơn sau" value={`${Number(selected.impactPenaltyPercent || 0)}%`} />
               <Detail label="Giới hạn trách nhiệm hư hỏng" value={money(selected.damageLiabilityLimit)} />
             </div>
@@ -2234,7 +2233,6 @@ function AccessoryForm({ form, setForm, onSubmit, onClose, saving, error, stores
               ["equipmentDeposit", "Cọc thiết bị khi nhận máy"],
               ["lateFeePerHour", "Phí trả trễ mỗi giờ"],
               ["identityViolationFee", "Phí sai người / sai CCCD"],
-              ["unauthorizedTransferFee", "Phí giao sai người nhận"],
               ["impactPenaltyPercent", "Bồi hoàn khi ảnh hưởng đơn sau (%)"],
               ["damageLiabilityLimit", "Giới hạn trách nhiệm hư hỏng"],
             ].map(([key, label]) => (
@@ -3445,6 +3443,7 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
   const [periods, setPeriods] = useState([]);
   const [profitability, setProfitability] = useState([]);
   const [working, setWorking] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [message, setMessage] = useState("");
   const [expenseForm, setExpenseForm] = useState({
     bookingId: "", assetId: "", category: "MAINTENANCE", amount: "", vendorName: "",
@@ -3500,10 +3499,14 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
     run(() => api.reverseFinanceDocument(item.id, { reason, idempotencyKey: `reverse:${item.id}:${Date.now()}` }), "Đã tạo chứng từ đảo. Chứng từ gốc được giữ nguyên lịch sử.");
   }
   async function exportExcel() {
+    if (exporting) return;
+    setExporting(true);
+    setMessage("");
+    try {
     const heading = {
       fontWeight: "bold",
       backgroundColor: "#121212",
-      color: "#D7FF00",
+      textColor: "#D7FF00",
       height: 28,
     };
     const summary = [
@@ -3554,13 +3557,19 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
       ]),
     ];
     const { default: writeXlsxFile } = await import("write-excel-file/browser");
-    await writeXlsxFile([summary, transactions], {
-      sheets: ["Tổng quan", "Giao dịch"],
-      fileName: `AMY-DIGITAL-So-Quy-${new Date().toISOString().slice(0, 10)}.xlsx`,
-      stickyRowsCount: 1,
-      columns: [
-        [{ width: 28 }, { width: 22 }],
-        [
+    const fileName = `AMY-DIGITAL-So-Quy-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    await writeXlsxFile([
+      {
+        data: summary,
+        sheet: "Tổng quan",
+        stickyRowsCount: 1,
+        columns: [{ width: 28 }, { width: 22 }],
+      },
+      {
+        data: transactions,
+        sheet: "Giao dịch",
+        stickyRowsCount: 1,
+        columns: [
           { width: 18 },
           { width: 18 },
           { width: 26 },
@@ -3571,8 +3580,14 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
           { width: 20 },
           { width: 42 },
         ],
-      ],
-    });
+      },
+    ]).toFile(fileName);
+    setMessage(`Đã xuất ${fileName}.`);
+    } catch (error) {
+      setMessage(`Không thể xuất báo cáo Excel: ${error.message}`);
+    } finally {
+      setExporting(false);
+    }
   }
 
   return (
@@ -3584,11 +3599,13 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
           ))}
         </div>
         <button
+          type="button"
           onClick={exportExcel}
-          className="flex items-center gap-2 rounded-lg bg-ink px-4 py-3 text-xs font-black uppercase text-acid"
+          disabled={exporting}
+          className="flex items-center gap-2 rounded-lg bg-ink px-4 py-3 text-xs font-black uppercase text-acid disabled:cursor-wait disabled:opacity-60"
         >
           <Download className="h-4 w-4" />
-          Xuất báo cáo Excel
+          {exporting ? "Đang xuất..." : "Xuất báo cáo Excel"}
         </button>
       </div>
       {message ? <p className="mb-5 border border-line bg-white p-3 text-sm font-bold">{message}</p> : null}

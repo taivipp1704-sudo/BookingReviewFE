@@ -1,5 +1,7 @@
 import {
   ArrowLeft,
+  Clock3,
+  CreditCard,
   IdCard,
   LifeBuoy,
   LockKeyhole,
@@ -23,10 +25,12 @@ export default function CustomerAccountPage({
   onLogin,
   onBack,
   onLogout,
+  onResumeCheckout,
   loginMessage,
 }) {
   const [form, setForm] = useState({ phone: "", password: "" });
   const [bookings, setBookings] = useState([]);
+  const [checkoutHolds, setCheckoutHolds] = useState([]);
   const [requests, setRequests] = useState([]);
   const [support, setSupport] = useState({
     bookingId: "",
@@ -37,6 +41,13 @@ export default function CustomerAccountPage({
   const [error, setError] = useState("");
   const [products, setProducts] = useState({});
   const [imagePreview, setImagePreview] = useState(null);
+  const [clockNow, setClockNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (checkoutHolds.length === 0) return undefined;
+    const timer = window.setInterval(() => setClockNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [checkoutHolds.length]);
 
   useEffect(
     () => () => {
@@ -46,20 +57,26 @@ export default function CustomerAccountPage({
   );
 
   useEffect(() => {
-    if (account)
-      Promise.all([
+    if (account) {
+      setError("");
+      Promise.allSettled([
         api.customerBookings(),
+        api.customerCheckoutHolds(),
         api.customerSupport(),
         api.products(),
       ])
-        .then(([nextBookings, nextRequests, catalog]) => {
-          setBookings(nextBookings);
-          setRequests(nextRequests);
-          setProducts(
-            Object.fromEntries(catalog.map((item) => [item.id, item])),
-          );
-        })
-        .catch((error) => setError(error.message));
+        .then(([bookingResult, holdResult, supportResult, catalogResult]) => {
+          if (bookingResult.status === "fulfilled") setBookings(bookingResult.value);
+          if (holdResult.status === "fulfilled") setCheckoutHolds(holdResult.value);
+          if (supportResult.status === "fulfilled") setRequests(supportResult.value);
+          if (catalogResult.status === "fulfilled") {
+            setProducts(Object.fromEntries(catalogResult.value.map((item) => [item.id, item])));
+          }
+          const failed = [bookingResult, holdResult, supportResult, catalogResult]
+            .find((result) => result.status === "rejected");
+          if (failed) setError(failed.reason?.message || "Một phần dữ liệu chưa tải được. Vui lòng thử lại.");
+        });
+    }
   }, [account]);
 
   async function login(event) {
@@ -88,6 +105,21 @@ export default function CustomerAccountPage({
       const created = await api.createCustomerSupport(support);
       setRequests((current) => [created, ...current]);
       setSupport({ bookingId: "", type: "CHANGE_REQUEST", message: "" });
+    } catch (nextError) {
+      setError(nextError.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function cancelCheckoutHold(holdToken) {
+    setBusy(true);
+    setError("");
+    try {
+      await api.releaseBookingHold({ holdToken });
+      setCheckoutHolds((current) =>
+        current.filter((hold) => hold.holdToken !== holdToken),
+      );
     } catch (nextError) {
       setError(nextError.message);
     } finally {
@@ -198,6 +230,77 @@ export default function CustomerAccountPage({
           </button>
         </div>
       </div>
+      {checkoutHolds.some((hold) => new Date(hold.expiresAt).getTime() > clockNow) ? (
+        <section className="mb-8 rounded-lg border border-amber-300 bg-amber-50 p-5">
+          <div className="flex items-start gap-3">
+            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-ink text-acid">
+              <CreditCard className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black">Thanh toán chưa hoàn tất</h2>
+              <p className="mt-1 text-sm font-semibold text-muted">
+                Thiết bị vẫn được giữ trong thời gian hiển thị bên dưới. Tiếp tục để gửi ảnh chuyển khoản và hoàn tất đơn.
+              </p>
+            </div>
+          </div>
+          <div className="mt-4 space-y-3">
+            {checkoutHolds
+              .filter((hold) => new Date(hold.expiresAt).getTime() > clockNow)
+              .map((hold) => {
+              const equipment = hold.items?.find(
+                (item) => item.productId === hold.primaryProductId,
+              );
+              const secondsLeft = Math.max(
+                0,
+                Math.ceil((new Date(hold.expiresAt).getTime() - clockNow) / 1000),
+              );
+              return (
+                <article key={hold.holdToken} className="rounded-lg border border-amber-200 bg-white p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-base font-black">{equipment?.productName || "Thiết bị đang giữ"}</p>
+                      <p className="mt-1 text-xs font-bold text-muted">
+                        {shortDate(hold.pickupTime)} - {shortDate(hold.returnTime)}
+                      </p>
+                      <p className="mt-2 text-sm font-black">
+                        Cần thanh toán ban đầu: {money(hold.quote?.amountDueNow || 0)}
+                      </p>
+                      {hold.paymentProofUploadToken ? (
+                        <p className="mt-2 inline-flex items-center gap-2 text-xs font-black text-green-700">
+                          <ReceiptText className="h-4 w-4" />
+                          Ảnh chuyển khoản đã được lưu
+                        </p>
+                      ) : null}
+                    </div>
+                    <span className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-2 text-xs font-black text-amber-900">
+                      <Clock3 className="h-4 w-4" />
+                      Còn {Math.ceil(secondsLeft / 60)} phút
+                    </span>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2 border-t border-line pt-4">
+                    <button
+                      type="button"
+                      disabled={busy || secondsLeft <= 0}
+                      onClick={() => onResumeCheckout?.(hold)}
+                      className="rounded-lg bg-ink px-4 py-3 text-xs font-black uppercase text-acid disabled:opacity-50"
+                    >
+                      Tiếp tục thanh toán
+                    </button>
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => cancelCheckoutHold(hold.holdToken)}
+                      className="rounded-lg border border-line bg-white px-4 py-3 text-xs font-black uppercase disabled:opacity-50"
+                    >
+                      Hủy phiên giữ máy
+                    </button>
+                  </div>
+                </article>
+              );
+              })}
+          </div>
+        </section>
+      ) : null}
       <h2 className="mb-1 text-xl font-black">Lịch sử đơn hàng</h2>
       <p className="mb-4 text-sm font-semibold text-muted">Thiết bị đã đặt, thời gian thuê, chi phí và trạng thái xử lý.</p>
       {bookings.length === 0 ? (

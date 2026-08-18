@@ -5,6 +5,8 @@ const API_BASE = import.meta.env.DEV
   : '';
 
 let csrf = null;
+let productsCache = null;
+const PRODUCTS_CACHE_MS = 15_000;
 // Render may need a little time to wake up after inactivity. Mutating
 // requests never retry automatically; only read requests get one retry.
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -70,6 +72,37 @@ async function getCsrf() {
 async function refreshCsrf() {
   csrf = null;
   return getCsrf();
+}
+
+function invalidateProductsCache() {
+  productsCache = null;
+}
+
+function products() {
+  const now = Date.now();
+  if (productsCache?.promise) return productsCache.promise;
+  if (productsCache?.value && productsCache.expiresAt > now) {
+    return Promise.resolve(productsCache.value);
+  }
+
+  const promise = request('/api/catalog/products')
+    .then(value => {
+      productsCache = { value, expiresAt: Date.now() + PRODUCTS_CACHE_MS };
+      return value;
+    })
+    .catch(error => {
+      productsCache = null;
+      throw error;
+    });
+  productsCache = { promise, expiresAt: 0 };
+  return promise;
+}
+
+function mutateProducts(path, options) {
+  return request(path, options).then(value => {
+    invalidateProductsCache();
+    return value;
+  });
 }
 
 async function customerRegister(payload) {
@@ -171,7 +204,7 @@ export const api = {
   csrf: getCsrf,
   features: () => request('/api/features'),
   joinWaitlist: payload => request('/api/customer/waitlist', { method: 'POST', body: payload }),
-  products: () => request('/api/catalog/products'),
+  products,
   availability: () => request('/api/catalog/availability'),
   schedule: (productId, from, to) => request(`/api/catalog/${encodeURIComponent(productId)}/schedule?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   bundles: () => request('/api/catalog/bundles'),
@@ -192,7 +225,10 @@ export const api = {
   deletePromotion: id => request(`/api/admin/promotions/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   quote: payload => request('/api/bookings/quote', { method: 'POST', body: payload }),
   holdBooking: payload => request('/api/bookings/hold', { method: 'POST', body: payload }),
+  customerCheckoutHolds: () => request('/api/bookings/holds'),
+  customerCheckoutHold: holdToken => request(`/api/bookings/holds/${encodeURIComponent(holdToken)}`),
   releaseBookingHold: payload => request('/api/bookings/hold/release', { method: 'POST', body: payload }),
+  attachBookingHoldPaymentProof: payload => request('/api/bookings/hold/payment-proof', { method: 'POST', body: payload }),
   createBooking: payload => request('/api/bookings', { method: 'POST', body: payload }),
   uploadIdentity,
   uploadPaymentProof,
@@ -211,9 +247,9 @@ export const api = {
   uploadCatalogImage,
   changeBookingState: (id, state, reason) => request(`/api/admin/bookings/${encodeURIComponent(id)}/state`, { method: 'PATCH', body: { state, reason } }),
   adminProducts: () => request('/api/admin/catalog/products'),
-  createProduct: payload => request('/api/admin/catalog/products/with-inventory', { method: 'POST', body: payload }),
-  updateProduct: (id, payload) => request(`/api/admin/catalog/products/${encodeURIComponent(id)}`, { method: 'PATCH', body: payload }),
-  deleteProduct: id => request(`/api/admin/catalog/products/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  createProduct: payload => mutateProducts('/api/admin/catalog/products/with-inventory', { method: 'POST', body: payload }),
+  updateProduct: (id, payload) => mutateProducts(`/api/admin/catalog/products/${encodeURIComponent(id)}`, { method: 'PATCH', body: payload }),
+  deleteProduct: id => mutateProducts(`/api/admin/catalog/products/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   assets: () => request('/api/inventory/assets'),
   stock: () => request('/api/inventory/stock'),
   createAsset: payload => request('/api/admin/inventory/assets', { method: 'POST', body: payload }),
