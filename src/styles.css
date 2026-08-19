@@ -93,8 +93,8 @@ textarea {
   }
 
   .public-header__brand img {
-    height: 40px;
-    width: 40px;
+    height: auto;
+    width: min(148px, 42vw);
   }
 
   .public-header__nav {

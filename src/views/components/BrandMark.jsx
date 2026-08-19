@@ -1,5 +1,6 @@
 export const AMY_LOGO_URL = "/assets/amy-digital-brand.png";
 export const AMY_MASCOT_CUTOUT_URL = "/assets/amy-mascot-cutout.png";
+export const AMY_HEADER_LOCKUP_URL = "/assets/amy-header-lockup.png";
 
 export default function BrandMark({
   compact = false,
@@ -8,13 +9,25 @@ export default function BrandMark({
   showSubtitle = true,
   className = "",
 }) {
+  if (bare) {
+    return (
+      <span className={`inline-flex min-w-0 items-center ${className}`}>
+        <img
+          src={AMY_HEADER_LOCKUP_URL}
+          alt="AMY Digital"
+          className="amy-header-lockup h-auto w-full object-contain object-left"
+        />
+      </span>
+    );
+  }
+
   return (
     <span className={`inline-flex min-w-0 items-center gap-2.5 ${className}`}>
-      <span className={`relative grid shrink-0 place-items-center ${bare ? "bg-transparent" : "overflow-hidden rounded-lg"} ${compact ? "h-11 w-11" : "h-12 w-12"} ${bare ? "" : inverted ? "bg-white/10" : "bg-ink"}`}>
+      <span className={`relative grid shrink-0 place-items-center overflow-hidden rounded-lg ${compact ? "h-11 w-11" : "h-12 w-12"} ${inverted ? "bg-white/10" : "bg-ink"}`}>
         <img
-          src={bare ? AMY_MASCOT_CUTOUT_URL : AMY_LOGO_URL}
+          src={AMY_LOGO_URL}
           alt="Logo AMY Digital"
-          className={`h-full w-full ${bare ? "object-contain" : "object-cover object-top"}`}
+          className="h-full w-full object-cover object-top"
         />
       </span>
       <span className="min-w-0 text-left">
