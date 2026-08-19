@@ -3,6 +3,7 @@ import {
   Clock3,
   CreditCard,
   IdCard,
+  ImageIcon,
   LifeBuoy,
   LockKeyhole,
   Loader2,
@@ -17,8 +18,36 @@ import StatusBadge from "../components/StatusBadge.jsx";
 import BookingJourney from "../components/BookingJourney.jsx";
 import SecureImagePreview from "../components/SecureImagePreview.jsx";
 import { api } from "../../services/api.js";
-import { money, shortDate } from "../../utils/format.js";
+import { catalogImageUrl, money, shortDate } from "../../utils/format.js";
 import { groupBookingItems } from "../../models/bookingItems.js";
+
+function BookingItemThumbnail({ product, name, compact = false, dark = false }) {
+  const source = catalogImageUrl(product);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => setFailed(false), [source]);
+
+  const sizeClass = compact ? "h-12 w-12" : "h-16 w-16 sm:h-20 sm:w-20";
+  if (!source || failed) {
+    return (
+      <div
+        className={`${sizeClass} grid shrink-0 place-items-center rounded-md ${dark ? "bg-white/10 text-white/60" : "bg-white text-muted"}`}
+        aria-label={`Chưa có ảnh ${name}`}
+      >
+        <ImageIcon className={compact ? "h-5 w-5" : "h-6 w-6"} />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={source}
+      alt={name}
+      onError={() => setFailed(true)}
+      className={`${sizeClass} shrink-0 rounded-md bg-white object-contain p-1`}
+    />
+  );
+}
 
 export default function CustomerAccountPage({
   account,
@@ -338,8 +367,13 @@ export default function CustomerAccountPage({
                   <div className="rounded-lg bg-ink p-4 text-white">
                     <p className="text-[10px] font-black uppercase tracking-wider text-acid">Máy thuê</p>
                     {groupedItems.equipment.map((line) => (
-                      <div key={line.productId} className="mt-1 flex items-center justify-between gap-3">
-                        <span className="text-base font-black">{line.productName}</span>
+                      <div key={line.productId} className="mt-3 flex min-w-0 items-center gap-3">
+                        <BookingItemThumbnail
+                          product={products[line.productId] || line}
+                          name={line.productName}
+                          dark
+                        />
+                        <span className="min-w-0 flex-1 break-words text-base font-black">{line.productName}</span>
                         <span className="shrink-0 font-black">× {line.quantity}</span>
                       </div>
                     ))}
@@ -348,12 +382,19 @@ export default function CustomerAccountPage({
                 {groupedItems.accessories.length ? (
                   <div className="pt-2">
                     <p className="mb-2 text-[10px] font-black uppercase tracking-wider text-muted">Phụ kiện đi kèm</p>
-                    {groupedItems.accessories.map((line) => (
-                      <div key={line.productId} className="flex items-center justify-between gap-3 py-1 text-sm">
-                        <span className="font-bold">{line.productName}</span>
-                        <span className="shrink-0 font-black">× {line.quantity}</span>
-                      </div>
-                    ))}
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {groupedItems.accessories.map((line) => (
+                        <div key={line.productId} className="flex min-w-0 items-center gap-3 rounded-lg border border-line bg-paper p-2 text-sm">
+                          <BookingItemThumbnail
+                            product={products[line.productId] || line}
+                            name={line.productName}
+                            compact
+                          />
+                          <span className="min-w-0 flex-1 break-words font-bold">{line.productName}</span>
+                          <span className="shrink-0 font-black">× {line.quantity}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 ) : null}
               </div>
