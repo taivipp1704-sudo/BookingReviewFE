@@ -17,7 +17,7 @@ export default function PublicFooter({ onNavigate, bookingEnabled = false }) {
         </div>
         <div>
           <h2 className="text-xs font-black uppercase tracking-widest text-acid">Liên hệ</h2>
-          <div className="mt-5 space-y-4 text-sm font-semibold text-white/70"><a href="tel:+84937538157" className="flex items-start gap-3 hover:text-white"><Phone className="mt-0.5 h-4 w-4 shrink-0 text-acid" />0937538157</a><a href="mailto:amydigital@gmail.com" className="flex items-start gap-3 break-all hover:text-white"><Mail className="mt-0.5 h-4 w-4 shrink-0 text-acid" />amydigital@gmail.com</a><p className="flex items-start gap-3"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-acid" />Số 6 đường N3, Khu dân cư Phú Hoà 1, TDM, BD</p></div>
+          <div className="mt-5 space-y-4 text-sm font-semibold text-white/70"><a href="tel:+84937538157" className="flex items-start gap-3 hover:text-white"><Phone className="mt-0.5 h-4 w-4 shrink-0 text-acid" />0937538157</a><a href="mailto:amydigital@gmail.com" className="flex items-start gap-3 break-all hover:text-white"><Mail className="mt-0.5 h-4 w-4 shrink-0 text-acid" />amydigital@gmail.com</a><p className="flex items-start gap-3"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-acid" />Số 6 đường N3, Khu dân cư Phú Hoà 1, Thủ Dầu Một, Bình Dương</p></div>
         </div>
         <div>
           <h2 className="text-xs font-black uppercase tracking-widest text-acid">Giờ làm việc</h2>
