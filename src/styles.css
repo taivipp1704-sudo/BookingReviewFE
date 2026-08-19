@@ -90,11 +90,14 @@ textarea {
     justify-self: start;
     max-width: min(58vw, 210px);
     overflow: hidden;
+    position: relative;
+    left: -4px;
+    top: 3px;
   }
 
   .public-header__brand img {
     height: auto;
-    width: min(148px, 42vw);
+    width: min(144px, 41vw);
   }
 
   .public-header__nav {
