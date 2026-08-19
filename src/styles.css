@@ -91,8 +91,8 @@ textarea {
     max-width: min(58vw, 210px);
     overflow: hidden;
     position: relative;
-    left: -4px;
-    top: 3px;
+    left: -8px;
+    top: 8px;
   }
 
   .public-header__brand img {
