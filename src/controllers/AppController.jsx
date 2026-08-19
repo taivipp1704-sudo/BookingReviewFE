@@ -427,7 +427,7 @@ function PublicHeader({ navigate, customerAccount, onStartBooking, onLogout, car
         {customerAccount ? <button type="button" onClick={onLogout} title="Đăng xuất" className="public-header__nav-button flex h-11 shrink-0 items-center gap-2 rounded-lg border border-line bg-white px-3 text-[10px] font-black uppercase text-muted transition hover:border-ink hover:bg-ink hover:text-acid sm:px-4 sm:text-[11px]"><LogOut className="h-4 w-4" /><span>Đăng xuất</span></button> : null}
       </nav>
       <div className="public-header__actions hide-scrollbar ml-auto flex shrink-0 items-center gap-2 overflow-x-auto sm:gap-3 md:ml-0 md:justify-self-end">
-        {!landing && bookingEnabled ? <button onClick={() => navigate('/cart')} className="relative hidden h-11 w-11 items-center justify-center rounded-lg border border-line bg-white text-ink sm:flex" aria-label="Mở giỏ hàng"><ShoppingCart className="h-4 w-4" />{cartCount > 0 ? <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-acid px-1 text-[10px] font-black text-ink">{cartCount}</span> : null}</button> : null}
+        {bookingEnabled && (!landing || cartCount > 0) ? <button onClick={() => navigate('/cart')} className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line bg-white text-ink transition hover:border-ink" aria-label={`Mở giỏ hàng${cartCount > 0 ? `, ${cartCount} sản phẩm` : ''}`}><ShoppingCart className="h-4 w-4" />{cartCount > 0 ? <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-acid px-1 text-[10px] font-black text-ink">{cartCount}</span> : null}</button> : null}
       </div>
     </div>
   </header>;

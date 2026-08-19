@@ -76,48 +76,53 @@ textarea {
 @media (max-width: 767px) {
   .public-header__inner {
     display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: 44px auto;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: 46px 48px;
     gap: 6px;
     min-height: 0;
-    padding: 6px 10px 10px;
+    padding: 5px 10px 9px;
   }
 
   .public-header__brand {
+    grid-column: 1;
+    grid-row: 1;
     align-self: center;
     justify-self: start;
+    max-width: min(58vw, 210px);
+    overflow: hidden;
   }
 
   .public-header__brand img {
-    height: 42px;
-    width: 42px;
+    height: 40px;
+    width: 40px;
   }
 
   .public-header__nav {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-column: 1 / -1;
+    grid-row: 2;
+    display: flex;
     gap: 6px;
+    justify-content: flex-start;
     justify-self: stretch;
     width: 100%;
-    overflow: visible;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
     padding: 0;
   }
 
-  .public-header__nav--authenticated {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .public-header__nav-button {
-    width: 100%;
-    min-width: 0;
+    width: auto;
+    min-width: max-content;
     height: 46px;
     justify-content: center;
     gap: 5px;
-    padding-inline: 6px;
+    padding-inline: 12px;
     font-size: 9px;
     line-height: 1;
     letter-spacing: 0;
     white-space: nowrap;
+    scroll-snap-align: start;
   }
 
   .public-header__nav-button svg {
@@ -131,11 +136,15 @@ textarea {
   }
 
   .public-header__actions {
-    display: none;
+    grid-column: 2;
+    grid-row: 1;
+    align-self: center;
+    display: flex;
+    overflow: visible;
   }
 
   .public-header + main {
-    padding-top: 10.5rem;
+    padding-top: 7.5rem;
   }
 }
 
