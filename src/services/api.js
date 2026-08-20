@@ -139,6 +139,18 @@ async function adminIdentityDocument(bookingId, side) {
   return response.blob();
 }
 
+async function adminCustomerIdentityDocument(customerId, side) {
+  const response = await fetch(`${API_BASE}/api/admin/customer-accounts/${encodeURIComponent(customerId)}/identity/${encodeURIComponent(side)}`, {
+    credentials: 'include',
+    headers: { Accept: 'image/jpeg,image/png' }
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.message || `Không thể mở ảnh CCCD (${response.status}).`);
+  }
+  return response.blob();
+}
+
 async function uploadCatalogImage(file) {
   const token = await getCsrf();
   const body = new FormData();
@@ -243,6 +255,7 @@ export const api = {
   bookingOperations: id => request(`/api/admin/bookings/${encodeURIComponent(id)}/operations`),
   autoAllocateBooking: id => request(`/api/admin/bookings/${encodeURIComponent(id)}/allocations/auto`, { method: 'POST', body: {} }),
   adminIdentityDocument,
+  adminCustomerIdentityDocument,
   adminPaymentProof,
   uploadCatalogImage,
   changeBookingState: (id, state, reason) => request(`/api/admin/bookings/${encodeURIComponent(id)}/state`, { method: 'PATCH', body: { state, reason } }),

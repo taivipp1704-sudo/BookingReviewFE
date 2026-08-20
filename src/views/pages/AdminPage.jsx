@@ -585,7 +585,7 @@ export default function AdminPage({
         {page === "support" ? (
           <Support requests={supportRequests} refresh={refresh} />
         ) : null}
-        {page === "customers" ? <CustomerAccounts /> : null}
+        {page === "customers" ? <CustomerAccounts canViewIdentity={["ADMIN", "MANAGER"].includes(user.role)} /> : null}
         {page === "staff" ? (
           <Staff users={staffUsers} refresh={refresh} />
         ) : null}
@@ -3205,7 +3205,7 @@ function CatalogImageUpload({ label, value, onChange, required = false }) {
   );
 }
 
-function CustomerAccounts() {
+function CustomerAccounts({ canViewIdentity }) {
   const [result, setResult] = useState({ items: [], total: 0, page: 0, totalPages: 0 });
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(null);
@@ -3215,6 +3215,7 @@ function CustomerAccounts() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [imagePreview, setImagePreview] = useState(null);
   const selected = result.items.find(item => item.id === selectedId) || result.items[0] || null;
 
   async function load(page = 0, nextQuery = query) {
@@ -3232,6 +3233,9 @@ function CustomerAccounts() {
   }
 
   useEffect(() => { load(0, ""); }, []);
+  useEffect(() => () => {
+    if (imagePreview?.url) URL.revokeObjectURL(imagePreview.url);
+  }, [imagePreview]);
   useEffect(() => {
     if (!selected) return;
     setForm({ name: selected.name || "", email: selected.email || "", active: selected.active });
@@ -3286,6 +3290,20 @@ function CustomerAccounts() {
     await run(() => api.resetAdminCustomerOnboarding(selected.id), "Đã đặt lại trạng thái hướng dẫn.");
   }
 
+  async function openIdentity(side) {
+    if (!selected) return;
+    setError("");
+    try {
+      const blob = await api.adminCustomerIdentityDocument(selected.id, side);
+      setImagePreview({
+        url: URL.createObjectURL(blob),
+        title: side === "front" ? "CCCD mặt trước" : "CCCD mặt sau",
+      });
+    } catch (nextError) {
+      setError(nextError.message);
+    }
+  }
+
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
       <section className="min-w-0">
@@ -3324,6 +3342,19 @@ function CustomerAccounts() {
             <Detail label="Số booking" value={selected.bookingCount} />
             <Detail label="Hướng dẫn" value={selected.onboardingVersion > 0 ? "Đã hoàn thành" : "Chưa hoàn thành"} />
           </div>
+          <div className="mt-5 border-t border-line pt-5">
+            <div className="flex items-center gap-2"><IdCard className="h-4 w-4" /><p className="text-xs font-black uppercase">Xác thực CCCD</p></div>
+            {selected.identityDocumentsAvailable && canViewIdentity ? (
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                <button type="button" onClick={() => openIdentity("front")} className="rounded-lg border border-line px-3 py-3 text-xs font-black">Xem mặt trước</button>
+                <button type="button" onClick={() => openIdentity("back")} className="rounded-lg border border-line px-3 py-3 text-xs font-black">Xem mặt sau</button>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs font-semibold leading-5 text-muted">
+                {canViewIdentity ? "Khách hàng chưa gửi đủ ảnh CCCD." : "Tài khoản không có quyền xem CCCD."}
+              </p>
+            )}
+          </div>
           <form onSubmit={save} className="mt-5 space-y-3 border-t border-line pt-5">
             <label className="grid gap-2 text-xs font-black text-muted">Họ và tên<input required maxLength={180} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} className="rounded-lg border border-line bg-paper px-3 py-3 text-sm font-semibold text-ink" /></label>
             <label className="grid gap-2 text-xs font-black text-muted">Email<input type="email" maxLength={255} value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} placeholder="Chưa bổ sung" className="rounded-lg border border-line bg-paper px-3 py-3 text-sm font-semibold text-ink" /></label>
@@ -3344,6 +3375,7 @@ function CustomerAccounts() {
           {error ? <p className="mt-4 rounded-lg bg-red-50 p-3 text-xs font-bold text-red-700">{error}</p> : null}
         </div> : <div className="rounded-lg border border-line bg-white p-8 text-center text-sm font-semibold text-muted">Chọn một tài khoản để xem chi tiết.</div>}
       </aside>
+      <SecureImagePreview preview={imagePreview} onClose={() => setImagePreview(null)} />
     </div>
   );
 }
