@@ -1,6 +1,7 @@
 import {
   ArrowLeft,
   ArrowUpRight,
+  Bell,
   Boxes,
   CalendarDays,
   Camera,
@@ -39,6 +40,11 @@ import BrandMark from "../components/BrandMark.jsx";
 import SecureImagePreview from "../components/SecureImagePreview.jsx";
 import StatusBadge, { bookingStateLabels, bookingStateTone } from "../components/StatusBadge.jsx";
 import { bookingStateDotTone, mergeBookingSnapshot } from "../../models/bookingState.js";
+import {
+  bookingAuditLabel,
+  supportStatusLabel,
+  supportTypeLabel,
+} from "../../models/adminPresentation.js";
 import { api } from "../../services/api.js";
 import { catalogImageUrl, money, shortDate } from "../../utils/format.js";
 import { invoiceHtml } from "../../utils/invoiceTemplate.js";
@@ -139,6 +145,10 @@ export default function AdminPage({
     () => Object.fromEntries(products.map((product) => [product.id, product])),
     [products],
   );
+  const newSupportCount = useMemo(
+    () => supportRequests.filter((item) => !item.status || item.status === "OPEN").length,
+    [supportRequests],
+  );
 
   useEffect(() => {
     refresh();
@@ -173,6 +183,26 @@ export default function AdminPage({
   useEffect(() => {
     if (page === "orders" && detailId) setSelectedId(detailId);
   }, [detailId, page]);
+  useEffect(() => {
+    if (!canReadSupport) return undefined;
+
+    let cancelled = false;
+    const syncSupport = async () => {
+      try {
+        const nextSupport = await api.adminSupport();
+        if (!cancelled) setSupportRequests(nextSupport);
+      } catch {
+        // The main refresh surface reports API errors; polling stays unobtrusive.
+      }
+    };
+    const timer = window.setInterval(syncSupport, 30000);
+    window.addEventListener("focus", syncSupport);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      window.removeEventListener("focus", syncSupport);
+    };
+  }, [canReadSupport]);
   useEffect(() => {
     if (!selected?.id) return;
     Promise.allSettled([
@@ -212,7 +242,7 @@ export default function AdminPage({
         requiresAssets ? api.stock() : Promise.resolve(null),
         requiresFinance ? api.financeSummary() : Promise.resolve(null),
         requiresFinance ? api.financeEntries() : Promise.resolve(null),
-        canReadSupport && page === "support" ? api.adminSupport() : Promise.resolve(null),
+        canReadSupport ? api.adminSupport() : Promise.resolve(null),
         ["catalog", "bundles"].includes(page) ? api.adminBundles() : Promise.resolve(null),
         canReadPromotions && page === "promotions" ? api.adminPromotions() : Promise.resolve(null),
         ["ADMIN", "MANAGER", "WAREHOUSE", "TECH"].includes(user.role) && page === "inventory"
@@ -376,6 +406,21 @@ export default function AdminPage({
       >
         <BrandMark compact />
         <div className="flex items-center gap-3">
+          {canReadSupport ? (
+            <button
+              type="button"
+              onClick={() => navigate("support")}
+              title="Yêu cầu hỗ trợ mới"
+              className="relative flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white text-ink"
+            >
+              <Bell className="h-4 w-4" />
+              {newSupportCount > 0 ? (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-black text-white">
+                  {newSupportCount > 99 ? "99+" : newSupportCount}
+                </span>
+              ) : null}
+            </button>
+          ) : null}
           <div className="hidden text-right sm:block">
             <p className="text-xs font-black">{user.email}</p>
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted">
@@ -401,10 +446,13 @@ export default function AdminPage({
           <button
             key={id}
             onClick={() => navigate(id)}
-            className={`flex shrink-0 items-center gap-2 px-4 py-3 text-[10px] font-black uppercase ${page === id ? "text-acid" : "text-white/55"}`}
+            className={`relative flex shrink-0 items-center gap-2 px-4 py-3 text-[10px] font-black uppercase ${page === id ? "text-acid" : "text-white/55"}`}
           >
             <Icon className="h-4 w-4" />
             {label}
+            {id === "support" && newSupportCount > 0 ? (
+              <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[8px] text-white">{newSupportCount}</span>
+            ) : null}
           </button>
         ))}
       </div>
@@ -419,6 +467,9 @@ export default function AdminPage({
             >
               <Icon className="h-5 w-5" />
               {label}
+              {id === "support" && newSupportCount > 0 ? (
+                <span className="rounded-full bg-red-600 px-1.5 py-0.5 text-[8px] text-white">{newSupportCount}</span>
+              ) : null}
             </button>
           ))}
         </nav>
@@ -1387,11 +1438,14 @@ function Orders({
             <strong>{money(selected.items.reduce((sum, item) => sum + Number(productById[item.productId]?.lateFeePerHour || 0) * Number(item.quantity || 0), 0))}/giờ</strong>
           </div>
           ) : null}
-          {detailTab === "operations" && selected.identityDocumentsAvailable && canViewIdentity ? (
+          {detailTab === "overview" && selected.identityDocumentsAvailable && canViewIdentity ? (
             <div className="mb-5 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-paper p-4">
               <div className="mr-auto flex items-center gap-2">
                 <IdCard className="h-4 w-4" />
-                <span className="text-xs font-black uppercase">CCCD mã hóa</span>
+                <div>
+                  <p className="text-xs font-black uppercase">CCCD khách hàng</p>
+                  <p className="mt-1 text-[10px] font-semibold text-muted">Ảnh được giải mã an toàn khi quản trị viên mở xem.</p>
+                </div>
               </div>
               <button onClick={() => openIdentity("front")} className="rounded-lg bg-white px-3 py-2 text-xs font-black">Xem mặt trước</button>
               <button onClick={() => openIdentity("back")} className="rounded-lg bg-white px-3 py-2 text-xs font-black">Xem mặt sau</button>
@@ -1484,7 +1538,7 @@ function Orders({
                 key={entry.id}
                 className="border-l-2 border-line py-1 pl-3 text-xs font-semibold text-muted"
               >
-                {entry.action} · {entry.actor} · {shortDate(entry.createdAt)}
+                {bookingAuditLabel(entry.action, bookingStateLabels)} · {entry.actor} · {shortDate(entry.createdAt)}
               </p>
             ))}
           </div>
@@ -3399,9 +3453,9 @@ function Support({ requests, refresh }) {
                 <p className="text-xs font-black text-muted">
                   {item.id} · {item.bookingId}
                 </p>
-                <h2 className="mt-2 font-black">{item.type}</h2>
+                <h2 className="mt-2 font-black">{supportTypeLabel(item.type)}</h2>
               </div>
-              <span className="text-xs font-black">{item.status}</span>
+              <span className="text-xs font-black">{supportStatusLabel(item.status)}</span>
             </div>
             <p className="mt-3 text-sm font-semibold">{item.message}</p>
             <div className="mt-4 grid gap-2 md:grid-cols-[1fr_auto_auto]">
