@@ -86,6 +86,21 @@ const transitions = {
   INCIDENT: ["IN_USE", "COMPLETED"],
 };
 
+const resourceOperationLabels = {
+  SOFT: "Giữ chỗ tạm thời",
+  HARD: "Giữ chỗ chắc chắn",
+  PRIMARY: "Thiết bị/phụ kiện chính",
+  ALLOCATED: "Đã phân bổ cụ thể",
+  ACTIVE: "Đang giữ tồn kho",
+  IN_USE: "Đang được sử dụng",
+  RELEASED: "Đã trả lại kho",
+  SUBSTITUTED: "Đã thay thế",
+};
+
+function resourceOperationLabel(value) {
+  return resourceOperationLabels[String(value || "").toUpperCase()] || value || "Chưa xác định";
+}
+
 export default function AdminPage({
   user,
   activePage,
@@ -577,6 +592,7 @@ export default function AdminPage({
             detailId={detailId}
             onNavigate={onNavigate}
             refresh={refresh}
+            canManage={["ADMIN", "MANAGER"].includes(user.role)}
           />
         ) : null}
         {page === "finance" ? (
@@ -1467,24 +1483,40 @@ function Orders({
           {detailTab === "operations" ? (
           <section className="mb-5 border-y border-line py-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div><p className="text-[10px] font-black uppercase text-muted">Reservation & Allocation</p><h3 className="mt-1 text-lg font-black">Điều phối nguồn lực</h3></div>
+              <div><p className="text-[10px] font-black uppercase text-muted">Giữ chỗ & phân bổ</p><h3 className="mt-1 text-lg font-black">Điều phối nguồn lực</h3></div>
               {["CONFIRMED", "READY_FOR_PICKUP"].includes(selected.state) ? <button type="button" disabled={busy} onClick={autoAllocate} className="rounded-lg border border-line bg-paper px-3 py-2 text-xs font-black uppercase">Phân bổ tự động</button> : null}
             </div>
             <div className="mt-4 grid gap-5 lg:grid-cols-2">
               <div>
-                <p className="mb-2 text-[10px] font-black uppercase text-muted">Reservation</p>
+                <p className="mb-2 text-[10px] font-black uppercase text-muted">Giữ chỗ</p>
                 <div className="divide-y divide-line border-y border-line">
-                  {(operations?.reservations || []).slice(-6).map((item) => <p key={item.id} className="flex justify-between gap-3 py-2 text-xs font-bold"><span>{productById[item.productId]?.name || item.productId} × {item.quantity}</span><span className={item.state === "ACTIVE" ? "text-green-700" : "text-muted"}>{item.type} · {item.state}</span></p>)}
-                  {!operations?.reservations?.length ? <p className="py-3 text-xs font-bold text-muted">Chưa có reservation.</p> : null}
+                  {(operations?.reservations || []).slice(-6).map((item) => <p key={item.id} className="flex justify-between gap-3 py-2 text-xs font-bold"><span>{productById[item.productId]?.name || item.productId} × {item.quantity}</span><span className={item.state === "ACTIVE" ? "text-green-700" : "text-muted"}>{resourceOperationLabel(item.type)} · {resourceOperationLabel(item.state)}</span></p>)}
+                  {!operations?.reservations?.length ? <p className="py-3 text-xs font-bold text-muted">Chưa có lượt giữ chỗ.</p> : null}
                 </div>
               </div>
               <div>
-                <p className="mb-2 text-[10px] font-black uppercase text-muted">Allocation</p>
+                <p className="mb-2 text-[10px] font-black uppercase text-muted">Phân bổ</p>
                 <div className="divide-y divide-line border-y border-line">
-                  {(operations?.allocations || []).slice(-8).map((item) => <p key={item.id} className="flex justify-between gap-3 py-2 text-xs font-bold"><span>{item.serialId || productById[item.productId]?.name || item.productId} × {item.quantity}</span><span className="text-muted">{item.role} · {item.state}</span></p>)}
+                  {(operations?.allocations || []).slice(-8).map((item) => <p key={item.id} className="flex justify-between gap-3 py-2 text-xs font-bold"><span>{item.serialId || productById[item.productId]?.name || item.productId} × {item.quantity}</span><span className="text-muted">{resourceOperationLabel(item.role)} · {resourceOperationLabel(item.state)}</span></p>)}
                   {!operations?.allocations?.length ? <p className="py-3 text-xs font-bold text-muted">Chưa phân bổ thiết bị.</p> : null}
                 </div>
               </div>
+            </div>
+            <div className="mt-4 rounded-lg border border-line bg-paper p-4">
+              <p className="text-[10px] font-black uppercase text-muted">Cách đọc trạng thái</p>
+              <div className="mt-3 grid gap-3 text-xs font-semibold leading-5 text-muted md:grid-cols-2 xl:grid-cols-3">
+                <p><strong className="text-ink">Giữ chỗ tạm thời</strong> · Giữ tồn kho trong lúc khách hoàn tất đặt thuê.</p>
+                <p><strong className="text-ink">Giữ chỗ chắc chắn</strong> · Giữ tồn kho cho đơn đã đạt điều kiện xác nhận.</p>
+                <p><strong className="text-ink">Thiết bị/phụ kiện chính</strong> · Thành phần chính đã được chọn cho đơn.</p>
+                <p><strong className="text-ink">Đã phân bổ cụ thể</strong> · Đã gắn serial hoặc số lượng kho vào đơn.</p>
+                <p><strong className="text-ink">Đang giữ tồn kho</strong> · Bản ghi hiện còn giữ thiết bị hoặc số lượng trong kho.</p>
+                <p><strong className="text-ink">Đang được sử dụng</strong> · Thiết bị đã được giao và đang nằm trong đơn thuê.</p>
+                <p><strong className="text-ink">Đã trả lại kho</strong> · Phần tồn kho đã được giải phóng để nhận đơn khác.</p>
+                <p><strong className="text-ink">Đã thay thế</strong> · Thiết bị hoặc phụ kiện ban đầu đã được đổi sang mục khác.</p>
+              </div>
+              <p className="mt-3 border-t border-line pt-3 text-xs font-bold leading-5 text-muted">
+                Phần trước dấu chấm thể hiện loại giữ chỗ hoặc vai trò; phần sau thể hiện trạng thái hiện tại. Ví dụ “Giữ chỗ chắc chắn · Đã trả lại kho” nghĩa là thiết bị từng được giữ chắc chắn nhưng nay đã được trả về kho.
+              </p>
             </div>
           </section>
           ) : null}
@@ -1774,6 +1806,18 @@ function Catalog({ products, assets, stock, bundles, stores, detailId, onNavigat
   const [bundleFilter, setBundleFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [storeFilter, setStoreFilter] = useState("ALL");
+
+  useEffect(() => {
+    if (window.sessionStorage.getItem("admin:create-product") !== "machine") return;
+    window.sessionStorage.removeItem("admin:create-product");
+    setForm((current) => current || {
+      ...emptyForm,
+      levelCode: "L1",
+      category: "Camera",
+      trackingMode: "SERIALIZED",
+    });
+  }, []);
+
   const selected = products.find((item) => item.id === detailId);
   const storeById = Object.fromEntries(stores.map((store) => [store.id, store]));
   const inventoryByProduct = useMemo(() => {
@@ -2829,6 +2873,7 @@ function Inventory({
   onNavigate,
   refresh,
   ledgerEntries = [],
+  canManage = false,
 }) {
   const asset = assets.find((item) => item.serialId === detailId);
   const stockItem =
@@ -2917,6 +2962,12 @@ function Inventory({
       setBusy(false);
     }
   }
+
+  function startNewProduct() {
+    window.sessionStorage.setItem("admin:create-product", "machine");
+    onNavigate("/admin/catalog");
+  }
+
   if (asset || stockItem) {
     const item = asset || stockItem;
     const productId = item.productId;
@@ -3030,6 +3081,24 @@ function Inventory({
   }
   return (
     <div>
+      {canManage ? (
+        <section className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-white p-4">
+          <div>
+            <p className="text-xs font-black uppercase">Chưa có mẫu thiết bị?</p>
+            <p className="mt-1 text-xs font-semibold text-muted">
+              Tạo sản phẩm mới trước, sau đó nhập từng máy vật lý bằng mã serial.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={startNewProduct}
+            className="inline-flex items-center gap-2 rounded-lg bg-ink px-4 py-3 text-xs font-black uppercase text-acid"
+          >
+            <Plus className="h-4 w-4" />
+            Tạo sản phẩm mới
+          </button>
+        </section>
+      ) : null}
       <form
         onSubmit={addAsset}
         className="mb-6 grid gap-3 rounded-lg border border-line bg-white p-4 md:grid-cols-[1fr_1fr_180px_auto]"
@@ -3707,20 +3776,113 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
           ].map(([number, title, copy]) => <div key={number} className="rounded-lg bg-paper p-4"><span className="grid h-7 w-7 place-items-center rounded bg-ink text-[10px] font-black text-acid">{number}</span><h3 className="mt-3 text-sm font-black">{title}</h3><p className="mt-1 text-xs font-semibold leading-5 text-muted">{copy}</p></div>)}
         </div>
       </section>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <Metric label="Tiền thực đang có" value={money(finance.physicalCash || 0)} />
-        <Metric label="Tiền khách bị hạn chế" value={money(finance.restrictedCustomerFunds || 0)} />
-        <Metric label="Dòng tiền đã cam kết" value={money(finance.committedOutflows || 0)} />
-        <Metric label="Tiền khả dụng" value={money(finance.availableCash || 0)} />
-        <Metric label="Doanh thu đã ghi nhận" value={money(finance.recognizedRevenue || 0)} />
-        <Metric label="Chi phí đã ghi nhận" value={money(finance.recognizedExpenses || 0)} />
-        <Metric label="Biên đóng góp" value={money(finance.contributionMargin || 0)} />
-        <Metric label="Công nợ phải thu" value={money(finance.outstandingReceivables || 0)} />
-        <Metric label="Hoàn tiền quá hạn" value={String(finance.overdueRefunds || 0)} />
-        <Metric label="Lỗi đối soát Critical" value={String(finance.criticalFindings || 0)} />
-      </div>
+      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,1fr)]">
+        <div className="rounded-lg bg-ink p-5 text-white">
+          <p className="text-[10px] font-black uppercase tracking-widest text-acid">Số dư vận hành</p>
+          <div className="mt-3 flex flex-wrap items-end justify-between gap-3 border-b border-white/15 pb-5">
+            <div>
+              <p className="text-sm font-bold text-white/70">Tiền có thể sử dụng</p>
+              <p className="mt-1 text-3xl font-black text-acid">{money(finance.availableCash || 0)}</p>
+            </div>
+            <p className="max-w-sm text-xs font-semibold leading-5 text-white/65">
+              Số tiền doanh nghiệp có thể chi sau khi đã dành riêng tiền giữ hộ khách và các khoản chắc chắn phải thanh toán.
+            </p>
+          </div>
+          <div className="mt-5 grid gap-4 sm:grid-cols-3">
+            <div>
+              <p className="text-[10px] font-black uppercase text-white/55">Tiền thực đang có</p>
+              <p className="mt-1 text-lg font-black">{money(finance.physicalCash || 0)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase text-white/55">Trừ tiền khách đang giữ hộ</p>
+              <p className="mt-1 text-lg font-black">{money(finance.restrictedCustomerFunds || 0)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase text-white/55">Trừ khoản đã cam kết chi</p>
+              <p className="mt-1 text-lg font-black">{money(finance.committedOutflows || 0)}</p>
+            </div>
+          </div>
+          <p className="mt-5 border-t border-white/15 pt-4 text-xs font-bold leading-5 text-white/70">
+            Tiền có thể sử dụng = Tiền thực đang có - Tiền khách đang giữ hộ - Khoản đã cam kết chi.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-line bg-white p-5">
+          <p className="text-[10px] font-black uppercase tracking-widest text-muted">Khoản cần theo dõi</p>
+          <div className="mt-4 divide-y divide-line">
+            <div className="flex items-start justify-between gap-4 py-3 first:pt-0">
+              <div><p className="text-sm font-black">Công nợ phải thu</p><p className="mt-1 text-xs font-semibold text-muted">Khách còn phải thanh toán.</p></div>
+              <p className="shrink-0 text-lg font-black">{money(finance.outstandingReceivables || 0)}</p>
+            </div>
+            <div className="flex items-start justify-between gap-4 py-3">
+              <div><p className="text-sm font-black">Hoàn tiền quá hạn</p><p className="mt-1 text-xs font-semibold text-muted">Số yêu cầu hoàn đã quá hạn xử lý.</p></div>
+              <p className="shrink-0 text-lg font-black">{String(finance.overdueRefunds || 0)}</p>
+            </div>
+            <div className="flex items-start justify-between gap-4 py-3 last:pb-0">
+              <div><p className="text-sm font-black">Lỗi đối soát nghiêm trọng</p><p className="mt-1 text-xs font-semibold text-muted">Sai lệch cần admin kiểm tra ngay.</p></div>
+              <p className="shrink-0 text-lg font-black">{String(finance.criticalFindings || 0)}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mt-5 rounded-lg border border-line bg-white p-5">
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted">Kết quả kinh doanh</p>
+            <h2 className="mt-1 text-xl font-black">Doanh thu và chi phí đã đủ điều kiện ghi nhận</h2>
+          </div>
+          <p className="text-xs font-bold text-muted">Không bao gồm tiền cọc hoặc tiền đang giữ hộ khách</p>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <Metric label="Doanh thu đã ghi nhận" value={money(finance.recognizedRevenue || 0)} hint="Tiền thuê đã hoàn thành điều kiện ghi nhận" />
+          <Metric label="Chi phí trực tiếp đã ghi nhận" value={money(finance.recognizedExpenses || 0)} hint="Chi phí gắn trực tiếp với hoạt động và thiết bị" />
+          <Metric label="Biên đóng góp" value={money(finance.contributionMargin || 0)} hint="Doanh thu ghi nhận trừ chi phí trực tiếp" />
+        </div>
+        <p className="mt-4 rounded-lg bg-paper p-3 text-xs font-bold leading-5 text-muted">
+          Biên đóng góp = Doanh thu đã ghi nhận - Chi phí trực tiếp đã ghi nhận. Chỉ số này chưa phải lợi nhuận ròng vì chưa trừ lương, mặt bằng, marketing và các chi phí vận hành chung.
+        </p>
+      </section>
+
+      <section className="mt-5 rounded-lg border border-line bg-white p-5">
+        <p className="text-[10px] font-black uppercase tracking-widest text-muted">Luồng ghi nhận của một đơn thuê</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {[
+            ["1", "Tạo khoản phải thu", "Booking ghi số khách cần thanh toán, chưa làm tăng tiền trong quỹ."],
+            ["2", "Xác nhận tiền vào", "Admin đối soát chuyển khoản hoặc tiền mặt rồi mới ghi nhận tiền thực có."],
+            ["3", "Tách đúng tính chất", "Tiền thuê, tiền cọc, tiền giữ lịch và nghĩa vụ hoàn được theo dõi riêng."],
+            ["4", "Quyết toán khi trả máy", "Chốt doanh thu, phí phát sinh, hoàn cọc và công nợ còn lại bằng chứng từ."],
+          ].map(([number, title, copy]) => (
+            <div key={number} className="rounded-lg bg-paper p-4">
+              <span className="grid h-7 w-7 place-items-center rounded bg-ink text-[10px] font-black text-acid">{number}</span>
+              <h3 className="mt-3 text-sm font-black">{title}</h3>
+              <p className="mt-1 text-xs font-semibold leading-5 text-muted">{copy}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-5 rounded-lg border border-line bg-white p-5">
+        <p className="text-[10px] font-black uppercase tracking-widest text-muted">Giải thích thuật ngữ</p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {[
+            ["Tiền khách đang giữ hộ", "Tên kỹ thuật: restricted customer funds. Gồm tiền cọc, tiền giữ lịch hoặc khoản chưa đủ điều kiện ghi nhận; doanh nghiệp chưa được tự do sử dụng."],
+            ["Khoản đã cam kết chi", "Tên kỹ thuật: committed outflows. Là khoản doanh nghiệp chắc chắn phải chi như hoàn tiền hoặc chi phí đã duyệt nhưng chưa thực trả."],
+            ["Tiền có thể sử dụng", "Phần tiền còn lại sau khi trừ tiền đang giữ hộ khách và các khoản đã cam kết chi khỏi tiền thực đang có."],
+            ["Biên đóng góp", "Phần còn lại từ doanh thu sau khi trừ chi phí trực tiếp, dùng để bù chi phí vận hành chung và tạo lợi nhuận."],
+          ].map(([title, copy]) => (
+            <div key={title} className="rounded-lg bg-paper p-4">
+              <h3 className="text-sm font-black">{title}</h3>
+              <p className="mt-2 text-xs font-semibold leading-5 text-muted">{copy}</p>
+            </div>
+          ))}
+        </div>
+      </section>
       <section className="mt-6">
-        <h2 className="mb-3 text-lg font-black">Financial ledger bất biến</h2>
+        <h2 className="text-lg font-black">Nhật ký giao dịch bất biến</h2>
+        <p className="mb-3 mt-1 max-w-3xl text-xs font-semibold leading-5 text-muted">
+          Mỗi dòng là một bút toán đã ghi sổ. Giao dịch đã post không sửa hoặc xóa trực tiếp; nếu sai, hệ thống tạo chứng từ đảo để luôn giữ được lịch sử đối soát.
+        </p>
         <p className="mb-2 text-[10px] font-bold uppercase text-muted md:hidden">Kéo ngang để xem đầy đủ bảng</p>
         <div className="finance-table-scroll rounded-lg border border-line bg-white">
           <table className="w-full min-w-[900px] text-left text-sm">
