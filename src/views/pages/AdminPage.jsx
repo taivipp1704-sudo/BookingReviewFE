@@ -3765,28 +3765,14 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
       </div>
       {message ? <p className="mb-5 border border-line bg-white p-3 text-sm font-bold">{message}</p> : null}
       {tab === "overview" ? <>
-      <section className="mb-5 rounded-lg border border-line bg-white p-5">
-        <p className="text-[10px] font-black uppercase tracking-widest text-muted">Nguyên tắc ghi nhận</p>
-        <div className="mt-4 grid gap-3 md:grid-cols-4">
-          {[
-            ["1", "Booking tạo công nợ", "Tổng thuê + cọc là số cần thu, chưa phải tiền trong quỹ."],
-            ["2", "Admin xác nhận tiền", "Chỉ ảnh chuyển khoản hoặc tiền mặt đã đối soát mới tạo Payment."],
-            ["3", "Ledger ghi hai vế", "Tiền vào, doanh thu, cọc giữ hộ và hoàn tiền được tách tài khoản."],
-            ["4", "Quyết toán khi trả máy", "Phí phát sinh, hoàn cọc và công nợ được chốt bằng chứng từ."],
-          ].map(([number, title, copy]) => <div key={number} className="rounded-lg bg-paper p-4"><span className="grid h-7 w-7 place-items-center rounded bg-ink text-[10px] font-black text-acid">{number}</span><h3 className="mt-3 text-sm font-black">{title}</h3><p className="mt-1 text-xs font-semibold leading-5 text-muted">{copy}</p></div>)}
-        </div>
-      </section>
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,1fr)]">
         <div className="rounded-lg bg-ink p-5 text-white">
           <p className="text-[10px] font-black uppercase tracking-widest text-acid">Số dư vận hành</p>
-          <div className="mt-3 flex flex-wrap items-end justify-between gap-3 border-b border-white/15 pb-5">
+          <div className="mt-3 border-b border-white/15 pb-5">
             <div>
               <p className="text-sm font-bold text-white/70">Tiền có thể sử dụng</p>
               <p className="mt-1 text-3xl font-black text-acid">{money(finance.availableCash || 0)}</p>
             </div>
-            <p className="max-w-sm text-xs font-semibold leading-5 text-white/65">
-              Số tiền doanh nghiệp có thể chi sau khi đã dành riêng tiền giữ hộ khách và các khoản chắc chắn phải thanh toán.
-            </p>
           </div>
           <div className="mt-5 grid gap-4 sm:grid-cols-3">
             <div>
@@ -3802,24 +3788,21 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
               <p className="mt-1 text-lg font-black">{money(finance.committedOutflows || 0)}</p>
             </div>
           </div>
-          <p className="mt-5 border-t border-white/15 pt-4 text-xs font-bold leading-5 text-white/70">
-            Tiền có thể sử dụng = Tiền thực đang có - Tiền khách đang giữ hộ - Khoản đã cam kết chi.
-          </p>
         </div>
 
         <div className="rounded-lg border border-line bg-white p-5">
           <p className="text-[10px] font-black uppercase tracking-widest text-muted">Khoản cần theo dõi</p>
           <div className="mt-4 divide-y divide-line">
             <div className="flex items-start justify-between gap-4 py-3 first:pt-0">
-              <div><p className="text-sm font-black">Công nợ phải thu</p><p className="mt-1 text-xs font-semibold text-muted">Khách còn phải thanh toán.</p></div>
+              <p className="text-sm font-black">Công nợ phải thu</p>
               <p className="shrink-0 text-lg font-black">{money(finance.outstandingReceivables || 0)}</p>
             </div>
             <div className="flex items-start justify-between gap-4 py-3">
-              <div><p className="text-sm font-black">Hoàn tiền quá hạn</p><p className="mt-1 text-xs font-semibold text-muted">Số yêu cầu hoàn đã quá hạn xử lý.</p></div>
+              <p className="text-sm font-black">Hoàn tiền quá hạn</p>
               <p className="shrink-0 text-lg font-black">{String(finance.overdueRefunds || 0)}</p>
             </div>
             <div className="flex items-start justify-between gap-4 py-3 last:pb-0">
-              <div><p className="text-sm font-black">Lỗi đối soát nghiêm trọng</p><p className="mt-1 text-xs font-semibold text-muted">Sai lệch cần admin kiểm tra ngay.</p></div>
+              <p className="text-sm font-black">Lỗi đối soát nghiêm trọng</p>
               <p className="shrink-0 text-lg font-black">{String(finance.criticalFindings || 0)}</p>
             </div>
           </div>
@@ -3827,63 +3810,15 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
       </section>
 
       <section className="mt-5 rounded-lg border border-line bg-white p-5">
-        <div className="flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-muted">Kết quả kinh doanh</p>
-            <h2 className="mt-1 text-xl font-black">Doanh thu và chi phí đã đủ điều kiện ghi nhận</h2>
-          </div>
-          <p className="text-xs font-bold text-muted">Không bao gồm tiền cọc hoặc tiền đang giữ hộ khách</p>
-        </div>
+        <h2 className="text-xl font-black">Kết quả kinh doanh</h2>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <Metric label="Doanh thu đã ghi nhận" value={money(finance.recognizedRevenue || 0)} hint="Tiền thuê đã hoàn thành điều kiện ghi nhận" />
-          <Metric label="Chi phí trực tiếp đã ghi nhận" value={money(finance.recognizedExpenses || 0)} hint="Chi phí gắn trực tiếp với hoạt động và thiết bị" />
-          <Metric label="Biên đóng góp" value={money(finance.contributionMargin || 0)} hint="Doanh thu ghi nhận trừ chi phí trực tiếp" />
-        </div>
-        <p className="mt-4 rounded-lg bg-paper p-3 text-xs font-bold leading-5 text-muted">
-          Biên đóng góp = Doanh thu đã ghi nhận - Chi phí trực tiếp đã ghi nhận. Chỉ số này chưa phải lợi nhuận ròng vì chưa trừ lương, mặt bằng, marketing và các chi phí vận hành chung.
-        </p>
-      </section>
-
-      <section className="mt-5 rounded-lg border border-line bg-white p-5">
-        <p className="text-[10px] font-black uppercase tracking-widest text-muted">Luồng ghi nhận của một đơn thuê</p>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {[
-            ["1", "Tạo khoản phải thu", "Booking ghi số khách cần thanh toán, chưa làm tăng tiền trong quỹ."],
-            ["2", "Xác nhận tiền vào", "Admin đối soát chuyển khoản hoặc tiền mặt rồi mới ghi nhận tiền thực có."],
-            ["3", "Tách đúng tính chất", "Tiền thuê, tiền cọc, tiền giữ lịch và nghĩa vụ hoàn được theo dõi riêng."],
-            ["4", "Quyết toán khi trả máy", "Chốt doanh thu, phí phát sinh, hoàn cọc và công nợ còn lại bằng chứng từ."],
-          ].map(([number, title, copy]) => (
-            <div key={number} className="rounded-lg bg-paper p-4">
-              <span className="grid h-7 w-7 place-items-center rounded bg-ink text-[10px] font-black text-acid">{number}</span>
-              <h3 className="mt-3 text-sm font-black">{title}</h3>
-              <p className="mt-1 text-xs font-semibold leading-5 text-muted">{copy}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-5 rounded-lg border border-line bg-white p-5">
-        <p className="text-[10px] font-black uppercase tracking-widest text-muted">Giải thích thuật ngữ</p>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          {[
-            ["Tiền khách đang giữ hộ", "Tên kỹ thuật: restricted customer funds. Gồm tiền cọc, tiền giữ lịch hoặc khoản chưa đủ điều kiện ghi nhận; doanh nghiệp chưa được tự do sử dụng."],
-            ["Khoản đã cam kết chi", "Tên kỹ thuật: committed outflows. Là khoản doanh nghiệp chắc chắn phải chi như hoàn tiền hoặc chi phí đã duyệt nhưng chưa thực trả."],
-            ["Tiền có thể sử dụng", "Phần tiền còn lại sau khi trừ tiền đang giữ hộ khách và các khoản đã cam kết chi khỏi tiền thực đang có."],
-            ["Biên đóng góp", "Phần còn lại từ doanh thu sau khi trừ chi phí trực tiếp, dùng để bù chi phí vận hành chung và tạo lợi nhuận."],
-          ].map(([title, copy]) => (
-            <div key={title} className="rounded-lg bg-paper p-4">
-              <h3 className="text-sm font-black">{title}</h3>
-              <p className="mt-2 text-xs font-semibold leading-5 text-muted">{copy}</p>
-            </div>
-          ))}
+          <Metric label="Doanh thu đã ghi nhận" value={money(finance.recognizedRevenue || 0)} />
+          <Metric label="Chi phí trực tiếp đã ghi nhận" value={money(finance.recognizedExpenses || 0)} />
+          <Metric label="Biên đóng góp" value={money(finance.contributionMargin || 0)} />
         </div>
       </section>
       <section className="mt-6">
         <h2 className="text-lg font-black">Nhật ký giao dịch bất biến</h2>
-        <p className="mb-3 mt-1 max-w-3xl text-xs font-semibold leading-5 text-muted">
-          Mỗi dòng là một bút toán đã ghi sổ. Giao dịch đã post không sửa hoặc xóa trực tiếp; nếu sai, hệ thống tạo chứng từ đảo để luôn giữ được lịch sử đối soát.
-        </p>
-        <p className="mb-2 text-[10px] font-bold uppercase text-muted md:hidden">Kéo ngang để xem đầy đủ bảng</p>
         <div className="finance-table-scroll rounded-lg border border-line bg-white">
           <table className="w-full min-w-[900px] text-left text-sm">
             <thead className="bg-paper text-[10px] font-black uppercase text-muted">
