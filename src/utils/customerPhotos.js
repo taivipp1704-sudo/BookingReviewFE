@@ -1,26 +1,29 @@
 // Customer-submitted photos of equipment in real use, shown as feedback on
-// each product's detail page. Files live as static assets under
-// public/catalog/customer-photos/<slug>/01.jpg, 02.jpg, ... so no backend
-// call is needed to list them.
-export const CUSTOMER_PHOTO_COUNTS = {
-  "fuji-xa5": 9,
-  "fuji-xm5": 18,
-  "canon-g7x-m2": 23,
-  "canon-ixy-600f": 16,
-  "canon-ixy-650": 17,
-  "canon-m10": 21,
-  "canon-m100": 22,
-  "canon-m200": 5,
-  "canon-m50": 15,
-  "canon-m6": 2,
-  "pocket-3": 6,
-  "canon-r50": 16,
+// each product's detail page. Files are static assets under
+// public/catalog/customer-photos/<slug>/01.jpg, 02.jpg, ...
+//
+// Each entry is [width, height] in pixels. The dimensions are baked in so the
+// masonry grid can reserve each tile's exact space before the image loads,
+// which keeps the page from reflowing as photos stream in.
+export const CUSTOMER_PHOTOS = {
+  "canon-g7x-m2": [[1067,1600],[1200,1600],[1067,1600],[1200,1600],[1066,1600],[1067,1600],[1066,1600],[1066,1600],[1046,1600],[1066,1600],[1170,1560],[1170,1560],[1067,1600],[1067,1600],[1170,1560],[1067,1600],[1019,1600],[1067,1600],[1067,1600],[1170,1458],[1067,1600],[1200,1600],[900,1600]],
+  "canon-ixy-600f": [[628,901],[647,1048],[622,828],[1200,1600],[1200,1600],[1200,1600],[1600,1200],[1600,1200],[1200,1600],[1600,1200],[1200,1600],[1200,1600],[1200,1600],[900,1600],[1600,1600],[1200,1600]],
+  "canon-ixy-650": [[1080,1468],[1440,1080],[1080,1472],[1067,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1284,1600],[1290,1592],[1290,1590],[1290,1600],[1290,1590]],
+  "canon-m10": [[899,1600],[899,1600],[899,1600],[1170,1463],[1170,1463],[1067,1600],[1067,1600],[1170,1463],[1067,1600],[1037,1600],[900,1600],[720,1282],[947,1600],[898,1600],[898,1600],[1200,1600],[1600,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600]],
+  "canon-m100": [[590,1050],[590,1051],[590,1051],[590,1050],[958,1600],[944,1600],[1066,1600],[939,1600],[978,1600],[1201,1600],[811,1600],[810,1600],[1600,1067],[1067,1600],[906,1600],[1023,1534],[1600,906],[1347,898],[1170,1462],[1600,900],[1170,1462],[961,1300]],
+  "canon-m200": [[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600]],
+  "canon-m50": [[1200,1600],[900,1600],[900,1600],[1067,1600],[1066,1600],[1066,1600],[899,1600],[899,1600],[1600,1201],[1600,1201],[1440,960],[1440,1146],[1200,1600],[900,1600],[900,1600]],
+  "canon-m6": [[1200,1600],[1200,1600]],
+  "canon-r50": [[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600]],
+  "fuji-xa5": [[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[1200,1600],[900,1600],[1200,1600],[1200,1600]],
+  "fuji-xm5": [[1200,1600],[1200,1600],[1200,1600],[900,1600],[900,1600],[900,1600],[900,1600],[900,1600],[900,1600],[900,1600],[900,1600],[900,1600],[1067,1600],[1067,1600],[901,1600],[901,1600],[900,1600],[1200,1600]],
+  "pocket-3": [[901,1600],[901,1600],[901,1600],[902,1600],[901,1600],[1090,1600]],
 };
 
 function slugifyProductName(name) {
   return String(name || "")
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
@@ -28,15 +31,15 @@ function slugifyProductName(name) {
 
 export function customerPhotoSlug(product) {
   const slug = slugifyProductName(product?.name);
-  return CUSTOMER_PHOTO_COUNTS[slug] ? slug : "";
+  return CUSTOMER_PHOTOS[slug] ? slug : "";
 }
 
 export function customerPhotosForProduct(product) {
   const slug = customerPhotoSlug(product);
-  const count = slug ? CUSTOMER_PHOTO_COUNTS[slug] : 0;
-  if (!count) return [];
-  return Array.from({ length: count }, (_, index) => ({
-    thumb: `/catalog/customer-photos/${slug}/${String(index + 1).padStart(2, "0")}.jpg`,
-    full: `/catalog/customer-photos/${slug}/${String(index + 1).padStart(2, "0")}.jpg`,
+  if (!slug) return [];
+  return CUSTOMER_PHOTOS[slug].map(([width, height], index) => ({
+    src: `/catalog/customer-photos/${slug}/${String(index + 1).padStart(2, "0")}.jpg`,
+    width,
+    height,
   }));
 }

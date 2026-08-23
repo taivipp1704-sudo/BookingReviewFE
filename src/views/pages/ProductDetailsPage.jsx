@@ -14,6 +14,8 @@ import { api } from "../../services/api.js";
 import { catalogImageUrl, money, rentalRates } from "../../utils/format.js";
 import { customerPhotosForProduct } from "../../utils/customerPhotos.js";
 
+const INITIAL_PHOTO_COUNT = 8;
+
 function parseDetails(value) {
   try {
     return JSON.parse(value || "{}");
@@ -36,6 +38,7 @@ export default function ProductDetailsPage({
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(null);
+  const [showAllPhotos, setShowAllPhotos] = useState(false);
 
   useEffect(() => {
     Promise.all([api.products(), api.availability()])
@@ -91,6 +94,28 @@ export default function ProductDetailsPage({
     () => customerPhotosForProduct(product),
     [product],
   );
+  const visiblePhotos = showAllPhotos
+    ? customerPhotos
+    : customerPhotos.slice(0, INITIAL_PHOTO_COUNT);
+
+  const photoCount = customerPhotos.length;
+  useEffect(() => {
+    if (lightboxIndex === null) return undefined;
+    function onKeyDown(event) {
+      if (event.key === "Escape") setLightboxIndex(null);
+      if (event.key === "ArrowLeft")
+        setLightboxIndex((current) => (current - 1 + photoCount) % photoCount);
+      if (event.key === "ArrowRight")
+        setLightboxIndex((current) => (current + 1) % photoCount);
+    }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [lightboxIndex, photoCount]);
 
   if (loading)
     return (
@@ -333,27 +358,45 @@ export default function ProductDetailsPage({
           </div>
         </section>
         {customerPhotos.length ? (
-          <section className="mt-8">
-            <h2 className="text-2xl font-black">Ảnh &amp; phản hồi từ khách đã thuê</h2>
+          <section className="mt-10">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+              <h2 className="text-2xl font-black">Ảnh &amp; phản hồi từ khách đã thuê</h2>
+              <span className="text-[11px] font-black uppercase tracking-widest text-muted">
+                {customerPhotos.length} ảnh
+              </span>
+            </div>
             <p className="mt-1 text-sm font-semibold text-muted">
               Hình ảnh thực tế do khách hàng chụp lại trong quá trình sử dụng thiết bị.
             </p>
-            <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-              {customerPhotos.map((photo, index) => (
+            <div className="mt-5 columns-2 gap-3 sm:columns-3 lg:columns-4">
+              {visiblePhotos.map((photo, index) => (
                 <button
-                  key={photo.thumb}
+                  key={photo.src}
                   onClick={() => setLightboxIndex(index)}
-                  className="overflow-hidden rounded-lg bg-paper"
+                  className="group mb-3 block w-full break-inside-avoid overflow-hidden rounded-xl bg-paper ring-1 ring-line transition hover:ring-2 hover:ring-ink"
                 >
                   <img
-                    src={photo.thumb}
-                    alt={`Ảnh khách hàng chụp ${product.name} #${index + 1}`}
+                    src={photo.src}
+                    alt={`Ảnh khách hàng chụp bằng ${product.name} #${index + 1}`}
+                    width={photo.width}
+                    height={photo.height}
                     loading="lazy"
-                    className="aspect-square w-full object-cover transition hover:scale-105"
+                    style={{ aspectRatio: `${photo.width} / ${photo.height}` }}
+                    className="w-full object-cover transition duration-300 group-hover:opacity-90"
                   />
                 </button>
               ))}
             </div>
+            {customerPhotos.length > INITIAL_PHOTO_COUNT ? (
+              <button
+                onClick={() => setShowAllPhotos((current) => !current)}
+                className="mt-2 w-full rounded-lg border-2 border-ink px-6 py-3 text-xs font-black uppercase tracking-widest transition hover:bg-ink hover:text-acid sm:w-auto"
+              >
+                {showAllPhotos
+                  ? "Thu gọn"
+                  : `Xem thêm ${customerPhotos.length - INITIAL_PHOTO_COUNT} ảnh`}
+              </button>
+            ) : null}
           </section>
         ) : null}
       </div>
@@ -362,6 +405,9 @@ export default function ProductDetailsPage({
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
           onClick={() => setLightboxIndex(null)}
         >
+          <span className="absolute left-4 top-6 text-xs font-black tracking-widest text-white/70">
+            {lightboxIndex + 1} / {customerPhotos.length}
+          </span>
           <button
             onClick={() => setLightboxIndex(null)}
             className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
@@ -384,8 +430,8 @@ export default function ProductDetailsPage({
             </button>
           ) : null}
           <img
-            src={customerPhotos[lightboxIndex].full}
-            alt={`Ảnh khách hàng chụp ${product.name} #${lightboxIndex + 1}`}
+            src={customerPhotos[lightboxIndex].src}
+            alt={`Ảnh khách hàng chụp bằng ${product.name} #${lightboxIndex + 1}`}
             onClick={(event) => event.stopPropagation()}
             className="max-h-[85vh] max-w-full rounded-lg object-contain"
           />
