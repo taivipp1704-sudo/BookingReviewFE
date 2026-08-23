@@ -13,6 +13,31 @@ export function earlyPickupTimeForPickup(pickupTime) {
   return localDateTime(earlyPickup);
 }
 
+export function earlyPickupTimeError(pickupTime, earlyPickup, earlyPickupTime) {
+  if (!earlyPickup) return "";
+  if (!pickupTime) {
+    return "Vui lòng chọn giờ nhận máy trước khi yêu cầu nhận máy sớm.";
+  }
+  if (!earlyPickupTime) {
+    return "Vui lòng chọn giờ nhận máy sớm mong muốn.";
+  }
+
+  const pickup = new Date(pickupTime);
+  const requested = new Date(earlyPickupTime);
+  if (Number.isNaN(pickup.getTime()) || Number.isNaN(requested.getTime())) {
+    return "Giờ nhận máy sớm không hợp lệ.";
+  }
+
+  const earliest = new Date(earlyPickupTimeForPickup(pickupTime));
+  if (requested < earliest) {
+    return "Giờ nhận sớm không được trước 21:00 tối hôm trước ngày nhận máy.";
+  }
+  if (requested > pickup) {
+    return "Giờ nhận sớm không được muộn hơn giờ nhận máy đã chọn.";
+  }
+  return "";
+}
+
 export function returnTimeForRentalDays(pickupTime, currentReturnTime, rentalDays) {
   const pickup = new Date(pickupTime);
   const currentReturn = new Date(currentReturnTime);

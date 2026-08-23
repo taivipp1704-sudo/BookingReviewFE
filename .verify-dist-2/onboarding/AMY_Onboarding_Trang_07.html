@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AMY DIGITAL — Trang 7: Kiểm tra khi nhận và trả</title>
+  <style>
+    :root {
+      --ink:#101010;
+      --paper:#f7f7f4;
+      --white:#ffffff;
+      --lime:#d7ff3f;
+      --muted:#73736f;
+      --line:#deded8;
+      --soft:#f1f2ee;
+      --blue:#eaf4ff;
+      --green:#eaf7ea;
+      --shadow:0 24px 70px rgba(16,16,16,.12);
+    }
+    * { box-sizing:border-box; }
+    html,body { margin:0; min-height:100%; }
+    body {
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(circle at 86% 14%,rgba(215,255,63,.14),transparent 24%),
+        var(--paper);
+    }
+    button,input { font:inherit; }
+    .app { min-height:100vh; display:grid; grid-template-rows:auto 1fr auto; }
+
+    .topbar {
+      width:min(1320px,calc(100% - 48px));
+      margin:0 auto;
+      padding:24px 0 16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:24px;
+    }
+    .brand-logo { width:118px;height:64px;object-fit:contain;display:block; }
+    .step-meta { display:flex;align-items:center;gap:12px;color:var(--muted);font-size:14px;font-weight:800; }
+    .step-pill { padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.76); }
+    .progress { width:180px;height:7px;border-radius:999px;background:#e5e5df;overflow:hidden; }
+    .progress span { display:block;width:87.5%;height:100%;background:var(--lime); }
+
+    .main {
+      width:min(1320px,calc(100% - 48px));
+      margin:0 auto;
+      min-height:690px;
+      display:grid;
+      grid-template-columns:.9fr 1.1fr;
+      background:var(--white);
+      border-radius:30px;
+      overflow:hidden;
+      box-shadow:var(--shadow);
+    }
+
+    .intro {
+      position:relative;
+      overflow:hidden;
+      padding:60px;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      background:
+        radial-gradient(circle at 14% 88%,rgba(215,255,63,.10),transparent 30%),
+        linear-gradient(180deg,#fff,#fbfbf8);
+    }
+    .eyebrow {
+      display:inline-flex;align-items:center;gap:10px;width:max-content;
+      padding:9px 13px;border:1px solid var(--line);border-radius:999px;
+      color:var(--muted);font-size:12px;font-weight:900;letter-spacing:.16em;
+    }
+    .eyebrow:before {
+      content:"";width:8px;height:8px;border-radius:50%;background:var(--lime);
+      box-shadow:0 0 0 5px rgba(215,255,63,.22);
+    }
+    h1 {
+      margin:28px 0 18px;
+      max-width:610px;
+      font-size:clamp(46px,4.8vw,70px);
+      line-height:1;
+      letter-spacing:-.055em;
+    }
+    .lead {
+      margin:0;
+      max-width:550px;
+      color:var(--muted);
+      font-size:18px;
+      line-height:1.65;
+    }
+    .lead strong { color:var(--ink); }
+    .evidence {
+      margin-top:30px;
+      padding:20px 22px;
+      border-radius:18px;
+      background:var(--ink);
+      color:#fff;
+    }
+    .evidence strong { display:block;color:var(--lime);margin-bottom:6px; }
+    .evidence span { color:#c7c7c1;font-size:14px;line-height:1.55; }
+    .mascot {
+      position:absolute;
+      width:220px;height:310px;
+      right:-4px;bottom:-10px;
+      pointer-events:none;
+      filter:drop-shadow(0 18px 24px rgba(16,16,16,.20));
+    }
+    .mascot img { width:100%;height:100%;object-fit:contain;object-position:center bottom;display:block; }
+
+    .visual {
+      padding:42px;
+      background:
+        linear-gradient(rgba(16,16,16,.97),rgba(16,16,16,.97)),
+        radial-gradient(circle at 82% 18%,rgba(215,255,63,.25),transparent 30%);
+      color:#fff;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+    }
+    .visual-kicker { color:var(--lime);font-size:12px;font-weight:900;letter-spacing:.16em;margin-bottom:10px; }
+    .visual h2 { margin:0 0 10px;font-size:34px;letter-spacing:-.04em; }
+    .visual-copy { margin:0 0 22px;color:#aaa;font-size:14px;line-height:1.55; }
+
+    .steps {
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:12px;
+    }
+    .step-card {
+      min-height:290px;
+      border-radius:20px;
+      padding:20px;
+      background:#fff;
+      color:var(--ink);
+      border:2px solid transparent;
+      cursor:pointer;
+      transition:.2s ease;
+    }
+    .step-card.active {
+      border-color:var(--lime);
+      transform:translateY(-3px);
+      box-shadow:0 18px 34px rgba(0,0,0,.22);
+    }
+    .step-number {
+      width:38px;height:38px;border-radius:12px;
+      display:grid;place-items:center;
+      background:var(--ink);color:var(--lime);font-weight:900;
+      margin-bottom:16px;
+    }
+    .step-card h3 { margin:0 0 8px;font-size:20px;letter-spacing:-.025em; }
+    .step-card p { margin:0 0 14px;color:var(--muted);font-size:13px;line-height:1.5; }
+    .checklist { display:grid;gap:8px; }
+    .check {
+      display:flex;align-items:flex-start;gap:9px;
+      padding:9px 0;border-bottom:1px solid #ecece7;
+      font-size:12px;line-height:1.45;
+    }
+    .check:last-child { border-bottom:none; }
+    .check-icon {
+      width:20px;height:20px;border-radius:7px;
+      display:grid;place-items:center;
+      background:var(--lime);font-weight:900;flex:0 0 auto;
+    }
+    .warning {
+      padding:11px 12px;
+      border-radius:11px;
+      background:var(--blue);
+      font-size:12px;
+      line-height:1.5;
+    }
+
+    .compare {
+      margin-top:18px;
+      padding:18px;
+      border-radius:16px;
+      background:#fff;
+      color:var(--ink);
+    }
+    .compare-head {
+      display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;
+    }
+    .compare-head strong { font-size:14px; }
+    .compare-head button {
+      min-height:40px;padding:0 14px;border:none;border-radius:10px;
+      background:var(--ink);color:var(--lime);font-weight:900;cursor:pointer;
+    }
+    .compare-grid {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:10px;
+    }
+    .compare-col {
+      padding:14px;
+      border-radius:12px;
+      background:#f5f6f2;
+    }
+    .compare-col small {
+      display:block;color:var(--muted);font-size:10px;font-weight:900;letter-spacing:.11em;margin-bottom:10px;
+    }
+    .line {
+      display:flex;justify-content:space-between;gap:10px;
+      padding:8px 0;border-bottom:1px solid #e6e6e0;
+      font-size:12px;
+    }
+    .line:last-child { border-bottom:none; }
+    .line span { color:var(--muted); }
+    .line b { color:var(--ink); }
+    .compare-note {
+      margin-top:12px;
+      padding:12px 14px;
+      border-radius:12px;
+      background:#f5f8eb;
+      font-size:13px;
+      line-height:1.5;
+    }
+
+    .footer {
+      width:min(1320px,calc(100% - 48px));
+      margin:0 auto;
+      padding:18px 0 26px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:16px;
+    }
+    .back { color:var(--muted);text-decoration:none;font-size:14px;font-weight:700; }
+    .actions { display:flex;gap:12px; }
+    .btn {
+      min-height:50px;padding:0 22px;border-radius:12px;border:1px solid transparent;
+      font-weight:900;cursor:pointer;transition:.18s ease;
+    }
+    .btn-secondary { background:#fff;border-color:var(--line);color:var(--ink); }
+    .btn-primary { min-width:250px;background:var(--ink);color:var(--lime);box-shadow:0 12px 24px rgba(16,16,16,.15); }
+    .btn:hover { transform:translateY(-1px); }
+    .btn-primary:hover { background:var(--lime);color:var(--ink); }
+
+    .toast {
+      position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);
+      padding:13px 16px;border-radius:12px;background:var(--ink);color:#fff;
+      opacity:0;pointer-events:none;transition:.2s ease;font-size:14px;z-index:20;
+    }
+    .toast.show { opacity:1;transform:translate(-50%,0); }
+
+    @media (max-width:1080px) {
+      .main { grid-template-columns:1fr; }
+      .intro { min-height:540px;padding:48px 280px 48px 48px; }
+      .mascot { width:230px;height:330px; }
+    }
+    @media (max-width:760px) {
+      .topbar,.main,.footer { width:min(100% - 24px,1320px); }
+      .topbar { padding-top:14px; }
+      .brand-logo { width:90px;height:52px; }
+      .step-pill { display:none; }
+      .progress { width:110px; }
+      .intro { min-height:660px;padding:30px 22px 240px; }
+      h1 { font-size:48px; }
+      .lead { font-size:16px; }
+      .mascot { width:220px;height:270px;right:50%;transform:translateX(50%);bottom:0; }
+      .visual { padding:30px 20px; }
+      .steps { grid-template-columns:1fr; }
+      .compare-grid { grid-template-columns:1fr; }
+      .footer { position:sticky;bottom:0;background:rgba(247,247,244,.96);backdrop-filter:blur(12px);padding:12px 0; }
+      .back,.btn-secondary { display:none; }
+      .actions,.btn-primary { width:100%; }
+    }
+  </style>
+  <link rel="stylesheet" href="/onboarding/responsive-fix.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <img class="brand-logo" src="/assets/amy-onboarding-mascot.png" alt="AMY DIGITAL" />
+      <div class="step-meta">
+        <span class="step-pill">Bước 7 trong 8</span>
+        <div class="progress" aria-label="Tiến trình 87,5%"><span></span></div>
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="intro">
+        <div class="eyebrow">KIỂM TRA BÀN GIAO</div>
+        <h1>Kiểm tra rõ ràng bảo vệ quyền lợi của bạn.</h1>
+        <p class="lead">
+          Khi nhận và trả thiết bị, bạn cùng AMY kiểm tra
+          <strong>tình trạng, phụ kiện và số lượng thực tế</strong>.
+        </p>
+
+        <div class="evidence">
+          <strong>Ảnh và biên bản là nguồn đối chiếu chung</strong>
+          <span>Thông tin bàn giao giúp cả khách hàng và AMY có cùng căn cứ khi cần kiểm tra lại.</span>
+        </div>
+
+        <div class="mascot" aria-hidden="true">
+          <img src="/assets/amy-onboarding-mascot.png" alt="" />
+        </div>
+      </section>
+
+      <section class="visual">
+        <div class="visual-kicker">3 THỜI ĐIỂM CẦN LƯU Ý</div>
+        <h2>Nhận máy, sử dụng và hoàn trả</h2>
+        <p class="visual-copy">Chạm vào từng bước để xem nội dung cần kiểm tra.</p>
+
+        <div class="steps">
+          <article class="step-card active" tabindex="0">
+            <div class="step-number">01</div>
+            <h3>Khi nhận máy</h3>
+            <p>Kiểm tra đủ thiết bị và tình trạng trước khi rời điểm nhận.</p>
+            <div class="checklist">
+              <div class="check"><span class="check-icon">✓</span><span>Thân máy và lens</span></div>
+              <div class="check"><span class="check-icon">✓</span><span>Pin, thẻ nhớ, cáp</span></div>
+              <div class="check"><span class="check-icon">✓</span><span>Tình trạng bên ngoài</span></div>
+            </div>
+          </article>
+
+          <article class="step-card" tabindex="0">
+            <div class="step-number">02</div>
+            <h3>Trong thời gian thuê</h3>
+            <p>Khi phát hiện bất thường, hãy báo AMY sớm để được hướng dẫn.</p>
+            <div class="warning">
+              Không tự sửa chữa, tráo phụ kiện hoặc thay đổi cấu hình quan trọng khi chưa được hướng dẫn.
+            </div>
+          </article>
+
+          <article class="step-card" tabindex="0">
+            <div class="step-number">03</div>
+            <h3>Khi trả máy</h3>
+            <p>Đối chiếu lại từng thiết bị và phụ kiện theo danh sách bàn giao.</p>
+            <div class="checklist">
+              <div class="check"><span class="check-icon">✓</span><span>Đủ số lượng</span></div>
+              <div class="check"><span class="check-icon">✓</span><span>Đúng phụ kiện</span></div>
+              <div class="check"><span class="check-icon">✓</span><span>Ghi nhận tình trạng</span></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="compare">
+          <div class="compare-head">
+            <strong>Ví dụ đối chiếu bàn giao</strong>
+            <button type="button" id="compareBtn">Mô phỏng thiếu phụ kiện</button>
+          </div>
+
+          <div class="compare-grid">
+            <div class="compare-col">
+              <small>KHI NHẬN</small>
+              <div class="line"><span>Pin</span><b>2</b></div>
+              <div class="line"><span>Thẻ nhớ</span><b>1</b></div>
+              <div class="line"><span>Dây đeo</span><b>Có</b></div>
+            </div>
+            <div class="compare-col">
+              <small>KHI TRẢ</small>
+              <div class="line"><span>Pin</span><b id="returnBattery">2</b></div>
+              <div class="line"><span>Thẻ nhớ</span><b>1</b></div>
+              <div class="line"><span>Dây đeo</span><b>Có</b></div>
+            </div>
+          </div>
+
+          <div class="compare-note" id="compareNote">
+            Thiết bị và phụ kiện khớp với biên bản ban đầu.
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <a href="#" class="back">← Quay lại Trang 6</a>
+      <div class="actions">
+        <button class="btn btn-secondary" type="button" id="backBtn">Quay lại</button>
+        <button class="btn btn-primary" type="button" id="nextBtn">TÔI ĐỒNG Ý KIỂM TRA →</button>
+      </div>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="/onboarding/AMY_Onboarding_Trang_07.js"></script>
+</body>
+</html>

@@ -23,6 +23,7 @@ import { api } from "../../services/api.js";
 import { catalogImageUrl, money, pricingModeLabel, rentalDurationLabel, rentalRates } from "../../utils/format.js";
 import { holdSecondsUntil } from "../../models/holdTimer.js";
 import {
+  earlyPickupTimeError,
   earlyPickupTimeForPickup,
   localDateTime,
   returnTimeForRentalRate,
@@ -929,6 +930,11 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
   const holdRequestVersion = useRef(0);
   const commitmentTimerRef = useRef(null);
 
+  const earlyPickupError = useMemo(
+    () => earlyPickupTimeError(form.pickupTime, form.earlyPickup, form.earlyPickupTime),
+    [form.pickupTime, form.earlyPickup, form.earlyPickupTime],
+  );
+
   useEffect(() => () => window.clearTimeout(commitmentTimerRef.current), []);
 
   useEffect(
@@ -1196,6 +1202,10 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
     event.preventDefault();
     if (!product || !consent) {
       setBookingError("Vui lòng đồng ý với quy định thuê trước khi tiếp tục.");
+      return;
+    }
+    if (earlyPickupError) {
+      setBookingError(earlyPickupError);
       return;
     }
     setBusy(true);
@@ -1941,18 +1951,25 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
                           min={earlyPickupTimeForPickup(form.pickupTime)}
                           max={form.pickupTime}
                           value={form.earlyPickupTime}
+                          aria-invalid={Boolean(earlyPickupError)}
                           onChange={(event) =>
                             setForm({
                               ...form,
                               earlyPickupTime: event.target.value,
                             })
                           }
-                          className="mt-1 w-full rounded-lg border border-line bg-white px-4 py-3 text-sm font-semibold"
+                          className={`mt-1 w-full rounded-lg border bg-white px-4 py-3 text-sm font-semibold ${earlyPickupError ? "border-red-400 focus:border-red-500" : "border-line"}`}
                         />
-                        <p className="mt-2 text-xs font-semibold text-muted">
-                          Admin sẽ xác nhận khả năng đáp ứng và thông báo phí
-                          nếu có.
-                        </p>
+                        {earlyPickupError ? (
+                          <p className="mt-2 text-xs font-bold text-red-700">
+                            {earlyPickupError}
+                          </p>
+                        ) : (
+                          <p className="mt-2 text-xs font-semibold text-muted">
+                            Admin sẽ xác nhận khả năng đáp ứng và thông báo phí
+                            nếu có.
+                          </p>
+                        )}
                       </label>
                     ) : null}
                   </div>
@@ -1974,7 +1991,7 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
                     </p>
                   ) : null}
                   <button
-                    disabled={busy || !liveQuote?.available || Boolean(liveQuoteError)}
+                    disabled={busy || !liveQuote?.available || Boolean(liveQuoteError) || Boolean(earlyPickupError)}
                     className="sticky bottom-3 flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-5 py-4 text-xs font-black uppercase tracking-widest text-acid shadow-soft disabled:opacity-50"
                   >
                     {busy ? (

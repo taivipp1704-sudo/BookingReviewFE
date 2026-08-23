@@ -1,14 +1,18 @@
 import {
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   ExternalLink,
   Minus,
   Plus,
   ShoppingBag,
   ShoppingCart,
+  X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../services/api.js";
 import { catalogImageUrl, money, rentalRates } from "../../utils/format.js";
+import { customerPhotosForProduct } from "../../utils/customerPhotos.js";
 
 function parseDetails(value) {
   try {
@@ -31,6 +35,7 @@ export default function ProductDetailsPage({
   const [error, setError] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(null);
 
   useEffect(() => {
     Promise.all([api.products(), api.availability()])
@@ -82,6 +87,10 @@ export default function ProductDetailsPage({
         ["Thông số chính", product.specs],
       ]
     : [];
+  const customerPhotos = useMemo(
+    () => customerPhotosForProduct(product),
+    [product],
+  );
 
   if (loading)
     return (
@@ -323,7 +332,77 @@ export default function ProductDetailsPage({
             ) : null}
           </div>
         </section>
+        {customerPhotos.length ? (
+          <section className="mt-8">
+            <h2 className="text-2xl font-black">Ảnh &amp; phản hồi từ khách đã thuê</h2>
+            <p className="mt-1 text-sm font-semibold text-muted">
+              Hình ảnh thực tế do khách hàng chụp lại trong quá trình sử dụng thiết bị.
+            </p>
+            <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+              {customerPhotos.map((photo, index) => (
+                <button
+                  key={photo.thumb}
+                  onClick={() => setLightboxIndex(index)}
+                  className="overflow-hidden rounded-lg bg-paper"
+                >
+                  <img
+                    src={photo.thumb}
+                    alt={`Ảnh khách hàng chụp ${product.name} #${index + 1}`}
+                    loading="lazy"
+                    className="aspect-square w-full object-cover transition hover:scale-105"
+                  />
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
+      {lightboxIndex !== null && customerPhotos[lightboxIndex] ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-4"
+          onClick={() => setLightboxIndex(null)}
+        >
+          <button
+            onClick={() => setLightboxIndex(null)}
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+            aria-label="Đóng"
+          >
+            <X className="h-5 w-5" />
+          </button>
+          {customerPhotos.length > 1 ? (
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                setLightboxIndex(
+                  (lightboxIndex - 1 + customerPhotos.length) % customerPhotos.length,
+                );
+              }}
+              className="absolute left-2 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:left-6"
+              aria-label="Ảnh trước"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+          ) : null}
+          <img
+            src={customerPhotos[lightboxIndex].full}
+            alt={`Ảnh khách hàng chụp ${product.name} #${lightboxIndex + 1}`}
+            onClick={(event) => event.stopPropagation()}
+            className="max-h-[85vh] max-w-full rounded-lg object-contain"
+          />
+          {customerPhotos.length > 1 ? (
+            <button
+              onClick={(event) => {
+                event.stopPropagation();
+                setLightboxIndex((lightboxIndex + 1) % customerPhotos.length);
+              }}
+              className="absolute right-2 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:right-6"
+              aria-label="Ảnh tiếp theo"
+            >
+              <ChevronRight className="h-6 w-6" />
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </main>
   );
 }

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  earlyPickupTimeError,
   earlyPickupTimeForPickup,
   localDateTime,
   returnTimeForRentalDays,
@@ -90,4 +91,43 @@ test("hourly packages default to one hour when the return clock is missing or no
     returnTimeForRentalRate("2026-08-05T08:00", "2026-08-06T07:00", "HOURLY", 3),
     "2026-08-05T09:00",
   );
+});
+
+test("early pickup validation passes through when early pickup is not requested", () => {
+  assert.equal(earlyPickupTimeError("2026-08-05T08:00", false, ""), "");
+  assert.equal(earlyPickupTimeError("2026-08-05T08:00", false, "2026-08-04T18:00"), "");
+});
+
+test("early pickup validation requires a pickup time first", () => {
+  assert.equal(
+    earlyPickupTimeError("", true, "2026-08-04T21:30"),
+    "Vui lòng chọn giờ nhận máy trước khi yêu cầu nhận máy sớm.",
+  );
+});
+
+test("early pickup validation requires the early pickup time to be filled in", () => {
+  assert.equal(
+    earlyPickupTimeError("2026-08-05T08:00", true, ""),
+    "Vui lòng chọn giờ nhận máy sớm mong muốn.",
+  );
+});
+
+test("early pickup validation rejects a time before the previous evening", () => {
+  assert.equal(
+    earlyPickupTimeError("2026-08-05T08:00", true, "2026-08-04T18:00"),
+    "Giờ nhận sớm không được trước 21:00 tối hôm trước ngày nhận máy.",
+  );
+});
+
+test("early pickup validation rejects a time after the chosen pickup time", () => {
+  assert.equal(
+    earlyPickupTimeError("2026-08-05T08:00", true, "2026-08-05T09:00"),
+    "Giờ nhận sớm không được muộn hơn giờ nhận máy đã chọn.",
+  );
+});
+
+test("early pickup validation accepts a time within the allowed window", () => {
+  assert.equal(earlyPickupTimeError("2026-08-05T08:00", true, "2026-08-04T21:00"), "");
+  assert.equal(earlyPickupTimeError("2026-08-05T08:00", true, "2026-08-05T07:00"), "");
+  assert.equal(earlyPickupTimeError("2026-08-05T08:00", true, "2026-08-05T08:00"), "");
 });
