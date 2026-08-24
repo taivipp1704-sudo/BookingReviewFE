@@ -160,10 +160,7 @@ export default function ProductDetailsPage({
             />
           </div>
           <div className="flex flex-col">
-            <p className="text-[11px] font-black uppercase tracking-widest text-muted">
-              {product.brand} · {product.category}
-            </p>
-            <h1 className="mt-2 text-3xl font-black sm:text-4xl">
+            <h1 className="text-3xl font-black sm:text-4xl">
               {product.name}
             </h1>
             <p className="mt-3 text-sm font-semibold leading-6 text-muted">
