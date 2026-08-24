@@ -45,7 +45,21 @@ import {
   supportStatusLabel,
   supportTypeLabel,
 } from "../../models/adminPresentation.js";
-import { financeEntryLabel } from "../../models/financePresentation.js";
+import {
+  financeEntryLabel,
+  financeDocumentTypeLabel,
+  financeStatusLabel,
+  financeChargeTypeLabel,
+  financeExpenseCategoryLabel,
+  inventoryMovementLabel,
+  assetStatusLabel,
+} from "../../models/financePresentation.js";
+
+function inventoryReasonLabel(reason) {
+  const match = /^([A-Z_]+)\s*->\s*([A-Z_]+)$/.exec(String(reason || "").trim());
+  if (!match) return reason;
+  return `${assetStatusLabel(match[1])} → ${assetStatusLabel(match[2])}`;
+}
 import { api } from "../../services/api.js";
 import { catalogImageUrl, money, shortDate } from "../../utils/format.js";
 import { invoiceHtml } from "../../utils/invoiceTemplate.js";
@@ -1665,7 +1679,7 @@ function FinanceLifecycle({ booking, data, productById, onChanged }) {
     <section className="border-b border-line py-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-[10px] font-black uppercase text-muted">Finance & settlement</p>
+          <p className="text-[10px] font-black uppercase text-muted">Tài chính & quyết toán</p>
           <h3 className="mt-1 text-lg font-black">Dòng tiền và quyết toán</h3>
           <p className="mt-1 text-xs font-bold text-muted">Booking là công nợ cần thu; Sổ quỹ chỉ tăng khi admin xác nhận tiền thực nhận.</p>
         </div>
@@ -1680,7 +1694,7 @@ function FinanceLifecycle({ booking, data, productById, onChanged }) {
         <Detail label="Còn phải thu" value={money(missing)} />
       </div>
 
-      {reviewStates.includes(booking.state) ? <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs font-semibold leading-5 text-amber-950"><strong className="block text-sm">Giai đoạn PREVIEW / chờ duyệt</strong>Kiểm tra báo giá, cọc, khuyến mãi và ảnh chuyển khoản tại đây trước khi xác nhận đơn. Chưa tạo phí trả trễ hoặc hư hỏng ở giai đoạn này.</div> : null}
+      {reviewStates.includes(booking.state) ? <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 text-xs font-semibold leading-5 text-amber-950"><strong className="block text-sm">Giai đoạn xem trước / chờ duyệt</strong>Kiểm tra báo giá, cọc, khuyến mãi và ảnh chuyển khoản tại đây trước khi xác nhận đơn. Chưa tạo phí trả trễ hoặc hư hỏng ở giai đoạn này.</div> : null}
 
       {missing > 0 && preDeliveryStates.includes(booking.state) ? (
         <form onSubmit={recordPayment} className="mt-4 grid gap-2 md:grid-cols-[1fr_190px_auto]">
@@ -1708,7 +1722,7 @@ function FinanceLifecycle({ booking, data, productById, onChanged }) {
 
       {(data.charges || []).length ? <div className="mt-4 divide-y divide-line border-y border-line">
         {data.charges.map((charge) => <div key={charge.id} className="flex flex-wrap items-center gap-3 py-3 text-xs">
-          <strong>{charge.type}</strong><span>{money(charge.proposedAmount)}</span><span className="text-muted">{charge.reason}</span><span className="ml-auto font-black">{charge.status}</span>
+          <strong>{financeChargeTypeLabel(charge.type)}</strong><span>{money(charge.proposedAmount)}</span><span className="text-muted">{charge.reason}</span><span className="ml-auto font-black">{financeStatusLabel(charge.status)}</span>
           {charge.status === "PROPOSED" ? <><button type="button" disabled={working} onClick={() => run(() => api.reviewBookingCharge(charge.id, { approved: true, confirmedAmount: charge.proposedAmount, reason: "Đã kiểm tra bằng chứng và chính sách." }))} className="rounded-lg bg-ink px-3 py-2 font-black text-acid">Duyệt</button><button type="button" disabled={working} onClick={() => run(() => api.reviewBookingCharge(charge.id, { approved: false, confirmedAmount: 0, reason: "Bằng chứng chưa đủ để áp dụng." }))} className="rounded-lg border border-line px-3 py-2 font-black">Bác bỏ</button></> : null}
         </div>)}
       </div> : null}
@@ -3238,14 +3252,14 @@ function Inventory({
       </div>
       <section className="mt-8 border-t border-line pt-6">
         <div className="mb-4 flex items-end justify-between gap-3">
-          <div><p className="text-[10px] font-black uppercase text-muted">Append-only</p><h2 className="mt-1 text-lg font-black">Inventory Ledger</h2></div>
+          <div><p className="text-[10px] font-black uppercase text-muted">Không thể chỉnh sửa</p><h2 className="mt-1 text-lg font-black">Sổ kho</h2></div>
           <span className="text-xs font-bold text-muted">{ledgerEntries.length} bút toán</span>
         </div>
         <div className="overflow-x-auto rounded-lg border border-line bg-white">
           <table className="w-full min-w-[820px] text-left text-xs">
             <thead className="bg-paper text-[10px] font-black uppercase text-muted"><tr><th className="p-3">Thời gian</th><th className="p-3">Chứng từ</th><th className="p-3">Mã booking</th><th className="p-3">Sản phẩm/serial</th><th className="p-3">Nghiệp vụ</th><th className="p-3 text-right">Biến động</th><th className="p-3">Lý do</th><th className="p-3">Người tạo</th></tr></thead>
             <tbody className="divide-y divide-line">
-              {ledgerEntries.slice(0, 80).map((entry) => <tr key={entry.id}><td className="p-3 font-bold">{shortDate(entry.createdAt)}</td><td className="p-3 font-black">{entry.documentId}</td><td className="p-3"><span className="rounded bg-paper px-2 py-1 font-black">{inventoryBookingId(entry.documentId) || "-"}</span></td><td className="p-3">{entry.serialId || productById[entry.productId]?.name || entry.productId}</td><td className="p-3 font-bold">{entry.movementType}</td><td className={`p-3 text-right font-black ${entry.quantityDelta < 0 ? "text-red-700" : "text-green-700"}`}>{entry.quantityDelta > 0 ? "+" : ""}{entry.quantityDelta}</td><td className="max-w-[260px] p-3 text-muted">{entry.reason}</td><td className="p-3 text-muted">{entry.actor}</td></tr>)}
+              {ledgerEntries.slice(0, 80).map((entry) => <tr key={entry.id}><td className="p-3 font-bold">{shortDate(entry.createdAt)}</td><td className="p-3 font-black">{entry.documentId}</td><td className="p-3"><span className="rounded bg-paper px-2 py-1 font-black">{inventoryBookingId(entry.documentId) || "-"}</span></td><td className="p-3">{entry.serialId || productById[entry.productId]?.name || entry.productId}</td><td className="p-3 font-bold">{inventoryMovementLabel(entry.movementType)}</td><td className={`p-3 text-right font-black ${entry.quantityDelta < 0 ? "text-red-700" : "text-green-700"}`}>{entry.quantityDelta > 0 ? "+" : ""}{entry.quantityDelta}</td><td className="max-w-[260px] p-3 text-muted">{inventoryReasonLabel(entry.reason)}</td><td className="p-3 text-muted">{entry.actor}</td></tr>)}
               {ledgerEntries.length === 0 ? <tr><td colSpan="8" className="p-6 text-center font-bold text-muted">Chưa có bút toán kho.</td></tr> : null}
             </tbody>
           </table>
@@ -3901,7 +3915,7 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
         <div className="finance-table-scroll min-w-0 rounded-lg border border-line bg-white">
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead className="bg-paper text-[10px] font-black uppercase text-muted"><tr><th className="p-4">Chứng từ</th><th>Máy / Booking</th><th>Trạng thái</th><th className="text-right">Giá trị</th><th className="px-4 text-right">Thao tác</th></tr></thead>
-            <tbody>{expenses.map((item) => <tr key={item.id} className="border-t border-line"><td className="p-4"><p className="font-black">{item.invoiceReference}</p><p className="text-xs text-muted">{item.vendorName} · {item.category}</p></td><td>{item.assetId || item.bookingId || "Chi phí chung"}</td><td><StatusBadge state={item.state} /></td><td className="text-right font-black">{money(item.amount)}<p className="text-xs text-muted">Đã chi {money(item.paidAmount)}</p></td><td className="px-4 text-right">{item.state === "SUBMITTED" ? <button disabled={working} onClick={() => run(() => api.approveExpense(item.id), "Đã duyệt và post chi phí.")} className="rounded-md bg-ink px-3 py-2 text-[10px] font-black uppercase text-acid">Duyệt</button> : null}{["APPROVED", "PARTIALLY_PAID"].includes(item.state) ? <button disabled={working} onClick={() => payExpense(item)} className="ml-2 rounded-md border border-line px-3 py-2 text-[10px] font-black uppercase">Chi tiền</button> : null}</td></tr>)}{!expenses.length ? <tr><td colSpan="5" className="p-8 text-center font-bold text-muted">Chưa có chi phí.</td></tr> : null}</tbody>
+            <tbody>{expenses.map((item) => <tr key={item.id} className="border-t border-line"><td className="p-4"><p className="font-black">{item.invoiceReference}</p><p className="text-xs text-muted">{item.vendorName} · {financeExpenseCategoryLabel(item.category)}</p></td><td>{item.assetId || item.bookingId || "Chi phí chung"}</td><td><StatusBadge state={item.state} label={financeStatusLabel(item.state)} /></td><td className="text-right font-black">{money(item.amount)}<p className="text-xs text-muted">Đã chi {money(item.paidAmount)}</p></td><td className="px-4 text-right">{item.state === "SUBMITTED" ? <button disabled={working} onClick={() => run(() => api.approveExpense(item.id), "Đã duyệt và ghi sổ chi phí.")} className="rounded-md bg-ink px-3 py-2 text-[10px] font-black uppercase text-acid">Duyệt</button> : null}{["APPROVED", "PARTIALLY_PAID"].includes(item.state) ? <button disabled={working} onClick={() => payExpense(item)} className="ml-2 rounded-md border border-line px-3 py-2 text-[10px] font-black uppercase">Chi tiền</button> : null}</td></tr>)}{!expenses.length ? <tr><td colSpan="5" className="p-8 text-center font-bold text-muted">Chưa có chi phí.</td></tr> : null}</tbody>
           </table>
         </div>
       </div> : null}
@@ -3916,11 +3930,11 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
       {tab === "control" ? <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <section>
           <h2 className="mb-3 text-lg font-black">Kỳ tài chính</h2>
-          <div className="space-y-3">{periods.map((item) => <div key={item.id} className="rounded-lg border border-line bg-white p-4"><div className="flex items-center justify-between"><p className="font-black">{item.id}</p><StatusBadge state={item.state} /></div><div className="mt-3 flex gap-2"><button disabled={working || item.state !== "OPEN"} onClick={() => run(() => api.updateFinancialPeriod(item.id, "SOFT_LOCKED"), "Đã khóa mềm kỳ.")} className="rounded-md border border-line px-3 py-2 text-[10px] font-black uppercase disabled:opacity-40">Khóa mềm</button><button disabled={working || item.state !== "OPEN"} onClick={() => run(() => api.updateFinancialPeriod(item.id, "HARD_LOCKED"), "Đã khóa cứng kỳ.")} className="rounded-md bg-ink px-3 py-2 text-[10px] font-black uppercase text-acid disabled:opacity-40">Khóa cứng</button></div></div>)}{!periods.length ? <p className="text-sm font-bold text-muted">Kỳ hiện tại sẽ tự tạo khi phát sinh chứng từ đầu tiên.</p> : null}</div>
+          <div className="space-y-3">{periods.map((item) => <div key={item.id} className="rounded-lg border border-line bg-white p-4"><div className="flex items-center justify-between"><p className="font-black">{item.id}</p><StatusBadge state={item.state} label={financeStatusLabel(item.state)} /></div><div className="mt-3 flex gap-2"><button disabled={working || item.state !== "OPEN"} onClick={() => run(() => api.updateFinancialPeriod(item.id, "SOFT_LOCKED"), "Đã khóa mềm kỳ.")} className="rounded-md border border-line px-3 py-2 text-[10px] font-black uppercase disabled:opacity-40">Khóa mềm</button><button disabled={working || item.state !== "OPEN"} onClick={() => run(() => api.updateFinancialPeriod(item.id, "HARD_LOCKED"), "Đã khóa cứng kỳ.")} className="rounded-md bg-ink px-3 py-2 text-[10px] font-black uppercase text-acid disabled:opacity-40">Khóa cứng</button></div></div>)}{!periods.length ? <p className="text-sm font-bold text-muted">Kỳ hiện tại sẽ tự tạo khi phát sinh chứng từ đầu tiên.</p> : null}</div>
         </section>
         <section>
           <h2 className="mb-3 text-lg font-black">Chứng từ đã ghi sổ</h2>
-          <div className="finance-table-scroll min-w-0 rounded-lg border border-line bg-white"><table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-paper text-[10px] font-black uppercase text-muted"><tr><th className="p-4">Mã</th><th>Loại</th><th>Trạng thái</th><th className="text-right">Tổng</th><th className="px-4 text-right">Điều chỉnh</th></tr></thead><tbody>{documents.map((item) => <tr key={item.id} className="border-t border-line"><td className="p-4 font-black">{item.id}</td><td>{item.type}</td><td><StatusBadge state={item.status} /></td><td className="text-right font-black">{money(item.totalDebit)}</td><td className="px-4 text-right">{item.status === "POSTED" && !item.type.startsWith("REVERSAL_") ? <button disabled={working} onClick={() => reverseDocument(item)} className="rounded-md border border-red-200 px-3 py-2 text-[10px] font-black uppercase text-red-700">Đảo chứng từ</button> : <span className="text-xs text-muted">{item.reversalOfDocumentId || "-"}</span>}</td></tr>)}{!documents.length ? <tr><td colSpan="5" className="p-8 text-center font-bold text-muted">Chưa có chứng từ tài chính.</td></tr> : null}</tbody></table></div>
+          <div className="finance-table-scroll min-w-0 rounded-lg border border-line bg-white"><table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-paper text-[10px] font-black uppercase text-muted"><tr><th className="p-4">Mã</th><th>Loại</th><th>Trạng thái</th><th className="text-right">Tổng</th><th className="px-4 text-right">Điều chỉnh</th></tr></thead><tbody>{documents.map((item) => <tr key={item.id} className="border-t border-line"><td className="p-4 font-black">{item.id}</td><td>{financeDocumentTypeLabel(item.type)}</td><td><StatusBadge state={item.status} label={financeStatusLabel(item.status)} /></td><td className="text-right font-black">{money(item.totalDebit)}</td><td className="px-4 text-right">{item.status === "POSTED" && !item.type.startsWith("REVERSAL_") ? <button disabled={working} onClick={() => reverseDocument(item)} className="rounded-md border border-red-200 px-3 py-2 text-[10px] font-black uppercase text-red-700">Đảo chứng từ</button> : <span className="text-xs text-muted">{item.reversalOfDocumentId || "-"}</span>}</td></tr>)}{!documents.length ? <tr><td colSpan="5" className="p-8 text-center font-bold text-muted">Chưa có chứng từ tài chính.</td></tr> : null}</tbody></table></div>
         </section>
       </div> : null}
     </div>
