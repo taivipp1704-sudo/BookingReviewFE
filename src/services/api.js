@@ -212,6 +212,28 @@ async function uploadPaymentProof(file) {
   return payload;
 }
 
+async function uploadBankAccount(file) {
+  const token = await getCsrf();
+  const body = new FormData();
+  body.append('file', file);
+  const response = await fetch(`${API_BASE}/api/customer/account/bank-account`, { method: 'POST', credentials: 'include', headers: { [token.headerName]: token.token }, body });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.message || `Tải ảnh tài khoản ngân hàng thất bại (${response.status}).`);
+  return payload;
+}
+
+async function adminBankAccount(bookingId) {
+  const response = await fetch(`${API_BASE}/api/admin/bookings/${encodeURIComponent(bookingId)}/bank-account`, {
+    credentials: 'include',
+    headers: { Accept: 'image/jpeg' }
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.message || `Không thể mở ảnh tài khoản ngân hàng (${response.status}).`);
+  }
+  return response.blob();
+}
+
 export const api = {
   csrf: getCsrf,
   features: () => request('/api/features'),
@@ -244,6 +266,7 @@ export const api = {
   createBooking: payload => request('/api/bookings', { method: 'POST', body: payload }),
   uploadIdentity,
   uploadPaymentProof,
+  uploadBankAccount,
   trackBooking: payload => request('/api/bookings/track', { method: 'POST', body: payload }),
   requestOtp: payload => request('/api/otp/request', { method: 'POST', body: payload }),
   verifyOtp: payload => request('/api/otp/verify', { method: 'POST', body: payload }),
@@ -257,6 +280,7 @@ export const api = {
   adminIdentityDocument,
   adminCustomerIdentityDocument,
   adminPaymentProof,
+  adminBankAccount,
   uploadCatalogImage,
   changeBookingState: (id, state, reason) => request(`/api/admin/bookings/${encodeURIComponent(id)}/state`, { method: 'PATCH', body: { state, reason } }),
   adminProducts: () => request('/api/admin/catalog/products'),

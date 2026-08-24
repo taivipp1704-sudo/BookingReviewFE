@@ -1,5 +1,5 @@
 import { ArrowUpRight, Camera, ShoppingBag } from 'lucide-react';
-import { catalogImageUrl } from '../../utils/format.js';
+import { catalogImageUrl, money } from '../../utils/format.js';
 
 export default function ProductCard({ product, onSelect, bookingEnabled = false }) {
   return (
@@ -14,7 +14,7 @@ export default function ProductCard({ product, onSelect, bookingEnabled = false 
             <div><p className="text-[10px] font-black uppercase tracking-widest text-muted">{product.brand}</p><h3 className="mt-1 text-base font-black leading-tight">{product.name}</h3></div>
             <Camera className="h-5 w-5 shrink-0 text-muted" />
           </div>
-          <p className="min-h-5 text-xs font-semibold text-muted">{product.specs}</p>
+          <p className="text-sm font-black text-ink">{money(product.dailyPrice)}<span className="ml-1 text-[11px] font-bold text-muted">/ngày</span></p>
           <p className={`mt-2 text-xs font-black ${product.availableQty > 0 ? 'text-green-700' : 'text-red-700'}`}>{product.availableQty > 0 ? `Còn ${product.availableQty} thiết bị` : 'Tạm hết hàng'}</p>
           <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-muted">
             <ShoppingBag className="h-3.5 w-3.5" />

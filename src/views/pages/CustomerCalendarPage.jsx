@@ -24,8 +24,13 @@ export default function CustomerCalendarPage() {
 
   useEffect(() => {
     api.products().then(items => {
-      setProducts(items);
-      setProductId(current => current || items[0]?.id || "");
+      // Lịch chỉ theo dõi máy chính (L1). Phụ kiện như pin, thẻ nhớ, đế sạc được
+      // quản lý theo số lượng nên không có lịch riêng, đưa vào đây chỉ gây rối.
+      const mainDevices = items.filter(item => item.levelCode === "L1");
+      const selectable = mainDevices.length ? mainDevices : items;
+      setProducts(selectable);
+      setProductId(current =>
+        selectable.some(item => item.id === current) ? current : selectable[0]?.id || "");
     }).catch(nextError => setError(nextError.message));
   }, []);
 
