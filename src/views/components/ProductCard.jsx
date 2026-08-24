@@ -11,7 +11,7 @@ export default function ProductCard({ product, onSelect, bookingEnabled = false 
         </div>
         <div className="p-4">
           <div className="mb-3 flex items-start justify-between gap-3">
-            <div><p className="text-[10px] font-black uppercase tracking-widest text-muted">{product.brand}</p><h3 className="mt-1 text-base font-black leading-tight">{product.name}</h3></div>
+            <div><h3 className="text-base font-black leading-tight">{product.name}</h3></div>
             <Camera className="h-5 w-5 shrink-0 text-muted" />
           </div>
           <p className="text-sm font-black text-ink">{money(product.dailyPrice)}<span className="ml-1 text-[11px] font-bold text-muted">/ngày</span></p>

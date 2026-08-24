@@ -3252,12 +3252,12 @@ function Inventory({
       </div>
       <section className="mt-8 border-t border-line pt-6">
         <div className="mb-4 flex items-end justify-between gap-3">
-          <div><p className="text-[10px] font-black uppercase text-muted">Không thể chỉnh sửa</p><h2 className="mt-1 text-lg font-black">Sổ kho</h2></div>
-          <span className="text-xs font-bold text-muted">{ledgerEntries.length} bút toán</span>
+          <div><p className="text-[10px] font-black uppercase text-muted">Nhật ký kho (không thể sửa)</p><h2 className="mt-1 text-lg font-black">Lịch sử thay đổi tồn kho</h2></div>
+          <span className="text-xs font-bold text-muted">{ledgerEntries.length} mục ghi</span>
         </div>
         <div className="overflow-x-auto rounded-lg border border-line bg-white">
           <table className="w-full min-w-[820px] text-left text-xs">
-            <thead className="bg-paper text-[10px] font-black uppercase text-muted"><tr><th className="p-3">Thời gian</th><th className="p-3">Chứng từ</th><th className="p-3">Mã booking</th><th className="p-3">Sản phẩm/serial</th><th className="p-3">Nghiệp vụ</th><th className="p-3 text-right">Biến động</th><th className="p-3">Lý do</th><th className="p-3">Người tạo</th></tr></thead>
+            <thead className="bg-paper text-[10px] font-black uppercase text-muted"><tr><th className="p-3">Thời gian</th><th className="p-3">Số chứng từ</th><th className="p-3">Mã booking</th><th className="p-3">Sản phẩm/serial</th><th className="p-3">Loại ghi kho</th><th className="p-3 text-right">Thay đổi số lượng</th><th className="p-3">Ghi chú</th><th className="p-3">Người ghi</th></tr></thead>
             <tbody className="divide-y divide-line">
               {ledgerEntries.slice(0, 80).map((entry) => <tr key={entry.id}><td className="p-3 font-bold">{shortDate(entry.createdAt)}</td><td className="p-3 font-black">{entry.documentId}</td><td className="p-3"><span className="rounded bg-paper px-2 py-1 font-black">{inventoryBookingId(entry.documentId) || "-"}</span></td><td className="p-3">{entry.serialId || productById[entry.productId]?.name || entry.productId}</td><td className="p-3 font-bold">{inventoryMovementLabel(entry.movementType)}</td><td className={`p-3 text-right font-black ${entry.quantityDelta < 0 ? "text-red-700" : "text-green-700"}`}>{entry.quantityDelta > 0 ? "+" : ""}{entry.quantityDelta}</td><td className="max-w-[260px] p-3 text-muted">{inventoryReasonLabel(entry.reason)}</td><td className="p-3 text-muted">{entry.actor}</td></tr>)}
               {ledgerEntries.length === 0 ? <tr><td colSpan="8" className="p-6 text-center font-bold text-muted">Chưa có bút toán kho.</td></tr> : null}
