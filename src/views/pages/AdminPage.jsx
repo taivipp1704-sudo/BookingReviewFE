@@ -3137,13 +3137,27 @@ function Inventory({
           className="rounded-lg border border-line bg-paper px-3 py-3 font-bold"
         >
           <option value="">Chọn sản phẩm</option>
-          {Object.values(productById)
-            .filter((item) => item.active && item.trackingMode === "SERIALIZED")
-            .map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
+          {/* Cho tìm cả máy chính lẫn phụ kiện: Backend không bắt buộc trackingMode
+              SERIALIZED khi tạo serial, một số phụ kiện giá trị cao (drone, gimbal...)
+              cũng cần theo dõi theo từng serial thay vì chỉ theo số lượng. */}
+          <optgroup label="Máy chính">
+            {Object.values(productById)
+              .filter((item) => item.active && item.levelCode === "L1")
+              .map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+          </optgroup>
+          <optgroup label="Phụ kiện">
+            {Object.values(productById)
+              .filter((item) => item.active && item.levelCode !== "L1")
+              .map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
+                </option>
+              ))}
+          </optgroup>
         </select>
         <select
           value={newAsset.status}
