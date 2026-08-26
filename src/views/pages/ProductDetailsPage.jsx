@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "../../services/api.js";
 import { catalogImageUrl, money, rentalRates } from "../../utils/format.js";
 import { customerPhotosForProduct } from "../../utils/customerPhotos.js";
+import { usageGuideLinksForProduct } from "../../utils/usageGuideLinks.js";
 
 const INITIAL_PHOTO_COUNT = 8;
 
@@ -92,6 +93,10 @@ export default function ProductDetailsPage({
     : [];
   const customerPhotos = useMemo(
     () => customerPhotosForProduct(product),
+    [product],
+  );
+  const guideLinks = useMemo(
+    () => usageGuideLinksForProduct(product),
     [product],
   );
   const visiblePhotos = showAllPhotos
@@ -335,6 +340,26 @@ export default function ProductDetailsPage({
                 "Kiểm tra nguồn điện, tình trạng và phụ kiện trước khi sử dụng."
               }
             />
+            {guideLinks.length ? (
+              <article className="rounded-lg border border-line bg-white p-6">
+                <h2 className="text-xl font-black">Link hướng dẫn sử dụng</h2>
+                <ul className="mt-3 space-y-2.5">
+                  {guideLinks.map((link) => (
+                    <li key={link.url}>
+                      <a
+                        href={link.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 text-sm font-bold text-ink hover:underline"
+                      >
+                        <ExternalLink className="h-4 w-4 shrink-0" />
+                        {link.label}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            ) : null}
             <Info
               title="Hướng dẫn kết nối"
               text={

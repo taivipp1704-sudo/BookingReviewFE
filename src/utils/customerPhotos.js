@@ -20,7 +20,7 @@ export const CUSTOMER_PHOTOS = {
   "pocket-3": [[901,1600],[901,1600],[901,1600],[902,1600],[901,1600],[1090,1600]],
 };
 
-function slugifyProductName(name) {
+export function slugifyProductName(name) {
   return String(name || "")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
