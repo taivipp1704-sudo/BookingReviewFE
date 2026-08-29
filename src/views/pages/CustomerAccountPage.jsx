@@ -4,6 +4,7 @@ import {
   CreditCard,
   IdCard,
   ImageIcon,
+  KeyRound,
   LifeBuoy,
   LockKeyhole,
   Loader2,
@@ -11,6 +12,7 @@ import {
   MapPin,
   ReceiptText,
   Smartphone,
+  Star,
   UserRound,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -71,6 +73,7 @@ export default function CustomerAccountPage({
   const [products, setProducts] = useState({});
   const [imagePreview, setImagePreview] = useState(null);
   const [clockNow, setClockNow] = useState(() => Date.now());
+  const [feedbackByBooking, setFeedbackByBooking] = useState({});
 
   useEffect(() => {
     if (checkoutHolds.length === 0) return undefined;
@@ -107,6 +110,27 @@ export default function CustomerAccountPage({
         });
     }
   }, [account]);
+
+  useEffect(() => {
+    const completed = bookings.filter((item) => item.state === "COMPLETED");
+    if (completed.length === 0) return;
+    Promise.allSettled(
+      completed.map((item) =>
+        api.customerBookingFeedback(item.id).then((feedback) => [item.id, feedback]),
+      ),
+    ).then((results) => {
+      setFeedbackByBooking((current) => {
+        const next = { ...current };
+        results.forEach((result) => {
+          if (result.status === "fulfilled") {
+            const [bookingId, feedback] = result.value;
+            next[bookingId] = feedback;
+          }
+        });
+        return next;
+      });
+    });
+  }, [bookings]);
 
   async function login(event) {
     event.preventDefault();
@@ -449,6 +473,15 @@ export default function CustomerAccountPage({
                 </div>
               ) : null}
               <div className="mt-5 border-t border-line pt-4"><BookingJourney state={item.state} compact /></div>
+              {item.state === "COMPLETED" ? (
+                <FeedbackForm
+                  bookingId={item.id}
+                  existing={feedbackByBooking[item.id]}
+                  onSubmitted={(bookingId, saved) =>
+                    setFeedbackByBooking((current) => ({ ...current, [bookingId]: saved }))
+                  }
+                />
+              ) : null}
               {item.earlyPickupRequested ? (
                 <p className="mt-2 text-xs font-bold text-muted">
                   Nhận sớm: {shortDate(item.earlyPickupTime)} ·{" "}
@@ -461,6 +494,7 @@ export default function CustomerAccountPage({
           })}
         </div>
       )}
+      <PinSettings account={account} onUpdated={onLogin} />
       <section className="mt-8 border-t border-line pt-7">
         <div className="mb-4 flex items-center gap-2">
           <LifeBuoy className="h-5 w-5" />
@@ -544,5 +578,214 @@ export default function CustomerAccountPage({
       </section>
       </main>
     </>
+  );
+}
+
+function FeedbackForm({ bookingId, existing, onSubmitted }) {
+  const [rating, setRating] = useState(existing?.rating || 0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comment, setComment] = useState(existing?.comment || "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    setRating(existing?.rating || 0);
+    setComment(existing?.comment || "");
+  }, [existing]);
+
+  async function submit(event) {
+    event.preventDefault();
+    if (rating < 1) {
+      setError("Vui lòng chọn số sao đánh giá.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const result = await api.submitCustomerBookingFeedback(bookingId, { rating, comment });
+      onSubmitted(bookingId, result);
+      setSaved(true);
+    } catch (nextError) {
+      setError(nextError.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="mt-4 rounded-lg border border-line bg-paper p-4">
+      <p className="text-xs font-black uppercase text-muted">Đánh giá trải nghiệm thuê máy</p>
+      <div className="mt-2 flex items-center gap-1">
+        {[1, 2, 3, 4, 5].map((value) => (
+          <button
+            key={value}
+            type="button"
+            onMouseEnter={() => setHoverRating(value)}
+            onMouseLeave={() => setHoverRating(0)}
+            onClick={() => {
+              setRating(value);
+              setSaved(false);
+            }}
+            aria-label={`${value} sao`}
+            className="p-0.5"
+          >
+            <Star
+              className={`h-6 w-6 ${
+                (hoverRating || rating) >= value ? "fill-amber-400 text-amber-400" : "text-muted"
+              }`}
+            />
+          </button>
+        ))}
+      </div>
+      <textarea
+        value={comment}
+        onChange={(event) => {
+          setComment(event.target.value);
+          setSaved(false);
+        }}
+        placeholder="Chia sẻ thêm về trải nghiệm (không bắt buộc)"
+        className="mt-3 min-h-20 w-full rounded-lg border border-line bg-white p-3 text-sm font-semibold"
+      />
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+        <button
+          disabled={busy}
+          className="rounded-lg bg-ink px-4 py-2.5 text-xs font-black uppercase text-acid disabled:opacity-50"
+        >
+          {existing ? "Cập nhật đánh giá" : "Gửi đánh giá"}
+        </button>
+        {saved ? <span className="text-xs font-black text-green-700">Đã lưu, cảm ơn bạn!</span> : null}
+      </div>
+      {error ? <p className="mt-2 text-xs font-bold text-red-700">{error}</p> : null}
+    </form>
+  );
+}
+
+function PinSettings({ account, onUpdated }) {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [pin, setPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+
+  function resetFields() {
+    setCurrentPassword("");
+    setPin("");
+    setConfirmPin("");
+  }
+
+  async function save(event) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+    if (pin !== confirmPin) {
+      setError("Mã PIN xác nhận chưa khớp.");
+      return;
+    }
+    if (!/^\d{6}$/.test(pin)) {
+      setError("Mã PIN phải gồm đúng 6 chữ số.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const updated = await api.setCustomerPin({ currentPassword, pin });
+      onUpdated(updated);
+      resetFields();
+      setMessage(account.pinConfigured ? "Đã cập nhật mã PIN." : "Đã bật đăng nhập nhanh bằng mã PIN.");
+    } catch (nextError) {
+      setError(nextError.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function disable() {
+    if (!currentPassword) {
+      setError("Nhập mật khẩu hiện tại để tắt đăng nhập nhanh.");
+      return;
+    }
+    setError("");
+    setMessage("");
+    setBusy(true);
+    try {
+      const updated = await api.disableCustomerPin({ currentPassword });
+      onUpdated(updated);
+      resetFields();
+      setMessage("Đã tắt đăng nhập nhanh bằng mã PIN.");
+    } catch (nextError) {
+      setError(nextError.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="mt-8 border-t border-line pt-7">
+      <div className="mb-4 flex items-center gap-2">
+        <KeyRound className="h-5 w-5" />
+        <h2 className="text-xl font-black">Đăng nhập nhanh bằng mã PIN</h2>
+      </div>
+      <p className="mb-4 text-sm font-semibold text-muted">
+        {account.pinConfigured
+          ? "Bạn đang bật đăng nhập nhanh bằng mã PIN 6 số. Mật khẩu đầy đủ vẫn dùng được như bình thường."
+          : "Đặt mã PIN 6 số để đăng nhập nhanh cho lần thuê sau, không cần nhớ mật khẩu đầy đủ. Mật khẩu hiện tại vẫn giữ nguyên và không bị thay đổi."}
+      </p>
+      <form onSubmit={save} className="grid gap-3 rounded-lg border border-line bg-white p-5 md:grid-cols-3">
+        <input
+          required
+          type="password"
+          minLength={8}
+          maxLength={128}
+          value={currentPassword}
+          onChange={(event) => setCurrentPassword(event.target.value)}
+          placeholder="Mật khẩu hiện tại"
+          autoComplete="current-password"
+          className="rounded-lg border border-line bg-paper px-3 py-3 text-sm font-semibold"
+        />
+        <input
+          required
+          type="password"
+          inputMode="numeric"
+          pattern="\d{6}"
+          maxLength={6}
+          value={pin}
+          onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 6))}
+          placeholder="Mã PIN mới (6 số)"
+          className="rounded-lg border border-line bg-paper px-3 py-3 text-sm font-semibold"
+        />
+        <input
+          required
+          type="password"
+          inputMode="numeric"
+          pattern="\d{6}"
+          maxLength={6}
+          value={confirmPin}
+          onChange={(event) => setConfirmPin(event.target.value.replace(/\D/g, "").slice(0, 6))}
+          placeholder="Nhập lại mã PIN"
+          className="rounded-lg border border-line bg-paper px-3 py-3 text-sm font-semibold"
+        />
+        <div className="flex flex-wrap gap-2 md:col-span-3">
+          <button
+            disabled={busy}
+            className="rounded-lg bg-ink px-4 py-3 text-xs font-black uppercase text-acid disabled:opacity-50"
+          >
+            {account.pinConfigured ? "Cập nhật mã PIN" : "Bật đăng nhập nhanh"}
+          </button>
+          {account.pinConfigured ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={disable}
+              className="rounded-lg border border-line bg-white px-4 py-3 text-xs font-black uppercase disabled:opacity-50"
+            >
+              Tắt đăng nhập nhanh
+            </button>
+          ) : null}
+        </div>
+      </form>
+      {error ? <p className="mt-3 text-sm font-bold text-red-700">{error}</p> : null}
+      {message ? <p className="mt-3 text-sm font-bold text-green-700">{message}</p> : null}
+    </section>
   );
 }

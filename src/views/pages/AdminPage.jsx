@@ -25,6 +25,7 @@ import {
   Search,
   Settings2,
   ShieldCheck,
+  Star,
   Tags,
   IdCard,
   Trash2,
@@ -74,6 +75,7 @@ const pages = [
   { id: "inventory", label: "Kho máy", icon: Boxes, roles: ["ADMIN", "MANAGER", "WAREHOUSE", "TECH"] },
   { id: "finance", label: "Sổ quỹ", icon: Wallet, roles: ["ADMIN", "MANAGER"] },
   { id: "support", label: "Hỗ trợ", icon: LifeBuoy, roles: ["ADMIN", "MANAGER", "OPS", "SALES"] },
+  { id: "feedback", label: "Đánh giá", icon: Star, roles: ["ADMIN", "MANAGER", "OPS", "SALES"] },
   { id: "customers", label: "Khách hàng", icon: UsersRound, roles: ["ADMIN"] },
   { id: "staff", label: "Nhân sự", icon: UserCog, roles: ["ADMIN"] },
 ];
@@ -128,6 +130,7 @@ export default function AdminPage({
   const canReadFinance = ["ADMIN", "MANAGER"].includes(user.role);
   const canReadPromotions = ["ADMIN", "MANAGER", "SALES"].includes(user.role);
   const canReadSupport = ["ADMIN", "MANAGER", "OPS", "SALES"].includes(user.role);
+  const canReadFeedback = ["ADMIN", "MANAGER", "OPS", "SALES"].includes(user.role);
   const requestedPage = activePage === "calendar"
     ? "dashboard"
     : activePage === "invoices"
@@ -152,6 +155,7 @@ export default function AdminPage({
   });
   const [entries, setEntries] = useState([]);
   const [supportRequests, setSupportRequests] = useState([]);
+  const [feedbackList, setFeedbackList] = useState([]);
   const [filter, setFilter] = useState("ALL");
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(null);
@@ -273,6 +277,7 @@ export default function AdminPage({
         requiresFinance ? api.financeSummary() : Promise.resolve(null),
         requiresFinance ? api.financeEntries() : Promise.resolve(null),
         canReadSupport ? api.adminSupport() : Promise.resolve(null),
+        canReadFeedback && page === "feedback" ? api.adminFeedback() : Promise.resolve(null),
         ["catalog", "bundles"].includes(page) ? api.adminBundles() : Promise.resolve(null),
         canReadPromotions && page === "promotions" ? api.adminPromotions() : Promise.resolve(null),
         ["ADMIN", "MANAGER", "WAREHOUSE", "TECH"].includes(user.role) && page === "inventory"
@@ -284,7 +289,7 @@ export default function AdminPage({
           : Promise.resolve(null),
       ]);
       const [nextBookings, nextProducts, nextAssets, nextStock, nextFinance, nextEntries,
-        nextSupport, nextBundles, nextPromotions, nextLedger, nextStaff, nextStores] = requests;
+        nextSupport, nextFeedback, nextBundles, nextPromotions, nextLedger, nextStaff, nextStores] = requests;
       if (nextBookings) {
         setBookings(nextBookings);
         setCalendarBookings(nextBookings);
@@ -309,6 +314,7 @@ export default function AdminPage({
         method: "LEDGER",
       })));
       if (nextSupport) setSupportRequests(nextSupport);
+      if (nextFeedback) setFeedbackList(nextFeedback);
       if (nextBundles) setBundles(nextBundles);
       if (nextPromotions) setPromotions(nextPromotions);
       if (nextLedger) setLedgerEntries(nextLedger);
@@ -615,6 +621,9 @@ export default function AdminPage({
         ) : null}
         {page === "support" ? (
           <Support requests={supportRequests} refresh={refresh} />
+        ) : null}
+        {page === "feedback" ? (
+          <Feedback items={feedbackList} />
         ) : null}
         {page === "customers" ? <CustomerAccounts canViewIdentity={["ADMIN", "MANAGER"].includes(user.role)} /> : null}
         {page === "staff" ? (
@@ -3628,6 +3637,40 @@ function Support({ requests, refresh }) {
                 Hoàn tất
               </button>
             </div>
+          </article>
+        ))
+      )}
+    </div>
+  );
+}
+
+function Feedback({ items }) {
+  return (
+    <div className="space-y-3">
+      {items.length === 0 ? (
+        <p className="rounded-lg bg-white p-5 text-sm font-semibold text-muted">
+          Chưa có đánh giá nào từ khách hàng.
+        </p>
+      ) : (
+        items.map((item) => (
+          <article key={item.id} className="rounded-lg border border-line bg-white p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black text-muted">
+                  {item.bookingId} · {item.phone}
+                </p>
+                <div className="mt-2 flex items-center gap-1">
+                  {[1, 2, 3, 4, 5].map((value) => (
+                    <Star
+                      key={value}
+                      className={`h-4 w-4 ${value <= item.rating ? "fill-amber-400 text-amber-400" : "text-line"}`}
+                    />
+                  ))}
+                </div>
+              </div>
+              <span className="text-xs font-black text-muted">{shortDate(item.createdAt)}</span>
+            </div>
+            {item.comment ? <p className="mt-3 text-sm font-semibold">{item.comment}</p> : null}
           </article>
         ))
       )}
