@@ -56,6 +56,45 @@ export function returnTimeForRentalDays(pickupTime, currentReturnTime, rentalDay
   return localDateTime(adjustedReturn);
 }
 
+const MINUTES_PER_HOUR = 60;
+const MINUTES_PER_DAY = 1_440;
+
+function ceilDivide(minutes, divisor) {
+  return Math.max(1, Math.ceil(minutes / divisor));
+}
+
+// Xác định gói giá phù hợp với khoảng thời gian nhận/trả máy thực tế, dùng
+// khi khách tự chỉnh giờ nhận hoặc giờ trả (không bấm nút chọn gói). Logic
+// này phải khớp với nhánh tự nhận diện (requestedMode == null) trong
+// RentalPricing.calculateProduct ở backend, để nút gói đang tô đậm và giá
+// hiển thị luôn đúng với báo giá thực trả về từ server — kể cả khi khách
+// chọn khoảng ngày tùy ý (4 ngày trở lên) thay vì bấm sẵn một gói.
+export function detectRentalRate(pickupTime, returnTime, pricingSource) {
+  const pickup = new Date(pickupTime);
+  const returns = new Date(returnTime);
+  if (Number.isNaN(pickup.getTime()) || Number.isNaN(returns.getTime())) {
+    return "DAILY";
+  }
+
+  const minutes = Math.max(1, Math.round((returns.getTime() - pickup.getTime()) / 60_000));
+  const hourly = Number(pricingSource?.hourlyPrice) || 0;
+  const halfDay = Number(pricingSource?.halfDayPrice) || 0;
+  const packageDays = Math.max(2, Number(pricingSource?.multiDayDays) || 3);
+
+  if (minutes <= 12 * MINUTES_PER_HOUR && (hourly > 0 || halfDay > 0)) {
+    const hours = ceilDivide(minutes, MINUTES_PER_HOUR);
+    const hourlyTotal = hourly > 0 ? hourly * hours : null;
+    if (halfDay > 0 && (hourlyTotal === null || halfDay <= hourlyTotal)) return "HALF_DAY";
+    return "HOURLY";
+  }
+
+  const days = ceilDivide(minutes, MINUTES_PER_DAY);
+  if (days === 1) return "DAILY";
+  if (days === 2) return "TWO_DAY";
+  if (days < packageDays) return "DAILY";
+  return "MULTI_DAY";
+}
+
 export function returnTimeForRentalRate(
   pickupTime,
   currentReturnTime,

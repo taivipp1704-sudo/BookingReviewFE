@@ -23,6 +23,7 @@ import { api } from "../../services/api.js";
 import { catalogImageUrl, money, pricingModeLabel, rentalDurationLabel, rentalRates } from "../../utils/format.js";
 import { holdSecondsUntil } from "../../models/holdTimer.js";
 import {
+  detectRentalRate,
   earlyPickupTimeError,
   earlyPickupTimeForPickup,
   localDateTime,
@@ -1819,6 +1820,11 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
                               ? earlyPickupTimeForPickup(pickupTime)
                               : current.earlyPickupTime,
                           }));
+                          // Khách tự chỉnh giờ nhận (không bấm nút chọn gói): tính lại
+                          // gói giá theo khoảng thời gian mới để giá luôn nhảy đúng.
+                          setSelectedRentalRate(
+                            detectRentalRate(pickupTime, form.returnTime, pricingSource),
+                          );
                         }}
                         className="w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm font-semibold outline-none focus:border-ink"
                       />
@@ -1831,9 +1837,16 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
                         required
                         type="datetime-local"
                         value={form.returnTime}
-                        onChange={(event) =>
-                          setForm({ ...form, returnTime: event.target.value })
-                        }
+                        onChange={(event) => {
+                          const returnTime = event.target.value;
+                          setForm({ ...form, returnTime });
+                          // Khách tự chỉnh giờ trả (không bấm nút chọn gói): tính lại
+                          // gói giá theo khoảng thời gian mới để giá luôn nhảy đúng,
+                          // kể cả khi chọn từ 4 ngày trở lên (gói nhiều ngày + ngày phát sinh).
+                          setSelectedRentalRate(
+                            detectRentalRate(form.pickupTime, returnTime, pricingSource),
+                          );
+                        }}
                         className="w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm font-semibold outline-none focus:border-ink"
                       />
                     </label>
@@ -2200,11 +2213,18 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
                   const returns = new Date(form.returnTime);
                   if (returns <= pickup)
                     returns.setTime(pickup.getTime() + 86400000);
+                  const nextPickupTime = localDateTime(pickup);
+                  const nextReturnTime = localDateTime(returns);
                   setForm({
                     ...form,
-                    pickupTime: localDateTime(pickup),
-                    returnTime: localDateTime(returns),
+                    pickupTime: nextPickupTime,
+                    returnTime: nextReturnTime,
                   });
+                  // Chọn giờ nhận trực tiếp trên lịch cũng có thể đổi khoảng thời gian
+                  // thuê thực tế, nên tính lại gói giá tương ứng.
+                  setSelectedRentalRate(
+                    detectRentalRate(nextPickupTime, nextReturnTime, pricingSource),
+                  );
                 }}
               />
             </div> : null}
