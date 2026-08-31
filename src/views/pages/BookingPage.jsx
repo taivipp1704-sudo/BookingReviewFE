@@ -924,9 +924,11 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
   const [paymentProof, setPaymentProof] = useState(null);
   const [paymentProofUploadToken, setPaymentProofUploadToken] = useState("");
   const [paymentProofUploading, setPaymentProofUploading] = useState(false);
-  // Ảnh tài khoản ngân hàng của khách: shop cần để hoàn tiền giữ lịch mà không phải
-  // nhắn tin xin lại số tài khoản. Chỉ giữ File ở phía trình duyệt và upload đúng lúc
-  // bấm xác nhận, để token tải ảnh (hết hạn sau 15 phút) luôn còn hiệu lực khi tạo đơn.
+  // Ảnh mã QR tài khoản ngân hàng của khách: shop cần để hoàn tiền giữ lịch mà không phải
+  // nhắn tin xin lại số tài khoản. Dùng mã QR nhận tiền có sẵn trong app ngân hàng cho dễ
+  // chụp hơn là phải tự tìm màn hình hiện tên/số tài khoản. Chỉ giữ File ở phía trình duyệt
+  // và upload đúng lúc bấm xác nhận, để token tải ảnh (hết hạn sau 15 phút) luôn còn hiệu
+  // lực khi tạo đơn.
   const [bankAccountFile, setBankAccountFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [holdSeconds, setHoldSeconds] = useState(0);
@@ -1274,7 +1276,7 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
         throw new Error("Vui lòng gửi ảnh chụp giao dịch chuyển khoản để admin đối soát.");
       }
       if (!bankAccountFile) {
-        throw new Error("Vui lòng gửi ảnh tài khoản ngân hàng để shop hoàn tiền giữ lịch.");
+        throw new Error("Vui lòng gửi ảnh mã QR tài khoản ngân hàng để shop hoàn tiền giữ lịch.");
       }
       const refreshedQuote = await api.quote({
         pickupTime: form.pickupTime,
@@ -2107,9 +2109,9 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
                       <label className={`mt-3 flex cursor-pointer items-center gap-3 rounded-lg border border-dashed p-3 ${bankAccountFile ? "border-green-500 bg-green-50" : "border-line bg-paper"}`}>
                         <Upload className="h-5 w-5 shrink-0" />
                         <span className="min-w-0 flex-1">
-                          <strong className="block text-xs">Ảnh tài khoản ngân hàng của bạn</strong>
+                          <strong className="block text-xs">Mã QR tài khoản ngân hàng của bạn</strong>
                           <span className="mt-1 block truncate text-[10px] font-semibold text-muted">
-                            {bankAccountFile?.name || "Chụp màn hình app ngân hàng có tên và số tài khoản · JPG hoặc PNG, tối đa 5 MB"}
+                            {bankAccountFile?.name || "Chụp mã QR nhận tiền trong app ngân hàng (đã có sẵn tên và số tài khoản) · JPG hoặc PNG, tối đa 5 MB"}
                           </span>
                         </span>
                         <input required type="file" accept="image/jpeg,image/png" className="sr-only" onChange={(event) => { setBankAccountFile(event.target.files?.[0] || null); setBookingError(""); }} />
@@ -2119,7 +2121,7 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
                             onClick={(event) => {
                               event.preventDefault();
                               event.stopPropagation();
-                              openLocalImage(bankAccountFile, "Ảnh tài khoản ngân hàng đã chọn");
+                              openLocalImage(bankAccountFile, "Mã QR tài khoản ngân hàng đã chọn");
                             }}
                             className="shrink-0 rounded-lg border border-green-300 bg-white px-3 py-2 text-[10px] font-black uppercase text-green-900"
                           >
@@ -2128,7 +2130,7 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
                         ) : null}
                       </label>
                       <p className="mt-2 text-[10px] font-semibold leading-relaxed text-muted">
-                        Shop dùng ảnh này để hoàn lại tiền giữ lịch sau khi bạn trả máy, không cần nhắn tin xin lại số tài khoản. Ảnh được mã hóa và chỉ quản trị viên mở xem được.
+                        Shop dùng mã QR này để hoàn lại tiền giữ lịch sau khi bạn trả máy, không cần nhắn tin xin lại số tài khoản. Ảnh được mã hóa và chỉ quản trị viên mở xem được.
                       </p>
                     </section>
 

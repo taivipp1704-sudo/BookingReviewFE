@@ -1550,8 +1550,8 @@ function Orders({
           ) : null}
           {detailTab === "finance" && selected.bankAccountAvailable && canViewIdentity ? (
             <div className="mb-5 flex flex-wrap items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 p-4 text-blue-950">
-              <div className="mr-auto"><p className="text-xs font-black uppercase">Tài khoản ngân hàng hoàn tiền</p><p className="mt-1 text-[10px] font-semibold">Khách đã gửi ảnh tài khoản khi đặt đơn. Dùng để chuyển lại tiền giữ lịch sau khi trả máy, không cần nhắn tin xin lại.</p></div>
-              <button onClick={openBankAccount} className="rounded-lg bg-white px-3 py-2 text-xs font-black">Mở ảnh tài khoản</button>
+              <div className="mr-auto"><p className="text-xs font-black uppercase">Tài khoản ngân hàng hoàn tiền</p><p className="mt-1 text-[10px] font-semibold">Khách đã gửi mã QR tài khoản khi đặt đơn. Dùng để chuyển lại tiền giữ lịch sau khi trả máy, không cần nhắn tin xin lại.</p></div>
+              <button onClick={openBankAccount} className="rounded-lg bg-white px-3 py-2 text-xs font-black">Mở mã QR tài khoản</button>
             </div>
           ) : null}
           {detailTab === "operations" && selected.earlyPickupRequested ? (
