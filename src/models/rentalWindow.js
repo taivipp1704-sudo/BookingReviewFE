@@ -38,6 +38,26 @@ export function earlyPickupTimeError(pickupTime, earlyPickup, earlyPickupTime) {
   return "";
 }
 
+export function lateReturnTimeError(returnTime, lateReturn, lateReturnTime) {
+  if (!lateReturn) return "";
+  if (!returnTime) {
+    return "Vui lòng chọn giờ trả máy trước khi yêu cầu trả trễ.";
+  }
+  if (!lateReturnTime) {
+    return "Vui lòng chọn giờ trả trễ mong muốn.";
+  }
+
+  const returns = new Date(returnTime);
+  const requested = new Date(lateReturnTime);
+  if (Number.isNaN(returns.getTime()) || Number.isNaN(requested.getTime())) {
+    return "Giờ trả trễ không hợp lệ.";
+  }
+  if (requested <= returns) {
+    return "Giờ trả trễ phải muộn hơn giờ trả máy đã chọn.";
+  }
+  return "";
+}
+
 export function returnTimeForRentalDays(pickupTime, currentReturnTime, rentalDays) {
   const pickup = new Date(pickupTime);
   const currentReturn = new Date(currentReturnTime);
@@ -63,6 +83,19 @@ function ceilDivide(minutes, divisor) {
   return Math.max(1, Math.ceil(minutes / divisor));
 }
 
+// Cuối tuần (Thứ 7, Chủ Nhật) nhận và trả trong cùng một ngày luôn tính trọn 1
+// ngày thuê thay vì nửa ngày/theo giờ — phải khớp với isSameDayWeekend() ở
+// RentalPricing.java bên backend.
+function isSameDayWeekend(pickup, returns) {
+  const sameDay =
+    pickup.getFullYear() === returns.getFullYear() &&
+    pickup.getMonth() === returns.getMonth() &&
+    pickup.getDate() === returns.getDate();
+  if (!sameDay) return false;
+  const day = pickup.getDay(); // 0 = Chủ Nhật, 6 = Thứ 7
+  return day === 0 || day === 6;
+}
+
 // Xác định gói giá phù hợp với khoảng thời gian nhận/trả máy thực tế, dùng
 // khi khách tự chỉnh giờ nhận hoặc giờ trả (không bấm nút chọn gói). Logic
 // này phải khớp với nhánh tự nhận diện (requestedMode == null) trong
@@ -73,6 +106,10 @@ export function detectRentalRate(pickupTime, returnTime, pricingSource) {
   const pickup = new Date(pickupTime);
   const returns = new Date(returnTime);
   if (Number.isNaN(pickup.getTime()) || Number.isNaN(returns.getTime())) {
+    return "DAILY";
+  }
+
+  if (isSameDayWeekend(pickup, returns)) {
     return "DAILY";
   }
 

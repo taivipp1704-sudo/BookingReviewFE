@@ -395,6 +395,25 @@ export default function AdminPage({
     }
   }
 
+  async function reviewLateReturn(approved, fee, reviewReason) {
+    if (!selected) return;
+    setBusy(true);
+    setError("");
+    try {
+      const updated = await api.reviewLateReturn(selected.id, {
+        approved,
+        fee: Number(fee || 0),
+        reason: reviewReason,
+      });
+      updateBookingSnapshots(updated);
+      setAudit(await api.bookingAudit(selected.id));
+    } catch (nextError) {
+      setError(nextError.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function autoAllocate() {
     if (!selected) return;
     setBusy(true);
@@ -573,6 +592,7 @@ export default function AdminPage({
             changeState={changeState}
             approveHandover={approveHandover}
             reviewEarlyPickup={reviewEarlyPickup}
+            reviewLateReturn={reviewLateReturn}
             operations={bookingOperations}
             financeData={bookingFinance}
             refreshFinance={refreshSelectedFinance}
@@ -1243,6 +1263,7 @@ function Orders({
   changeState,
   approveHandover,
   reviewEarlyPickup,
+  reviewLateReturn,
   operations,
   financeData,
   refreshFinance,
@@ -1554,6 +1575,13 @@ function Orders({
               <button onClick={openBankAccount} className="rounded-lg bg-white px-3 py-2 text-xs font-black">Mở mã QR tài khoản</button>
             </div>
           ) : null}
+          {detailTab === "operations" && selected.lateReturnRequested ? (
+            <LateReturnPanel
+              booking={selected}
+              busy={busy}
+              onReview={reviewLateReturn}
+            />
+          ) : null}
           {detailTab === "operations" && selected.earlyPickupRequested ? (
             <EarlyPickupPanel
               booking={selected}
@@ -1834,6 +1862,54 @@ function EarlyPickupPanel({ booking, busy, onReview }) {
       {booking.earlyPickupApproved ? (
         <p className="mt-2 text-xs font-bold text-green-700">
           Đã duyệt · Phí {money(booking.earlyPickupFee)}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function LateReturnPanel({ booking, busy, onReview }) {
+  const [fee, setFee] = useState(booking.lateReturnFee || 0);
+  const [reviewReason, setReviewReason] = useState("");
+  return (
+    <section className="mb-5 rounded-lg border border-line bg-paper p-4">
+      <p className="text-[10px] font-black uppercase text-muted">
+        Yêu cầu trả máy trễ
+      </p>
+      <p className="mt-2 font-black">{shortDate(booking.lateReturnTime)}</p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-[160px_1fr_auto_auto]">
+        <input
+          type="number"
+          min="0"
+          value={fee}
+          onChange={(event) => setFee(event.target.value)}
+          placeholder="Phí trả trễ"
+          className="rounded-lg border border-line bg-white px-3 py-2 text-sm font-bold"
+        />
+        <input
+          value={reviewReason}
+          onChange={(event) => setReviewReason(event.target.value)}
+          placeholder="Ghi chú thương lượng"
+          className="rounded-lg border border-line bg-white px-3 py-2 text-sm font-semibold"
+        />
+        <button
+          disabled={busy}
+          onClick={() => onReview(true, fee, reviewReason)}
+          className="rounded-lg bg-ink px-3 py-2 text-xs font-black uppercase text-acid"
+        >
+          Duyệt
+        </button>
+        <button
+          disabled={busy}
+          onClick={() => onReview(false, 0, reviewReason)}
+          className="rounded-lg border border-line bg-white px-3 py-2 text-xs font-black uppercase"
+        >
+          Từ chối
+        </button>
+      </div>
+      {booking.lateReturnApproved ? (
+        <p className="mt-2 text-xs font-bold text-green-700">
+          Đã duyệt · Phí {money(booking.lateReturnFee)}
         </p>
       ) : null}
     </section>

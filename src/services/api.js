@@ -330,6 +330,7 @@ export const api = {
   submitCustomerBookingFeedback: (bookingId, payload) => request(`/api/customer/account/bookings/${encodeURIComponent(bookingId)}/feedback`, { method: 'POST', body: payload }),
   adminFeedback: () => request('/api/admin/feedback'),
   reviewEarlyPickup: (id, payload) => request(`/api/admin/bookings/${encodeURIComponent(id)}/early-pickup`, { method: 'PATCH', body: payload })
+  ,reviewLateReturn: (id, payload) => request(`/api/admin/bookings/${encodeURIComponent(id)}/late-return`, { method: 'PATCH', body: payload })
   ,customerSupport: () => request('/api/customer/support'),
   createCustomerSupport: payload => request('/api/customer/support', { method: 'POST', body: payload }),
   adminSupport: () => request('/api/admin/support-requests'),

@@ -490,6 +490,14 @@ export default function CustomerAccountPage({
                     : "Đang chờ admin duyệt"}
                 </p>
               ) : null}
+              {item.lateReturnRequested ? (
+                <p className="mt-2 text-xs font-bold text-muted">
+                  Trả trễ: {shortDate(item.lateReturnTime)} ·{" "}
+                  {item.lateReturnApproved
+                    ? `Đã duyệt, phí ${money(item.lateReturnFee)}`
+                    : "Đang chờ admin duyệt"}
+                </p>
+              ) : null}
             </article>;
           })}
         </div>

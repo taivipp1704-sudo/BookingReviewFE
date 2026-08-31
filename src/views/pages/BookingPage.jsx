@@ -26,6 +26,7 @@ import {
   detectRentalRate,
   earlyPickupTimeError,
   earlyPickupTimeForPickup,
+  lateReturnTimeError,
   localDateTime,
   returnTimeForRentalRate,
 } from "../../models/rentalWindow.js";
@@ -898,6 +899,8 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
     promotionCode: "",
     earlyPickup: false,
     earlyPickupTime: "",
+    lateReturn: false,
+    lateReturnTime: "",
     storeBranchId: "",
     ...bookingDefaults(),
   });
@@ -940,6 +943,10 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
   const earlyPickupError = useMemo(
     () => earlyPickupTimeError(form.pickupTime, form.earlyPickup, form.earlyPickupTime),
     [form.pickupTime, form.earlyPickup, form.earlyPickupTime],
+  );
+  const lateReturnError = useMemo(
+    () => lateReturnTimeError(form.returnTime, form.lateReturn, form.lateReturnTime),
+    [form.returnTime, form.lateReturn, form.lateReturnTime],
   );
 
   useEffect(() => () => window.clearTimeout(commitmentTimerRef.current), []);
@@ -1215,6 +1222,10 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
       setBookingError(earlyPickupError);
       return;
     }
+    if (lateReturnError) {
+      setBookingError(lateReturnError);
+      return;
+    }
     setBusy(true);
     setBookingError("");
     try {
@@ -1311,6 +1322,7 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
         returnTime: form.returnTime,
         note: form.note,
         earlyPickupTime: form.earlyPickup ? form.earlyPickupTime : null,
+        lateReturnTime: form.lateReturn ? form.lateReturnTime : null,
         bundleId: selectedBundleId || null,
         items: bookingItems,
         identityUploadToken: verifiedBooking.identityUploadToken,
@@ -1439,7 +1451,7 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
     setBankAccountFile(null);
     setConsent(false);
     setBookingError("");
-    setForm((current) => ({ ...current, ...bookingDefaults(), note: "", promotionCode: "", earlyPickup: false, earlyPickupTime: "" }));
+    setForm((current) => ({ ...current, ...bookingDefaults(), note: "", promotionCode: "", earlyPickup: false, earlyPickupTime: "", lateReturn: false, lateReturnTime: "" }));
   }
 
   async function selectPaymentProof(file) {
@@ -1993,6 +2005,54 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
                           <p className="mt-2 text-xs font-semibold text-muted">
                             Admin sẽ xác nhận khả năng đáp ứng và thông báo phí
                             nếu có.
+                          </p>
+                        )}
+                      </label>
+                    ) : null}
+                  </div>
+                  <div className="rounded-lg border border-line bg-paper p-4">
+                    <label className="flex items-center gap-3 text-sm font-black">
+                      <input
+                        type="checkbox"
+                        checked={form.lateReturn}
+                        onChange={(event) => {
+                          const lateReturn = event.target.checked;
+                          setForm((current) => ({
+                            ...current,
+                            lateReturn,
+                            lateReturnTime: lateReturn ? current.lateReturnTime : "",
+                          }));
+                        }}
+                        className="h-4 w-4 accent-black"
+                      />
+                      Yêu cầu trả máy trễ hơn gói đã chọn
+                    </label>
+                    {form.lateReturn ? (
+                      <label className="mt-3 block">
+                        <span className="text-[10px] font-black uppercase text-muted">
+                          Giờ trả mong muốn
+                        </span>
+                        <input
+                          required
+                          type="datetime-local"
+                          min={form.returnTime}
+                          value={form.lateReturnTime}
+                          aria-invalid={Boolean(lateReturnError)}
+                          onChange={(event) =>
+                            setForm({
+                              ...form,
+                              lateReturnTime: event.target.value,
+                            })
+                          }
+                          className={`mt-1 w-full rounded-lg border bg-white px-4 py-3 text-sm font-semibold ${lateReturnError ? "border-red-400 focus:border-red-500" : "border-line"}`}
+                        />
+                        {lateReturnError ? (
+                          <p className="mt-2 text-xs font-bold text-red-700">
+                            {lateReturnError}
+                          </p>
+                        ) : (
+                          <p className="mt-2 text-xs font-semibold text-muted">
+                            Dùng cho các mốc lẻ ngày (vd. 1,5 / 2,5 ngày). Admin sẽ duyệt và báo phụ phí trả trễ trong đơn — phần lớn mức phí này đã được thống nhất qua tin nhắn trước khi đặt.
                           </p>
                         )}
                       </label>
