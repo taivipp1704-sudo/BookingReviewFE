@@ -12,6 +12,7 @@ import {
   Download,
   Eye,
   FileClock,
+  ImageIcon,
   LayoutDashboard,
   LifeBuoy,
   LogOut,
@@ -1201,6 +1202,28 @@ function openInvoiceDocument(entry, booking, products) {
   popup.document.close();
 }
 
+function ItemThumbnail({ product, name, dark = false, compact = false }) {
+  const source = catalogImageUrl(product);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [source]);
+  const sizeClass = compact ? "h-12 w-14" : "h-14 w-16";
+  if (!source || failed) {
+    return (
+      <div className={`grid ${sizeClass} shrink-0 place-items-center rounded ${dark ? "bg-white/10 text-white/60" : "bg-paper text-muted"}`}>
+        <ImageIcon className="h-5 w-5" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={source}
+      alt={name}
+      onError={() => setFailed(true)}
+      className={`${sizeClass} shrink-0 rounded bg-white object-contain p-1`}
+    />
+  );
+}
+
 function Orders({
   bookings,
   selected,
@@ -1473,10 +1496,13 @@ function Orders({
                 {equipment.length ? (
                   <div className="grid gap-3 sm:grid-cols-2">
                     {equipment.map((item) => (
-                      <div key={item.id || item.productId} className="rounded-lg border-2 border-ink bg-ink p-4 text-white">
-                        <p className="text-[9px] font-black uppercase tracking-wider text-acid">Máy ảnh</p>
-                        <p className="mt-1 font-black">{item.productName}</p>
-                        <p className="mt-1 text-xs font-bold text-white/70">Số lượng: {item.quantity}</p>
+                      <div key={item.id || item.productId} className="flex items-center gap-3 rounded-lg border-2 border-ink bg-ink p-4 text-white">
+                        <ItemThumbnail product={productById[item.productId]} name={item.productName} dark />
+                        <div className="min-w-0">
+                          <p className="text-[9px] font-black uppercase tracking-wider text-acid">Máy ảnh</p>
+                          <p className="mt-1 truncate font-black">{item.productName}</p>
+                          <p className="mt-1 text-xs font-bold text-white/70">Số lượng: {item.quantity}</p>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1484,9 +1510,12 @@ function Orders({
                 {accessories.length ? (
                   <div className={`grid gap-3 sm:grid-cols-2 ${equipment.length ? "mt-3" : ""}`}>
                     {accessories.map((item) => (
-                      <div key={item.id || item.productId} className="rounded-lg bg-paper p-4">
-                        <p className="font-black">{item.productName}</p>
-                        <p className="mt-1 text-xs font-bold text-muted">Số lượng: {item.quantity}</p>
+                      <div key={item.id || item.productId} className="flex items-center gap-3 rounded-lg bg-paper p-4">
+                        <ItemThumbnail product={productById[item.productId]} name={item.productName} compact />
+                        <div className="min-w-0">
+                          <p className="truncate font-black">{item.productName}</p>
+                          <p className="mt-1 text-xs font-bold text-muted">Số lượng: {item.quantity}</p>
+                        </div>
                       </div>
                     ))}
                   </div>
