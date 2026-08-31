@@ -41,6 +41,7 @@ import BrandMark from "../components/BrandMark.jsx";
 import SecureImagePreview from "../components/SecureImagePreview.jsx";
 import StatusBadge, { bookingStateLabels, bookingStateTone } from "../components/StatusBadge.jsx";
 import { bookingStateDotTone, mergeBookingSnapshot } from "../../models/bookingState.js";
+import { groupBookingItems } from "../../models/bookingItems.js";
 import {
   bookingAuditLabel,
   supportStatusLabel,
@@ -941,9 +942,10 @@ export function BookingCalendar({ bookings, productById, onOpenBooking }) {
   }
 
   function bookingTitle(booking) {
-    const names = (booking.items || [])
-      .map((line) => productById[line.productId]?.name || line.productId)
-      .filter(Boolean);
+    // Chỉ hiện tên máy ảnh trên lịch, bỏ qua phụ kiện (pin, thẻ nhớ, đế sạc...)
+    // để lịch tuần dễ đọc — xem đúng máy nào đang bận mà không bị chữ phụ kiện che.
+    const { equipment } = groupBookingItems(booking.items, productById);
+    const names = equipment.map((line) => line.productName).filter(Boolean);
     return names.length ? names.join(", ") : booking.customerName;
   }
 
@@ -1464,23 +1466,34 @@ function Orders({
               onChanged={refreshFinance}
             />
           ) : null}
-          {detailTab === "overview" ? (
-          <div className="grid gap-3 py-5 sm:grid-cols-2">
-            {selected.items.map((item) => (
-              <div
-                key={item.id || item.productId}
-                className="rounded-lg bg-paper p-4"
-              >
-                <p className="font-black">
-                  {productById[item.productId]?.name || item.productId}
-                </p>
-                <p className="mt-1 text-xs font-bold text-muted">
-                  Số lượng: {item.quantity}
-                </p>
+          {detailTab === "overview" ? (() => {
+            const { equipment, accessories } = groupBookingItems(selected.items, productById);
+            return (
+              <div className="py-5">
+                {equipment.length ? (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {equipment.map((item) => (
+                      <div key={item.id || item.productId} className="rounded-lg border-2 border-ink bg-ink p-4 text-white">
+                        <p className="text-[9px] font-black uppercase tracking-wider text-acid">Máy ảnh</p>
+                        <p className="mt-1 font-black">{item.productName}</p>
+                        <p className="mt-1 text-xs font-bold text-white/70">Số lượng: {item.quantity}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                {accessories.length ? (
+                  <div className={`grid gap-3 sm:grid-cols-2 ${equipment.length ? "mt-3" : ""}`}>
+                    {accessories.map((item) => (
+                      <div key={item.id || item.productId} className="rounded-lg bg-paper p-4">
+                        <p className="font-black">{item.productName}</p>
+                        <p className="mt-1 text-xs font-bold text-muted">Số lượng: {item.quantity}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-            ))}
-          </div>
-          ) : null}
+            );
+          })() : null}
           {detailTab === "overview" ? (
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-orange-200 bg-orange-50 p-4 text-orange-900">
             <div><p className="text-[10px] font-black uppercase">Cấu hình trả trễ</p><p className="mt-1 text-xs font-bold">Mức phí được cộng theo từng giờ trễ; trường hợp ảnh hưởng booking kế tiếp cần admin xác nhận thêm.</p></div>
@@ -3973,7 +3986,8 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
       {tab === "control" ? <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <section>
           <h2 className="mb-3 text-lg font-black">Kỳ tài chính</h2>
-          <div className="space-y-3">{periods.map((item) => <div key={item.id} className="rounded-lg border border-line bg-white p-4"><div className="flex items-center justify-between"><p className="font-black">{item.id}</p><StatusBadge state={item.state} label={financeStatusLabel(item.state)} /></div><div className="mt-3 flex gap-2"><button disabled={working || item.state !== "OPEN"} onClick={() => run(() => api.updateFinancialPeriod(item.id, "SOFT_LOCKED"), "Đã khóa mềm kỳ.")} className="rounded-md border border-line px-3 py-2 text-[10px] font-black uppercase disabled:opacity-40">Khóa mềm</button><button disabled={working || item.state !== "OPEN"} onClick={() => run(() => api.updateFinancialPeriod(item.id, "HARD_LOCKED"), "Đã khóa cứng kỳ.")} className="rounded-md bg-ink px-3 py-2 text-[10px] font-black uppercase text-acid disabled:opacity-40">Khóa cứng</button></div></div>)}{!periods.length ? <p className="text-sm font-bold text-muted">Kỳ hiện tại sẽ tự tạo khi phát sinh chứng từ đầu tiên.</p> : null}</div>
+          <div className="space-y-3">{periods.map((item) => <div key={item.id} className="rounded-lg border border-line bg-white p-4"><div className="flex items-center justify-between"><p className="font-black">{item.id}</p><StatusBadge state={item.state} label={financeStatusLabel(item.state)} /></div><div className="mt-3 flex flex-wrap gap-2"><button disabled={working || item.state !== "OPEN"} onClick={() => run(() => api.updateFinancialPeriod(item.id, "SOFT_LOCKED"), "Đã khóa mềm kỳ.")} className="rounded-md border border-line px-3 py-2 text-[10px] font-black uppercase disabled:opacity-40">Khóa mềm</button><button disabled={working || item.state !== "OPEN"} onClick={() => run(() => api.updateFinancialPeriod(item.id, "HARD_LOCKED"), "Đã khóa cứng kỳ.")} className="rounded-md bg-ink px-3 py-2 text-[10px] font-black uppercase text-acid disabled:opacity-40">Khóa cứng</button><button disabled={working || item.state === "OPEN"} onClick={() => { if (window.confirm(`Mở lại kỳ tài chính ${item.id}? Kỳ sẽ cho ghi chứng từ trở lại, chỉ tài khoản Admin mới thực hiện được.`)) run(() => api.updateFinancialPeriod(item.id, "OPEN"), "Đã mở lại kỳ."); }} className="rounded-md border border-red-200 px-3 py-2 text-[10px] font-black uppercase text-red-700 disabled:opacity-40">Mở khóa</button></div></div>)}{!periods.length ? <p className="text-sm font-bold text-muted">Kỳ hiện tại sẽ tự tạo khi phát sinh chứng từ đầu tiên.</p> : null}</div>
+          <p className="mt-3 text-xs font-semibold text-muted">Chỉ tài khoản Admin có quyền mở lại kỳ đã khóa (Manager chỉ khóa được, không mở lại được) — đây là chủ đích để tách trách nhiệm chốt sổ.</p>
         </section>
         <section>
           <h2 className="mb-3 text-lg font-black">Chứng từ đã ghi sổ</h2>

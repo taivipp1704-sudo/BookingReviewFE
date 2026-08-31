@@ -75,12 +75,23 @@ export default function CustomerCalendarPage() {
               <p className="text-[10px] font-black uppercase text-muted">{day.toLocaleDateString("vi-VN", { weekday: "short" })}</p>
               <p className="mt-1 text-lg font-black">{day.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })}</p>
               <div className="mt-4 space-y-2">
-                {dayBlocks.length ? dayBlocks.map((block, index) => (
-                  <div key={`${block.pickupTime}-${index}`} className="rounded-md border-l-4 border-purple-500 bg-purple-50 p-2 text-xs font-bold text-purple-900">
-                    <span className="flex items-center gap-1"><Clock3 className="h-3 w-3" />{new Date(block.pickupTime).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}</span>
-                    <span className="mt-1 block text-[10px] text-purple-700">Đã giữ {block.reservedQuantity} thiết bị</span>
-                  </div>
-                )) : <p className="text-xs font-semibold text-muted">Chưa có lịch bận</p>}
+                {dayBlocks.length ? dayBlocks.map((block, index) => {
+                  const pickup = new Date(block.pickupTime);
+                  const returnAt = new Date(block.returnTime);
+                  const sameDay = pickup.toDateString() === returnAt.toDateString();
+                  return (
+                    <div key={`${block.pickupTime}-${index}`} className="rounded-md border-l-4 border-purple-500 bg-purple-50 p-2 text-xs font-bold text-purple-900">
+                      <span className="flex items-center gap-1">
+                        <Clock3 className="h-3 w-3" />
+                        {pickup.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                        {" → "}
+                        {returnAt.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                        {sameDay ? "" : ` (${returnAt.toLocaleDateString("vi-VN", { day: "2-digit", month: "2-digit" })})`}
+                      </span>
+                      <span className="mt-1 block text-[10px] text-purple-700">Đã giữ {block.reservedQuantity} thiết bị</span>
+                    </div>
+                  );
+                }) : <p className="text-xs font-semibold text-muted">Chưa có lịch bận</p>}
               </div>
             </section>
           );
