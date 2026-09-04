@@ -1,4 +1,4 @@
-import { ArrowRight, ChevronDown, Handshake, Search, SlidersHorizontal, X } from "lucide-react";
+import { ArrowRight, ChevronDown, Handshake, ImageIcon, Search, SlidersHorizontal, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import ProductCard from "../components/ProductCard.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
@@ -410,7 +410,7 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing", boo
                     key={bundle.id}
                     className="rounded-lg border border-line bg-white p-5"
                   >
-                    <img src={catalogImageUrl(bundle)} alt={bundle.name} className="aspect-[4/3] w-full rounded-lg bg-paper object-cover" />
+                    <BundleThumbnail source={catalogImageUrl(bundle.imageUrl ? bundle : main)} name={bundle.name} className="aspect-[4/3] w-full rounded-lg bg-paper" />
                     <p className="text-[10px] font-black uppercase text-muted">
                       {bundle.id}
                     </p>
@@ -616,8 +616,39 @@ function PriceFilter({ value, onChange }) {
   );
 }
 
+// Combo thường không tự có ảnh riêng (chỉ là tập hợp các thiết bị đã có sẵn),
+// nên khi bundle chưa gán ảnh, dùng ảnh của máy chính (main) trong combo thay
+// vì để trống. Khi vẫn không có ảnh nào (kể cả main), hiện icon thay vì để
+// trình duyệt hiện khung ảnh vỡ + chữ alt lộ ra ngoài — đồng bộ với cách các
+// trang khác trong app xử lý ảnh thiếu (xem BookingItemThumbnail).
+function BundleThumbnail({ source, name, className }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [source]);
+  if (!source || failed) {
+    return (
+      <div
+        className={`grid place-items-center bg-paper text-muted ${className}`}
+        aria-label={`Chưa có ảnh ${name}`}
+      >
+        <ImageIcon className="h-6 w-6" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={source}
+      alt={name}
+      onError={() => setFailed(true)}
+      className={`${className} object-cover`}
+    />
+  );
+}
+
 function BundleDialog({ bundle, products, onClose, onBook }) {
   const lines = bundle.items.map((line) => ({ ...line, product: products.find((item) => item.id === line.productId) })).filter((line) => line.product);
   const main = lines.find((line) => line.product.levelCode === "L1")?.product;
-  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-lg bg-white shadow-soft"><div className="grid lg:grid-cols-[1.1fr_0.9fr]"><div className="bg-paper p-4"><img src={catalogImageUrl(bundle, bundle.detailImageUrl ? "detailImageUrl" : "imageUrl")} alt={`Toàn bộ ${bundle.name}`} className="aspect-[4/3] h-full w-full rounded-lg object-cover" /></div><div className="p-6"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase text-muted">Chi tiết combo</p><h2 className="mt-2 text-3xl font-black">{bundle.name}</h2></div><button onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full bg-paper" aria-label="Đóng"><X className="h-4 w-4" /></button></div><div className="mt-4 grid gap-2 sm:grid-cols-3">{rentalRates(bundle).map((rate) => <div key={rate.key} className="rounded-lg bg-paper p-3"><p className="text-[9px] font-black uppercase text-muted">{rate.label}</p><p className="mt-1 text-sm font-black">{money(rate.value)}</p></div>)}</div><div className="mt-6 space-y-2"><p className="text-[10px] font-black uppercase text-muted">Bộ thiết bị bao gồm</p>{lines.map((line) => <div key={line.productId} className="flex items-center gap-3 rounded-lg border border-line p-3"><img src={catalogImageUrl(line.product)} alt="" className="h-12 w-12 rounded object-cover" /><span className="min-w-0 flex-1 text-sm font-black">{line.product.name}</span><span className="text-sm font-black">× {line.quantity}</span></div>)}</div><button disabled={!main} onClick={() => main && onBook(main)} className="mt-6 w-full rounded-lg bg-ink px-5 py-4 text-xs font-black uppercase text-acid disabled:opacity-40">Đặt combo này</button></div></div></section></div>;
+  const detailImageSource = bundle.detailImageUrl
+    ? catalogImageUrl(bundle, "detailImageUrl")
+    : catalogImageUrl(bundle.imageUrl ? bundle : main);
+  return <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onMouseDown={(event) => event.target === event.currentTarget && onClose()}><section className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-lg bg-white shadow-soft"><div className="grid lg:grid-cols-[1.1fr_0.9fr]"><div className="bg-paper p-4"><BundleThumbnail source={detailImageSource} name={`Toàn bộ ${bundle.name}`} className="aspect-[4/3] h-full w-full rounded-lg" /></div><div className="p-6"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase text-muted">Chi tiết combo</p><h2 className="mt-2 text-3xl font-black">{bundle.name}</h2></div><button onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full bg-paper" aria-label="Đóng"><X className="h-4 w-4" /></button></div><div className="mt-4 grid gap-2 sm:grid-cols-3">{rentalRates(bundle).map((rate) => <div key={rate.key} className="rounded-lg bg-paper p-3"><p className="text-[9px] font-black uppercase text-muted">{rate.label}</p><p className="mt-1 text-sm font-black">{money(rate.value)}</p></div>)}</div><div className="mt-6 space-y-2"><p className="text-[10px] font-black uppercase text-muted">Bộ thiết bị bao gồm</p>{lines.map((line) => <div key={line.productId} className="flex items-center gap-3 rounded-lg border border-line p-3"><BundleThumbnail source={catalogImageUrl(line.product)} name={line.product.name} className="h-12 w-12 rounded" /><span className="min-w-0 flex-1 text-sm font-black">{line.product.name}</span><span className="text-sm font-black">× {line.quantity}</span></div>)}</div><button disabled={!main} onClick={() => main && onBook(main)} className="mt-6 w-full rounded-lg bg-ink px-5 py-4 text-xs font-black uppercase text-acid disabled:opacity-40">Đặt combo này</button></div></div></section></div>;
 }

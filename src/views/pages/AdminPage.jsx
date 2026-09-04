@@ -1244,6 +1244,33 @@ function ItemThumbnail({ product, name, dark = false, compact = false }) {
   );
 }
 
+// Combo thường không tự có ảnh riêng (chỉ là tập hợp các thiết bị đã có sẵn),
+// nên khi bundle chưa gán ảnh, gọi nơi dùng phải tự truyền vào ảnh của máy
+// chính trong combo qua prop `source` thay vì để trống. Khi vẫn không có ảnh
+// nào, hiện icon thay vì để trình duyệt hiện khung ảnh vỡ + chữ alt lộ ra.
+function BundleThumbnail({ source, name, className }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [source]);
+  if (!source || failed) {
+    return (
+      <div
+        className={`grid place-items-center bg-paper text-muted ${className}`}
+        aria-label={`Chưa có ảnh ${name}`}
+      >
+        <ImageIcon className="h-8 w-8" />
+      </div>
+    );
+  }
+  return (
+    <img
+      src={source}
+      alt={name}
+      onError={() => setFailed(true)}
+      className={`${className} object-cover`}
+    />
+  );
+}
+
 function Orders({
   bookings,
   selected,
@@ -2898,7 +2925,7 @@ function Bundles({ bundles, products, assets, stock, refresh, canManage }) {
           const extras = bundleProducts.filter((line) => line.product.levelCode !== "L1");
           const availableSets = bundleProducts.length ? Math.min(...bundleProducts.map((line) => Math.floor((inventoryByProduct[line.productId]?.availableQty || 0) / line.quantity))) : 0;
           return <article key={bundle.id} className={`overflow-hidden rounded-lg border bg-white ${bundle.active ? "border-line" : "border-dashed border-red-200 opacity-65"}`}>
-            <div className="relative"><img src={catalogImageUrl(bundle.imageUrl ? bundle : main?.product)} alt={bundle.name} className="aspect-[16/9] w-full bg-paper object-cover" /><span className="absolute left-3 top-3 rounded bg-ink px-2 py-1 text-[9px] font-black uppercase text-acid">{bundle.id}</span></div>
+            <div className="relative"><BundleThumbnail source={catalogImageUrl(bundle.imageUrl ? bundle : main?.product)} name={bundle.name} className="aspect-[16/9] w-full bg-paper" /><span className="absolute left-3 top-3 rounded bg-ink px-2 py-1 text-[9px] font-black uppercase text-acid">{bundle.id}</span></div>
             <div className="p-5">
               <div className="flex items-start justify-between gap-3"><div><p className="text-[9px] font-black uppercase text-muted">Version {bundle.currentVersion || 1}</p><h2 className="mt-1 text-xl font-black">{bundle.name}</h2></div><span className={`shrink-0 rounded px-2 py-1 text-[9px] font-black uppercase ${availableSets > 0 ? "bg-green-50 text-green-800" : "bg-red-50 text-red-700"}`}>{availableSets > 0 ? `Cấp được ${availableSets} bộ` : "Thiếu hàng"}</span></div>
               {main ? <div className="mt-4 border-l-4 border-ink pl-3"><p className="text-[9px] font-black uppercase text-muted">Máy chính</p><p className="mt-1 text-sm font-black">{main.product.id} · {main.product.name}</p></div> : null}
