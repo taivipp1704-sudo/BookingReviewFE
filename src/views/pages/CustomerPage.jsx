@@ -410,7 +410,17 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing", boo
                     key={bundle.id}
                     className="rounded-lg border border-line bg-white p-5"
                   >
-                    <BundleThumbnail source={catalogImageUrl(bundle.imageUrl ? bundle : main)} name={bundle.name} className="aspect-[4/3] w-full rounded-lg bg-paper" />
+                    <BundleThumbnail
+                      source={
+                        bundle.imageUrl
+                          ? catalogImageUrl(bundle)
+                          : bundle.detailImageUrl
+                            ? catalogImageUrl(bundle, "detailImageUrl")
+                            : catalogImageUrl(main)
+                      }
+                      name={bundle.name}
+                      className="aspect-[4/3] w-full rounded-lg bg-paper"
+                    />
                     <p className="text-[10px] font-black uppercase text-muted">
                       {bundle.id}
                     </p>
