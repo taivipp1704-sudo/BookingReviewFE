@@ -225,7 +225,7 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing", boo
               AMY Digital
             </p>
             <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">
-              Đặt thuê rõ ràng
+              Máy xịn, ảnh xinh – Chụp là lung linh
             </span>
           </div>
           <div className="flex min-w-0 flex-col justify-center py-7 sm:py-8 lg:py-6">
@@ -243,7 +243,7 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing", boo
             {[
               ["01", "Chọn thiết bị"],
               ["02", "Gửi yêu cầu"],
-              ["03", "Duyệt thủ công"],
+              ["03", "AMY lên đơn cho bạn"],
             ].map(([number, label]) => (
               <div key={number} className="border-t border-white/15 pt-3">
                 <p className="text-xs font-black text-acid">{number}</p>
