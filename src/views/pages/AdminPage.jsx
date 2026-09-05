@@ -3832,6 +3832,7 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
   const [working, setWorking] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [message, setMessage] = useState("");
+  const [replacementPayment, setReplacementPayment] = useState(null);
   const [expenseForm, setExpenseForm] = useState({
     bookingId: "", assetId: "", category: "MAINTENANCE", amount: "", vendorName: "",
     invoiceReference: "", reason: "", evidenceReference: "",
@@ -3859,8 +3860,10 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
       await action();
       await Promise.all([loadFinanceOperations(), refreshDashboard()]);
       setMessage(successMessage);
+      return true;
     } catch (error) {
       setMessage(error.message);
+      return false;
     } finally {
       setWorking(false);
     }
@@ -3880,10 +3883,56 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
     run(() => api.payExpense(item.id, { amount, payoutReference, idempotencyKey: `expense-pay:${item.id}:${payoutReference}` }), "Đã ghi nhận chi tiền.");
   }
 
-  function reverseDocument(item) {
+  async function prepareReplacementPayment(item) {
+    setWorking(true);
+    setMessage("");
+    try {
+      const bookingFinance = await api.bookingFinance(item.bookingId);
+      const activeReceived = (bookingFinance.paymentAllocations || [])
+        .reduce((sum, allocation) => sum + Number(allocation.amount || 0), 0);
+      const booking = bookingById[item.bookingId];
+      const amountDue = Number(booking?.amountDueBeforeHandover || booking?.amountDueNow || item.totalDebit || 0);
+      const amount = Math.max(0, amountDue - activeReceived);
+      if (amount <= 0) {
+        setReplacementPayment(null);
+        setMessage(`Đơn ${item.bookingId} hiện đã được ghi nhận đủ tiền, không cần tạo phiếu thu thay thế.`);
+        return;
+      }
+      setReplacementPayment({
+        bookingId: item.bookingId,
+        sourceDocumentId: item.id,
+        amount,
+        method: "BANK_TRANSFER",
+      });
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function reverseDocument(item) {
     const reason = window.prompt("Nhập lý do đảo chứng từ:");
     if (!reason) return;
-    run(() => api.reverseFinanceDocument(item.id, { reason, idempotencyKey: `reverse:${item.id}:${Date.now()}` }), "Đã tạo chứng từ đảo. Chứng từ gốc được giữ nguyên lịch sử.");
+    const reversed = await run(
+      () => api.reverseFinanceDocument(item.id, { reason, idempotencyKey: `reverse:${item.id}:${Date.now()}` }),
+      "Đã đảo chứng từ. Hãy kiểm tra và ghi nhận lại số tiền đúng.",
+    );
+    if (reversed && item.type === "PAYMENT_RECEIPT") await prepareReplacementPayment(item);
+  }
+
+  async function recordReplacementPayment(event) {
+    event.preventDefault();
+    if (!replacementPayment) return;
+    const recorded = await run(() => api.recordPayment({
+      bookingId: replacementPayment.bookingId,
+      amount: Number(replacementPayment.amount),
+      method: replacementPayment.method,
+      providerReference: `ADMIN-CORRECTION-${replacementPayment.bookingId}-${Date.now()}`,
+      idempotencyKey: crypto.randomUUID(),
+      note: `Ghi nhận lại sau khi đảo chứng từ ${replacementPayment.sourceDocumentId}.`,
+    }), "Đã ghi nhận lại số tiền đúng và cập nhật công nợ của đơn.");
+    if (recorded) setReplacementPayment(null);
   }
   async function exportExcel() {
     if (exporting) return;
@@ -4115,7 +4164,35 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
         </table>
       </div> : null}
 
-      {tab === "control" ? <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
+      {tab === "control" ? <>
+        {replacementPayment ? (
+          <form onSubmit={recordReplacementPayment} className="mb-5 border border-amber-300 bg-amber-50 p-5">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black uppercase text-amber-800">Điều chỉnh khoản thu</p>
+                <h2 className="mt-1 text-lg font-black">Ghi nhận lại tiền cho đơn {replacementPayment.bookingId}</h2>
+                <p className="mt-1 text-xs font-semibold text-amber-950">Chứng từ cũ đã được đảo. Nhập số tiền thực nhận đúng để tạo phiếu thu thay thế.</p>
+              </div>
+              <button type="button" onClick={() => setReplacementPayment(null)} className="rounded-md border border-amber-300 px-3 py-2 text-[10px] font-black uppercase">Đóng</button>
+            </div>
+            <div className="mt-4 grid gap-2 md:grid-cols-[1fr_220px_auto]">
+              <label className="grid gap-1 text-[10px] font-black uppercase text-muted">
+                Số tiền thực nhận
+                <input required type="number" min="1" value={replacementPayment.amount} onChange={(event) => setReplacementPayment((current) => ({ ...current, amount: event.target.value }))} className="rounded-lg border border-line bg-white px-3 py-3 text-sm font-bold text-ink" />
+              </label>
+              <label className="grid gap-1 text-[10px] font-black uppercase text-muted">
+                Phương thức
+                <select value={replacementPayment.method} onChange={(event) => setReplacementPayment((current) => ({ ...current, method: event.target.value }))} className="rounded-lg border border-line bg-white px-3 py-3 text-sm font-bold text-ink">
+                  <option value="BANK_TRANSFER">Chuyển khoản</option>
+                  <option value="CASH">Tiền mặt</option>
+                  <option value="CARD">Thẻ</option>
+                </select>
+              </label>
+              <button disabled={working || Number(replacementPayment.amount) <= 0} className="self-end rounded-lg bg-ink px-4 py-3 text-xs font-black uppercase text-acid disabled:opacity-40">Ghi nhận tiền</button>
+            </div>
+          </form>
+        ) : null}
+        <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
         <section>
           <h2 className="mb-3 text-lg font-black">Kỳ tài chính</h2>
           <div className="space-y-3">{periods.map((item) => <div key={item.id} className="rounded-lg border border-line bg-white p-4"><div className="flex items-center justify-between"><p className="font-black">{item.id}</p><StatusBadge state={item.state} label={financeStatusLabel(item.state)} /></div><div className="mt-3 flex flex-wrap gap-2"><button disabled={working || item.state !== "OPEN"} onClick={() => run(() => api.updateFinancialPeriod(item.id, "SOFT_LOCKED"), "Đã khóa mềm kỳ.")} className="rounded-md border border-line px-3 py-2 text-[10px] font-black uppercase disabled:opacity-40">Khóa mềm</button><button disabled={working || item.state !== "OPEN"} onClick={() => run(() => api.updateFinancialPeriod(item.id, "HARD_LOCKED"), "Đã khóa cứng kỳ.")} className="rounded-md bg-ink px-3 py-2 text-[10px] font-black uppercase text-acid disabled:opacity-40">Khóa cứng</button><button disabled={working || item.state === "OPEN"} onClick={() => { if (window.confirm(`Mở lại kỳ tài chính ${item.id}? Kỳ sẽ cho ghi chứng từ trở lại, chỉ tài khoản Admin mới thực hiện được.`)) run(() => api.updateFinancialPeriod(item.id, "OPEN"), "Đã mở lại kỳ."); }} className="rounded-md border border-red-200 px-3 py-2 text-[10px] font-black uppercase text-red-700 disabled:opacity-40">Mở khóa</button></div></div>)}{!periods.length ? <p className="text-sm font-bold text-muted">Kỳ hiện tại sẽ tự tạo khi phát sinh chứng từ đầu tiên.</p> : null}</div>
@@ -4123,9 +4200,10 @@ function Finance({ finance, entries, bookings, assets, refreshDashboard }) {
         </section>
         <section>
           <h2 className="mb-3 text-lg font-black">Chứng từ đã ghi sổ</h2>
-          <div className="finance-table-scroll min-w-0 rounded-lg border border-line bg-white"><table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-paper text-[10px] font-black uppercase text-muted"><tr><th className="p-4">Mã</th><th>Loại</th><th>Trạng thái</th><th className="text-right">Tổng</th><th className="px-4 text-right">Điều chỉnh</th></tr></thead><tbody>{documents.map((item) => <tr key={item.id} className="border-t border-line"><td className="p-4 font-black">{item.id}</td><td>{financeDocumentTypeLabel(item.type)}</td><td><StatusBadge state={item.status} label={financeStatusLabel(item.status)} /></td><td className="text-right font-black">{money(item.totalDebit)}</td><td className="px-4 text-right">{item.status === "POSTED" && !item.type.startsWith("REVERSAL_") ? <button disabled={working} onClick={() => reverseDocument(item)} className="rounded-md border border-red-200 px-3 py-2 text-[10px] font-black uppercase text-red-700">Đảo chứng từ</button> : <span className="text-xs text-muted">{item.reversalOfDocumentId || "-"}</span>}</td></tr>)}{!documents.length ? <tr><td colSpan="5" className="p-8 text-center font-bold text-muted">Chưa có chứng từ tài chính.</td></tr> : null}</tbody></table></div>
+          <div className="finance-table-scroll min-w-0 rounded-lg border border-line bg-white"><table className="w-full min-w-[700px] text-left text-sm"><thead className="bg-paper text-[10px] font-black uppercase text-muted"><tr><th className="p-4">Mã</th><th>Loại</th><th>Trạng thái</th><th className="text-right">Tổng</th><th className="px-4 text-right">Điều chỉnh</th></tr></thead><tbody>{documents.map((item) => <tr key={item.id} className="border-t border-line"><td className="p-4 font-black">{item.id}</td><td>{financeDocumentTypeLabel(item.type)}</td><td><StatusBadge state={item.status} label={financeStatusLabel(item.status)} /></td><td className="text-right font-black">{money(item.totalDebit)}</td><td className="px-4 text-right">{item.status === "POSTED" && !item.type.startsWith("REVERSAL_") ? <button disabled={working} onClick={() => reverseDocument(item)} className="rounded-md border border-red-200 px-3 py-2 text-[10px] font-black uppercase text-red-700">Đảo chứng từ</button> : item.status === "REVERSED" && item.type === "PAYMENT_RECEIPT" ? <button disabled={working} onClick={() => prepareReplacementPayment(item)} className="rounded-md bg-ink px-3 py-2 text-[10px] font-black uppercase text-acid">Ghi nhận lại</button> : <span className="text-xs text-muted">{item.reversalOfDocumentId || "-"}</span>}</td></tr>)}{!documents.length ? <tr><td colSpan="5" className="p-8 text-center font-bold text-muted">Chưa có chứng từ tài chính.</td></tr> : null}</tbody></table></div>
         </section>
-      </div> : null}
+        </div>
+      </> : null}
     </div>
   );
 }
