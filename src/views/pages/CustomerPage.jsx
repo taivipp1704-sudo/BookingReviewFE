@@ -225,14 +225,13 @@ export default function CustomerPage({ onSelect, onBrowse, mode = "landing", boo
               AMY Digital
             </p>
             <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">
-              Máy xịn, ảnh xinh – Chụp là lung linh
+              Đặt thuê rõ ràng
             </span>
           </div>
           <div className="flex min-w-0 flex-col justify-center py-7 sm:py-8 lg:py-6">
             <h1 className="max-w-full text-[40px] font-black leading-[1.06] sm:max-w-[13ch] sm:text-5xl sm:leading-[1.02] lg:text-6xl">
-              <span className="block">Có đồ xịn</span>
-              <span className="block">Không lo thiếu</span>
-              <span className="block">Hình đẹp</span>
+              <span className="block">Máy xịn, ảnh xinh</span>
+              <span className="block">Chụp là lung linh</span>
             </h1>
             <div className="mt-6 max-w-xl border-l-2 border-acid pl-4 text-sm font-semibold leading-6 text-white/70 lg:text-[15px]">
               <p>Bạn chọn thiết bị và thời gian</p>
