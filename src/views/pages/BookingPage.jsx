@@ -924,6 +924,13 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
   const [liveQuoteError, setLiveQuoteError] = useState("");
   const [busy, setBusy] = useState(false);
   const [identity, setIdentity] = useState({ front: null, back: null });
+  // Phương án cọc thay thế: cọc bằng 2 giấy tờ (CCCD/Bằng lái xe/Passport) +
+  // link FB/IG chính chủ, thay cho cọc máy 500k tiền mặt. depositMethod:
+  // "CASH" (mặc định) hoặc "DOCUMENTS".
+  const [depositMethod, setDepositMethod] = useState("CASH");
+  const [secondaryIdentityType, setSecondaryIdentityType] = useState("CCCD");
+  const [secondaryIdentity, setSecondaryIdentity] = useState({ front: null, back: null });
+  const [socialProfileLink, setSocialProfileLink] = useState("");
   const [paymentProof, setPaymentProof] = useState(null);
   const [paymentProofUploadToken, setPaymentProofUploadToken] = useState("");
   const [paymentProofUploading, setPaymentProofUploading] = useState(false);
@@ -1289,6 +1296,14 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
       if (!bankAccountFile) {
         throw new Error("Vui lòng gửi ảnh mã QR tài khoản ngân hàng để shop hoàn tiền giữ lịch.");
       }
+      if (depositMethod === "DOCUMENTS") {
+        if (!secondaryIdentity.front || !secondaryIdentity.back) {
+          throw new Error("Vui lòng tải ảnh mặt trước và mặt sau giấy tờ cọc thứ hai.");
+        }
+        if (!socialProfileLink.trim()) {
+          throw new Error("Vui lòng nhập link Facebook/Instagram public chính chủ.");
+        }
+      }
       const refreshedQuote = await api.quote({
         pickupTime: form.pickupTime,
         returnTime: form.returnTime,
@@ -1315,6 +1330,14 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
         setPaymentProofUploadToken(effectivePaymentProofToken);
       }
       const bankAccountUpload = await api.uploadBankAccount(bankAccountFile);
+      let secondaryIdentityUploadToken = null;
+      if (depositMethod === "DOCUMENTS") {
+        const secondaryUpload = await api.uploadSecondaryIdentity(
+          secondaryIdentity.front,
+          secondaryIdentity.back,
+        );
+        secondaryIdentityUploadToken = secondaryUpload.uploadToken;
+      }
       const nextBooking = await api.createBooking({
         customerName: form.customerName,
         phone: form.phone,
@@ -1332,6 +1355,10 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
         promotionCode: form.promotionCode.trim() || null,
         storeBranchId: form.storeBranchId,
         rentalRate: selectedRentalRate,
+        depositMethod,
+        secondaryIdentityType: depositMethod === "DOCUMENTS" ? secondaryIdentityType : null,
+        secondaryIdentityUploadToken,
+        socialProfileLink: depositMethod === "DOCUMENTS" ? socialProfileLink.trim() : null,
       });
       holdTokenRef.current = "";
       setHoldToken("");
@@ -1445,6 +1472,10 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
     }
     setBookingStep("form");
     setIdentity({ front: null, back: null });
+    setDepositMethod("CASH");
+    setSecondaryIdentityType("CCCD");
+    setSecondaryIdentity({ front: null, back: null });
+    setSocialProfileLink("");
     setPaymentProof(null);
     setPaymentProofUploadToken("");
     setPaymentProofUploading(false);
@@ -1613,10 +1644,19 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
                   </div>
                   {liveQuote ? (
                     <div className="mt-3 space-y-2 border-t border-line pt-3 text-xs font-bold">
-                      <div className="flex justify-between gap-3 text-muted"><span>Cọc máy khi nhận</span><span className="text-ink">{money(liveQuote.equipmentDeposit)}</span></div>
+                      <div className="flex justify-between gap-3 text-muted">
+                        <span>Cọc máy khi nhận</span>
+                        <span className="text-ink">
+                          {depositMethod === "DOCUMENTS" ? "0đ (2 giấy tờ)" : money(liveQuote.equipmentDeposit)}
+                        </span>
+                      </div>
                       <div className="flex justify-between gap-3 text-muted"><span>Giữ lịch bắt buộc</span><span className="text-ink">{money(liveQuote.bookingDeposit)}</span></div>
                       <div className="flex justify-between gap-3 text-sm font-black"><span>Chuyển ngay để giữ lịch</span><span>{money(liveQuote.amountDueNow)}</span></div>
-                      <p className="rounded bg-acid/10 p-2 text-[10px] font-bold leading-4 text-ink">Tiền thuê và cọc máy thanh toán khi nhận thiết bị.</p>
+                      <p className="rounded bg-acid/10 p-2 text-[10px] font-bold leading-4 text-ink">
+                        {depositMethod === "DOCUMENTS"
+                          ? "Tiền thuê thanh toán khi nhận thiết bị, cọc máy thay bằng 2 giấy tờ."
+                          : "Tiền thuê và cọc máy thanh toán khi nhận thiết bị."}
+                      </p>
                     </div>
                   ) : null}
                   {liveQuote?.discountAmount > 0 ? (
@@ -1958,6 +1998,125 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
                       mới xem được. Tệp tự xóa theo thời hạn lưu trữ.
                     </p>
                   </section>
+                  <section className="rounded-lg border border-line bg-paper p-4">
+                    <p className="text-xs font-black uppercase">
+                      Hình thức cọc khi nhận máy
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-muted">
+                      Chọn cọc tiền mặt (500.000đ) hoặc cọc bằng 2 giấy tờ +
+                      tiền thuê, không cần cọc thêm tiền mặt.
+                    </p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      <label
+                        className={`cursor-pointer rounded-lg border p-3 text-xs font-black ${depositMethod === "CASH" ? "border-ink bg-white" : "border-line bg-white/60 text-muted"}`}
+                      >
+                        <input
+                          type="radio"
+                          name="depositMethod"
+                          className="mr-2 h-4 w-4 accent-black"
+                          checked={depositMethod === "CASH"}
+                          onChange={() => setDepositMethod("CASH")}
+                        />
+                        Cọc tiền mặt (500.000đ)
+                      </label>
+                      <label
+                        className={`cursor-pointer rounded-lg border p-3 text-xs font-black ${depositMethod === "DOCUMENTS" ? "border-ink bg-white" : "border-line bg-white/60 text-muted"}`}
+                      >
+                        <input
+                          type="radio"
+                          name="depositMethod"
+                          className="mr-2 h-4 w-4 accent-black"
+                          checked={depositMethod === "DOCUMENTS"}
+                          onChange={() => setDepositMethod("DOCUMENTS")}
+                        />
+                        Cọc 2 giấy tờ + tiền thuê
+                      </label>
+                    </div>
+                    {depositMethod === "DOCUMENTS" ? (
+                      <div className="mt-4 space-y-3 border-t border-line pt-4">
+                        <label className="block">
+                          <span className="text-[10px] font-black uppercase text-muted">
+                            Loại giấy tờ cọc thứ hai
+                          </span>
+                          <select
+                            required
+                            value={secondaryIdentityType}
+                            onChange={(event) => setSecondaryIdentityType(event.target.value)}
+                            className="mt-1 w-full rounded-lg border border-line bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-ink"
+                          >
+                            <option value="CCCD">CCCD gốc</option>
+                            <option value="DRIVER_LICENSE">Bằng lái xe gốc</option>
+                            <option value="PASSPORT">Passport gốc</option>
+                          </select>
+                          <p className="mt-1 text-[10px] font-semibold text-muted">
+                            Có thể là giấy tờ của người đặt, bạn bè hoặc người thân.
+                          </p>
+                        </label>
+                        <div className="grid gap-3 sm:grid-cols-2">
+                          {["front", "back"].map((side) => (
+                            <label
+                              key={side}
+                              className="cursor-pointer rounded-lg border border-dashed border-line bg-white p-4 text-center hover:border-ink"
+                            >
+                              <span className="text-xs font-black">
+                                {side === "front" ? "Mặt trước giấy tờ" : "Mặt sau giấy tờ"}
+                              </span>
+                              <input
+                                required
+                                type="file"
+                                accept="image/jpeg,image/png"
+                                className="mt-3 block w-full text-xs"
+                                onChange={(event) =>
+                                  setSecondaryIdentity((current) => ({
+                                    ...current,
+                                    [side]: event.target.files?.[0] || null,
+                                  }))
+                                }
+                              />
+                              {secondaryIdentity[side] ? (
+                                <span className="mt-2 block truncate text-[10px] font-bold text-green-700">
+                                  {secondaryIdentity[side].name}
+                                </span>
+                              ) : null}
+                              {secondaryIdentity[side] ? (
+                                <button
+                                  type="button"
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    openLocalImage(
+                                      secondaryIdentity[side],
+                                      side === "front" ? "Mặt trước giấy tờ cọc" : "Mặt sau giấy tờ cọc",
+                                    );
+                                  }}
+                                  className="mt-3 rounded-lg border border-line bg-paper px-3 py-2 text-[10px] font-black uppercase"
+                                >
+                                  Xem ảnh đã chọn
+                                </button>
+                              ) : null}
+                            </label>
+                          ))}
+                        </div>
+                        <label className="block">
+                          <span className="text-[10px] font-black uppercase text-muted">
+                            Link Facebook/Instagram public chính chủ
+                          </span>
+                          <input
+                            required
+                            type="url"
+                            value={socialProfileLink}
+                            onChange={(event) => setSocialProfileLink(event.target.value)}
+                            placeholder="https://facebook.com/..."
+                            className="mt-1 w-full rounded-lg border border-line bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-ink"
+                          />
+                        </label>
+                        <p className="rounded bg-acid/10 p-2 text-[10px] font-bold leading-4 text-ink">
+                          Cọc giấy tờ sẽ hoàn trả đầy đủ sau khi trả máy đúng
+                          hẹn và không phát sinh hư hại.
+                        </p>
+                      </div>
+                    ) : null}
+                  </section>
                   <div className="rounded-lg border border-line bg-paper p-4">
                     <label className="flex items-center gap-3 text-sm font-black">
                       <input
@@ -2241,7 +2400,7 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
                       Trạng thái: <StatusBadge state={booking.state} />
                     </p>
                     <p className="mt-3">
-                      Tiền thuê: {money(booking.totalAmount)} · Cọc thiết bị: {money(booking.equipmentDeposit)} · Giữ lịch: {money(booking.bookingDeposit)}
+                      Tiền thuê: {money(booking.totalAmount)} · Cọc thiết bị: {booking.depositMethod === "DOCUMENTS" ? "0đ (2 giấy tờ)" : money(booking.equipmentDeposit)} · Giữ lịch: {money(booking.bookingDeposit)}
                     </p>
                     <p className="mt-2 font-black">Cần thanh toán ban đầu: {money(booking.amountDueNow)}</p>
                   </div>

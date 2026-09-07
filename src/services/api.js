@@ -127,6 +127,41 @@ async function uploadIdentity(front, back) {
   return payload;
 }
 
+async function uploadSecondaryIdentity(front, back) {
+  const token = await getCsrf();
+  const body = new FormData();
+  body.append('front', front);
+  body.append('back', back);
+  const response = await fetch(`${API_BASE}/api/customer/account/secondary-identity-documents`, { method: 'POST', credentials: 'include', headers: { [token.headerName]: token.token }, body });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.message || `Tải giấy tờ cọc thất bại (${response.status}).`);
+  return payload;
+}
+
+async function adminSecondaryIdentityDocument(bookingId, side) {
+  const response = await fetch(`${API_BASE}/api/admin/bookings/${encodeURIComponent(bookingId)}/secondary-identity/${encodeURIComponent(side)}`, {
+    credentials: 'include',
+    headers: { Accept: 'image/jpeg' }
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.message || `Không thể mở ảnh giấy tờ cọc (${response.status}).`);
+  }
+  return response.blob();
+}
+
+async function customerSecondaryIdentityDocument(bookingId, side) {
+  const response = await fetch(`${API_BASE}/api/customer/account/bookings/${encodeURIComponent(bookingId)}/secondary-identity/${encodeURIComponent(side)}`, {
+    credentials: 'include',
+    headers: { Accept: 'image/jpeg,image/png' }
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new Error(payload.message || `Không thể mở ảnh giấy tờ cọc (${response.status}).`);
+  }
+  return response.blob();
+}
+
 async function adminIdentityDocument(bookingId, side) {
   const response = await fetch(`${API_BASE}/api/admin/bookings/${encodeURIComponent(bookingId)}/identity/${encodeURIComponent(side)}`, {
     credentials: 'include',
@@ -267,6 +302,9 @@ export const api = {
   uploadIdentity,
   uploadPaymentProof,
   uploadBankAccount,
+  uploadSecondaryIdentity,
+  adminSecondaryIdentityDocument,
+  customerSecondaryIdentityDocument,
   trackBooking: payload => request('/api/bookings/track', { method: 'POST', body: payload }),
   requestOtp: payload => request('/api/otp/request', { method: 'POST', body: payload }),
   verifyOtp: payload => request('/api/otp/verify', { method: 'POST', body: payload }),
