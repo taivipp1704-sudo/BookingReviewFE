@@ -1358,7 +1358,7 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
         depositMethod,
         secondaryIdentityType: depositMethod === "DOCUMENTS" ? secondaryIdentityType : null,
         secondaryIdentityUploadToken,
-        socialProfileLink: depositMethod === "DOCUMENTS" ? socialProfileLink.trim() : null,
+        socialProfileLink: socialProfileLink.trim() ? socialProfileLink.trim() : null,
       });
       holdTokenRef.current = "";
       setHoldToken("");
@@ -2018,6 +2018,9 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
                           onChange={() => setDepositMethod("CASH")}
                         />
                         Cọc tiền mặt (500.000đ)
+                        <span className="mt-1 block pl-6 text-[10px] font-semibold normal-case text-muted">
+                          Nhớ mang theo CCCD gốc khi đến nhận máy.
+                        </span>
                       </label>
                       <label
                         className={`cursor-pointer rounded-lg border p-3 text-xs font-black ${depositMethod === "DOCUMENTS" ? "border-ink bg-white" : "border-line bg-white/60 text-muted"}`}
@@ -2049,7 +2052,9 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
                             <option value="PASSPORT">Passport gốc</option>
                           </select>
                           <p className="mt-1 text-[10px] font-semibold text-muted">
-                            Có thể là giấy tờ của người đặt, bạn bè hoặc người thân.
+                            Phải là giấy tờ khác với CCCD đã tải lên ở mục
+                            "Xác thực CCCD" phía trên. Có thể là giấy tờ của
+                            người đặt, bạn bè hoặc người thân.
                           </p>
                         </label>
                         <div className="grid gap-3 sm:grid-cols-2">
@@ -2097,25 +2102,33 @@ export default function BookingPage({ productId, resumeToken = "", customerAccou
                             </label>
                           ))}
                         </div>
-                        <label className="block">
-                          <span className="text-[10px] font-black uppercase text-muted">
-                            Link Facebook/Instagram public chính chủ
-                          </span>
-                          <input
-                            required
-                            type="url"
-                            value={socialProfileLink}
-                            onChange={(event) => setSocialProfileLink(event.target.value)}
-                            placeholder="https://facebook.com/..."
-                            className="mt-1 w-full rounded-lg border border-line bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-ink"
-                          />
-                        </label>
                         <p className="rounded bg-acid/10 p-2 text-[10px] font-bold leading-4 text-ink">
                           Cọc giấy tờ sẽ hoàn trả đầy đủ sau khi trả máy đúng
                           hẹn và không phát sinh hư hại.
                         </p>
                       </div>
                     ) : null}
+                    <div className="mt-4 space-y-1 border-t border-line pt-4">
+                      <label className="block">
+                        <span className="text-[10px] font-black uppercase text-muted">
+                          Link Facebook/Instagram public chính chủ
+                        </span>
+                        <input
+                          required={depositMethod === "DOCUMENTS"}
+                          type="url"
+                          value={socialProfileLink}
+                          onChange={(event) => setSocialProfileLink(event.target.value)}
+                          placeholder="https://facebook.com/..."
+                          className="mt-1 w-full rounded-lg border border-line bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-ink"
+                        />
+                      </label>
+                      {depositMethod === "CASH" ? (
+                        <p className="text-[10px] font-semibold text-muted">
+                          Không bắt buộc với cọc tiền mặt — giúp xác minh
+                          nhanh hơn nếu cần liên hệ.
+                        </p>
+                      ) : null}
+                    </div>
                   </section>
                   <div className="rounded-lg border border-line bg-paper p-4">
                     <label className="flex items-center gap-3 text-sm font-black">

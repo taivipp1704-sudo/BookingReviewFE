@@ -1644,6 +1644,21 @@ function Orders({
               ) : null}
             </div>
           ) : null}
+          {detailTab === "overview" && selected.depositMethod !== "DOCUMENTS" && selected.socialProfileLink ? (
+            <div className="mb-5 rounded-lg border border-line bg-paper p-4">
+              <p className="text-[10px] font-semibold text-muted">
+                Link FB/IG:{" "}
+                <a
+                  href={selected.socialProfileLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="break-all underline"
+                >
+                  {selected.socialProfileLink}
+                </a>
+              </p>
+            </div>
+          ) : null}
           {detailTab === "finance" && selected.paymentProofAvailable && canViewIdentity ? (
             <div className="mb-5 flex flex-wrap items-center gap-3 rounded-lg border border-green-200 bg-green-50 p-4 text-green-950">
               <div className="mr-auto"><p className="text-xs font-black uppercase">Bằng chứng chuyển khoản</p><p className="mt-1 text-[10px] font-semibold">Chỉ ghi nhận tiền vào Sổ quỹ sau khi đối chiếu đúng số tiền, nội dung và tài khoản nhận.</p></div>
