@@ -424,6 +424,24 @@ export default function AdminPage({
     }
   }
 
+  async function applyPostHandoverLateFee(fee, reviewReason) {
+    if (!selected) return;
+    setBusy(true);
+    setError("");
+    try {
+      const updated = await api.applyPostHandoverLateFee(selected.id, {
+        fee: Number(fee || 0),
+        reason: reviewReason,
+      });
+      updateBookingSnapshots(updated);
+      setAudit(await api.bookingAudit(selected.id));
+    } catch (nextError) {
+      setError(nextError.message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function autoAllocate() {
     if (!selected) return;
     setBusy(true);
@@ -603,6 +621,7 @@ export default function AdminPage({
             approveHandover={approveHandover}
             reviewEarlyPickup={reviewEarlyPickup}
             reviewLateReturn={reviewLateReturn}
+            applyPostHandoverLateFee={applyPostHandoverLateFee}
             operations={bookingOperations}
             financeData={bookingFinance}
             refreshFinance={refreshSelectedFinance}
@@ -1301,6 +1320,7 @@ function Orders({
   approveHandover,
   reviewEarlyPickup,
   reviewLateReturn,
+  applyPostHandoverLateFee,
   operations,
   financeData,
   refreshFinance,
@@ -1565,6 +1585,13 @@ function Orders({
               onReview={reviewEarlyPickup}
             />
           ) : null}
+          {detailTab === "finance" && ["IN_USE", "INCIDENT", "COMPLETED"].includes(selected.state) ? (
+            <PostHandoverLateFeePanel
+              booking={selected}
+              busy={busy}
+              onApply={applyPostHandoverLateFee}
+            />
+          ) : null}
           {detailTab === "finance" && financeData ? (
             <FinanceLifecycle
               booking={selected}
@@ -1794,7 +1821,7 @@ function FinanceLifecycle({ booking, data, productById, onChanged }) {
   const preDeliveryStates = [...reviewStates, "CONFIRMED", "READY_FOR_PICKUP"];
   const [paymentAmount, setPaymentAmount] = useState(missing);
   const [paymentMethod, setPaymentMethod] = useState("BANK_TRANSFER");
-  const [chargeType, setChargeType] = useState("LATE_FEE");
+  const [chargeType, setChargeType] = useState("DAMAGE");
   const [chargeAmount, setChargeAmount] = useState("");
   const [holdAmount, setHoldAmount] = useState(0);
   const [chargeReason, setChargeReason] = useState("");
@@ -1883,9 +1910,9 @@ function FinanceLifecycle({ booking, data, productById, onChanged }) {
 
       {["IN_USE", "INCIDENT", "COMPLETED"].includes(booking.state) ? (
         <form onSubmit={proposeCharge} className="mt-5 grid gap-2 border-t border-line pt-4 sm:grid-cols-2 xl:grid-cols-6">
-          <p className="text-[10px] font-black uppercase text-muted sm:col-span-2 xl:col-span-6">Phát sinh sau bàn giao · chỉ dùng cho trả trễ, hư hỏng, thất lạc hoặc gia hạn có bằng chứng</p>
+          <p className="text-[10px] font-black uppercase text-muted sm:col-span-2 xl:col-span-6">Phát sinh sau bàn giao · chỉ dùng cho hư hỏng, thất lạc hoặc gia hạn có bằng chứng (phí trả trễ xem khung phía trên)</p>
           <select value={chargeType} onChange={(event) => setChargeType(event.target.value)} className="rounded-lg border border-line bg-paper px-3 py-3 text-xs font-bold">
-            <option value="LATE_FEE">Phí trả trễ</option><option value="DAMAGE">Hư hỏng</option><option value="MISSING">Thiếu/mất</option><option value="EXTENSION">Gia hạn</option><option value="CUSTOMER_COMPENSATION">Bồi thường</option><option value="REFUND_ADJUSTMENT">Điều chỉnh hoàn</option>
+            <option value="DAMAGE">Hư hỏng</option><option value="MISSING">Thiếu/mất</option><option value="EXTENSION">Gia hạn</option><option value="CUSTOMER_COMPENSATION">Bồi thường</option><option value="REFUND_ADJUSTMENT">Điều chỉnh hoàn</option>
           </select>
           <input required type="number" min="1" value={chargeAmount} onChange={(event) => setChargeAmount(event.target.value)} placeholder="Số tiền đề xuất" className="rounded-lg border border-line bg-paper px-3 py-3 text-xs font-bold" />
           <input type="number" min="0" value={holdAmount} onChange={(event) => setHoldAmount(event.target.value)} placeholder="Tạm giữ" className="rounded-lg border border-line bg-paper px-3 py-3 text-xs font-bold" />
@@ -2006,6 +2033,46 @@ function LateReturnPanel({ booking, busy, onReview }) {
       {booking.lateReturnApproved ? (
         <p className="mt-2 text-xs font-bold text-green-700">
           Đã duyệt · Phí {money(booking.lateReturnFee)}
+        </p>
+      ) : null}
+    </section>
+  );
+}
+
+function PostHandoverLateFeePanel({ booking, busy, onApply }) {
+  const [fee, setFee] = useState(booking.postHandoverLateFee || 0);
+  const [reason, setReason] = useState(booking.postHandoverLateFeeReason || "");
+  return (
+    <section className="mb-5 rounded-lg border border-line bg-paper p-4">
+      <p className="text-[10px] font-black uppercase text-muted">
+        Phí trả trễ (sau khi đã bàn giao máy)
+      </p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-[160px_1fr_auto]">
+        <input
+          type="number"
+          min="0"
+          value={fee}
+          onChange={(event) => setFee(event.target.value)}
+          placeholder="Phí trả trễ"
+          className="rounded-lg border border-line bg-white px-3 py-2 text-sm font-bold"
+        />
+        <input
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          placeholder="Lý do"
+          className="rounded-lg border border-line bg-white px-3 py-2 text-sm font-semibold"
+        />
+        <button
+          disabled={busy}
+          onClick={() => onApply(fee, reason)}
+          className="rounded-lg bg-ink px-3 py-2 text-xs font-black uppercase text-acid"
+        >
+          Duyệt
+        </button>
+      </div>
+      {Number(booking.postHandoverLateFee) > 0 ? (
+        <p className="mt-2 text-xs font-bold text-green-700">
+          Đã ghi nhận · Phí {money(booking.postHandoverLateFee)}
         </p>
       ) : null}
     </section>

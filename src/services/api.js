@@ -369,6 +369,7 @@ export const api = {
   adminFeedback: () => request('/api/admin/feedback'),
   reviewEarlyPickup: (id, payload) => request(`/api/admin/bookings/${encodeURIComponent(id)}/early-pickup`, { method: 'PATCH', body: payload })
   ,reviewLateReturn: (id, payload) => request(`/api/admin/bookings/${encodeURIComponent(id)}/late-return`, { method: 'PATCH', body: payload })
+  ,applyPostHandoverLateFee: (id, payload) => request(`/api/admin/bookings/${encodeURIComponent(id)}/post-handover-late-fee`, { method: 'PATCH', body: payload })
   ,customerSupport: () => request('/api/customer/support'),
   createCustomerSupport: payload => request('/api/customer/support', { method: 'POST', body: payload }),
   adminSupport: () => request('/api/admin/support-requests'),
